@@ -1,11 +1,13 @@
 import { useTheme } from '../context/ThemeContext';
+import { JungleButton } from './JungleButton';
 
 interface EndScreenProps {
   score: number;
   onPlayAgain: () => void;
+  onMainMenu: () => void;
 }
 
-export const EndScreen = ({ score, onPlayAgain }: EndScreenProps) => {
+export const EndScreen = ({ score, onPlayAgain, onMainMenu }: EndScreenProps) => {
   const { theme } = useTheme();
 
   return (
@@ -16,16 +18,14 @@ export const EndScreen = ({ score, onPlayAgain }: EndScreenProps) => {
       <p className="text-2xl mb-8" style={{ color: theme.textColor }}>
         Final Score: {score}
       </p>
-      <button
-        onClick={onPlayAgain}
-        className="px-6 py-3 rounded-xl font-medium"
-        style={{
-          backgroundColor: theme.targetColor,
-          color: theme.backgroundColor,
-        }}
-      >
-        Play Again
-      </button>
+      <div className="flex flex-col gap-4">
+        <JungleButton onClick={onPlayAgain}>
+          Play Again
+        </JungleButton>
+        <JungleButton onClick={onMainMenu}>
+          Main Menu
+        </JungleButton>
+      </div>
     </div>
   );
 }; 

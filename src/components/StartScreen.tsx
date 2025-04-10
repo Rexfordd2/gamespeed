@@ -3,7 +3,7 @@ import { GameModeSelector } from './GameModeSelector';
 import { JungleBackground } from './JungleBackground';
 
 interface StartScreenProps {
-  onStart: () => void;
+  onStart: (mode: string) => void;
 }
 
 export const StartScreen = ({ onStart }: StartScreenProps) => {
