@@ -7,9 +7,9 @@ export const generateTargets = ({ screenSize, existingTargets }: GenerateTargets
   }
 
   const currentTime = Date.now();
-  const startX = Math.random() < 0.5 ? -50 : screenSize.width + 50; // Start from either left or right
-  const endX = startX < 0 ? screenSize.width + 50 : -50; // Move to opposite side
-  const y = Math.random() * (screenSize.height - 100) + 50;
+  const startX = Math.random() < 0.5 ? -10 : 110; // Start from outside the screen
+  const endX = startX < 0 ? 110 : -10; // Move to the other side
+  const y = Math.random() * 80 + 10; // Keep vertical position within 10-90%
 
   const target: Target = {
     id: `target-${currentTime}`,

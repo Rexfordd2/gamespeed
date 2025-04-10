@@ -35,8 +35,14 @@ export const Target: React.FC<TargetProps> = ({ target, onClick, gameMode }) => 
   useEffect(() => {
     if (target.movement && isActive) {
       controls.start({
-        x: [target.movement.startX, target.movement.endX],
-        y: [target.movement.startY, target.movement.endY],
+        left: [
+          `${target.movement.startX}%`,
+          `${target.movement.endX}%`
+        ],
+        top: [
+          `${target.movement.startY}%`,
+          `${target.movement.endY}%`
+        ],
         transition: {
           duration: target.movement.duration / 1000,
           ease: "linear",
@@ -52,7 +58,7 @@ export const Target: React.FC<TargetProps> = ({ target, onClick, gameMode }) => 
 
     if (gameMode === 'holdTrack') {
       setIsHolding(true);
-      holdTimerRef.current = setTimeout(() => {
+      holdTimerRef.current = window.setTimeout(() => {
         setShowSuccess(true);
         setTimeout(() => setShowSuccess(false), 500);
         onClick();
@@ -104,8 +110,8 @@ export const Target: React.FC<TargetProps> = ({ target, onClick, gameMode }) => 
       className="absolute cursor-pointer rounded-full flex items-center justify-center"
       style={{
         ...targetStyle,
-        left: target.x,
-        top: target.y,
+        left: `${target.x}%`,
+        top: `${target.y}%`,
         width: '60px',
         height: '60px',
         boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',

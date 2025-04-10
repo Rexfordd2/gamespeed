@@ -7,20 +7,18 @@ export const generateTargets = ({ screenSize, existingTargets }: GenerateTargets
   }
 
   const currentTime = Date.now();
-  const startX = Math.random() * (screenSize.width - 200) + 100;
-  const startY = Math.random() * (screenSize.height - 200) + 100;
+  const centerX = Math.random() * 60 + 20; // Keep center within 20-80% of screen width
+  const centerY = Math.random() * 60 + 20; // Keep center within 20-80% of screen height
   
-  // Create a circular or figure-8 movement pattern
-  const radius = 100;
-  const centerX = startX;
-  const centerY = startY;
+  // Create a circular movement pattern
+  const radius = 10; // 10% of screen size
   const endX = centerX + radius;
   const endY = centerY;
 
   const target: Target = {
     id: `target-${currentTime}`,
-    x: startX,
-    y: startY,
+    x: centerX,
+    y: centerY,
     type: 'hold',
     createdAt: currentTime,
     duration: 2.0,

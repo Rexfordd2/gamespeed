@@ -1,8 +1,8 @@
 import { Target, GenerateTargetsParams } from '../types/game';
 
 export const generateTargets = ({ screenSize }: GenerateTargetsParams): Target[] => {
-  const x = Math.random() * (screenSize.width - 100);
-  const y = Math.random() * (screenSize.height - 100);
+  const x = (Math.random() * 80 + 10); // Keep targets within 10-90% of screen width
+  const y = (Math.random() * 80 + 10); // Keep targets within 10-90% of screen height
   const currentTime = Date.now();
 
   const target: Target = {
