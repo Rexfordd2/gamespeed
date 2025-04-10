@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Target } from '../types/game';
+import { Target as TargetType } from '../types/game';
 import { useTheme } from '../context/ThemeContext';
 import { gameModes } from '../utils/gameModes';
+import { GameHeader } from './GameHeader';
+import { Target } from './Target';
 
 interface GameProps {
   mode?: string;
@@ -12,7 +14,8 @@ interface GameProps {
 export const Game = ({ mode = 'quickTap', onGameOver, initialScore = 0 }: GameProps) => {
   const { theme } = useTheme();
   const [score, setScore] = useState(initialScore);
-  const [targets, setTargets] = useState<Target[]>([]);
+  const [targets, setTargets] = useState<TargetType[]>([]);
+  const [timeLeft, setTimeLeft] = useState(60); // 60 seconds game duration
   const [screenSize, setScreenSize] = useState({ width: window.innerWidth, height: window.innerHeight });
 
   useEffect(() => {
@@ -26,6 +29,22 @@ export const Game = ({ mode = 'quickTap', onGameOver, initialScore = 0 }: GamePr
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  useEffect(() => {
+    // Game timer countdown
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 0) {
+          clearInterval(timer);
+          onGameOver(score);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [score, onGameOver]);
 
   useEffect(() => {
     const gameMode = gameModes[mode];
@@ -59,23 +78,14 @@ export const Game = ({ mode = 'quickTap', onGameOver, initialScore = 0 }: GamePr
       className="relative min-h-screen"
       style={{ backgroundColor: theme.backgroundColor }}
     >
-      <div className="absolute top-4 left-4 text-2xl font-bold" style={{ color: theme.textColor }}>
-        Score: {score}
-      </div>
+      <GameHeader score={score} timeLeft={timeLeft} />
       
       {targets.map(target => (
-        <div
+        <Target
           key={target.id}
-          className="absolute cursor-pointer transform transition-transform hover:scale-110"
-          style={{
-            left: target.x,
-            top: target.y,
-            width: 50,
-            height: 50,
-            backgroundColor: theme.targetColor,
-            borderRadius: '50%'
-          }}
+          target={target}
           onClick={() => handleTargetClick(target.id)}
+          gameMode={mode}
         />
       ))}
     </div>

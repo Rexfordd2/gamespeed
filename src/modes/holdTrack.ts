@@ -1,12 +1,7 @@
-import { Target } from '../types/game';
-
-interface GenerateTargetsParams {
-  screenSize: { width: number; height: number };
-  existingTargets: Target[];
-}
+import { Target, GenerateTargetsParams } from '../types/game';
 
 export const generateTargets = ({ screenSize, existingTargets }: GenerateTargetsParams): Target[] => {
-  // Hold track mode only allows one target at a time
+  // If we already have targets, keep them
   if (existingTargets.length > 0) {
     return existingTargets;
   }
@@ -14,8 +9,13 @@ export const generateTargets = ({ screenSize, existingTargets }: GenerateTargets
   const currentTime = Date.now();
   const startX = Math.random() * (screenSize.width - 200) + 100;
   const startY = Math.random() * (screenSize.height - 200) + 100;
-  const endX = Math.random() * (screenSize.width - 200) + 100;
-  const endY = Math.random() * (screenSize.height - 200) + 100;
+  
+  // Create a circular or figure-8 movement pattern
+  const radius = 100;
+  const centerX = startX;
+  const centerY = startY;
+  const endX = centerX + radius;
+  const endY = centerY;
 
   const target: Target = {
     id: `target-${currentTime}`,
@@ -26,12 +26,12 @@ export const generateTargets = ({ screenSize, existingTargets }: GenerateTargets
     duration: 2.0,
     lifespan: 2.0,
     movement: {
-      startX,
+      startX: centerX,
       endX,
-      startY,
+      startY: centerY,
       endY,
       startTime: currentTime,
-      duration: 2.0
+      duration: 2000 // 2 seconds per movement cycle
     }
   };
 
