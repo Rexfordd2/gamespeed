@@ -1,56 +1,77 @@
-import React, { useEffect, useRef } from 'react';
+import { createContext, useContext, useEffect, useRef } from 'react';
 import { useTheme } from '../context/ThemeContext';
+import { JungleThemeConfig } from '../types/theme';
 
-export const AudioManager: React.FC = () => {
+interface AudioContextType {
+  playEffect: (effect: 'hit' | 'miss' | 'success') => void;
+  startBackgroundMusic: () => void;
+  stopBackgroundMusic: () => void;
+}
+
+const AudioContext = createContext<AudioContextType | null>(null);
+
+export const useAudio = () => {
+  const context = useContext(AudioContext);
+  if (!context) {
+    throw new Error('useAudio must be used within an AudioProvider');
+  }
+  return context;
+};
+
+export const AudioManager = () => {
   const { theme } = useTheme();
-  const backgroundAudioRef = useRef<HTMLAudioElement | null>(null);
-  const effectsRef = useRef<{ [key: string]: HTMLAudioElement }>({});
+  const jungleTheme = theme as JungleThemeConfig;
+  const backgroundMusicRef = useRef<HTMLAudioElement | null>(null);
+  const effectsRef = useRef<Record<string, HTMLAudioElement>>({});
 
   useEffect(() => {
-    // Initialize background audio
-    if ('audio' in theme) {
-      backgroundAudioRef.current = new Audio(theme.audio.background);
-      backgroundAudioRef.current.loop = true;
-      backgroundAudioRef.current.volume = 0.3;
+    // Create audio elements
+    backgroundMusicRef.current = new Audio(jungleTheme.audio.background);
+    backgroundMusicRef.current.loop = true;
+    backgroundMusicRef.current.volume = 0.3;
 
-      // Initialize sound effects
-      Object.entries(theme.audio.effects).forEach(([key, path]) => {
-        effectsRef.current[key] = new Audio(path);
-        effectsRef.current[key].volume = 0.5;
-      });
-    }
+    effectsRef.current = {
+      hit: new Audio(jungleTheme.audio.effects.hit),
+      miss: new Audio(jungleTheme.audio.effects.miss),
+      success: new Audio(jungleTheme.audio.effects.success)
+    };
+
+    // Start background music
+    startBackgroundMusic();
 
     return () => {
-      // Cleanup audio elements
-      if (backgroundAudioRef.current) {
-        backgroundAudioRef.current.pause();
-        backgroundAudioRef.current = null;
-      }
+      stopBackgroundMusic();
       Object.values(effectsRef.current).forEach(audio => {
         audio.pause();
+        audio.currentTime = 0;
       });
-      effectsRef.current = {};
     };
-  }, [theme]);
+  }, [jungleTheme]);
 
   const playEffect = (effect: 'hit' | 'miss' | 'success') => {
-    if ('audio' in theme && effectsRef.current[effect]) {
-      effectsRef.current[effect].currentTime = 0;
-      effectsRef.current[effect].play();
+    const audio = effectsRef.current[effect];
+    if (audio) {
+      audio.currentTime = 0;
+      audio.play().catch(console.error);
     }
   };
 
   const startBackgroundMusic = () => {
-    if (backgroundAudioRef.current) {
-      backgroundAudioRef.current.play();
+    if (backgroundMusicRef.current) {
+      backgroundMusicRef.current.play().catch(console.error);
     }
   };
 
   const stopBackgroundMusic = () => {
-    if (backgroundAudioRef.current) {
-      backgroundAudioRef.current.pause();
+    if (backgroundMusicRef.current) {
+      backgroundMusicRef.current.pause();
+      backgroundMusicRef.current.currentTime = 0;
     }
   };
 
-  return null;
+  return (
+    <AudioContext.Provider value={{ playEffect, startBackgroundMusic, stopBackgroundMusic }}>
+      {null}
+    </AudioContext.Provider>
+  );
 }; 

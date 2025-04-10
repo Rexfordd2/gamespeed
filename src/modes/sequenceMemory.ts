@@ -1,10 +1,4 @@
-import { Target } from '../types/game';
-
-interface GenerateTargetsParams {
-  screenSize: { width: number; height: number };
-  existingTargets: Target[];
-  currentTime: number;
-}
+import { Target, GenerateTargetsParams } from '../types/game';
 
 interface SequenceState {
   sequence: Target[];
@@ -22,41 +16,40 @@ let sequenceState: SequenceState = {
   replayAvailable: true,
 };
 
-export const generateTargets = ({ screenSize, existingTargets, currentTime }: GenerateTargetsParams): Target[] => {
-  // If we're in the middle of showing a sequence or waiting for input, return existing targets
-  if (sequenceState.isShowingSequence || sequenceState.isWaitingForInput) {
+export const generateTargets = ({ 
+  screenSize, 
+  existingTargets,
+  sequenceLength = 3 
+}: Omit<GenerateTargetsParams, 'currentTime'> & { sequenceLength?: number }): Target[] => {
+  // If we already have targets, return them
+  if (existingTargets.length > 0) {
     return existingTargets;
   }
 
-  // Generate new sequence
-  const numTargets = Math.floor(Math.random() * 3) + 3; // Random number between 3 and 5
-  const newSequence: Target[] = [];
+  const currentTime = Date.now();
+  const newTargets: Target[] = [];
 
-  for (let i = 0; i < numTargets; i++) {
+  // Generate sequence of targets
+  for (let i = 0; i < sequenceLength; i++) {
+    const x = Math.random() * (screenSize.width - 100);
+    const y = Math.random() * (screenSize.height - 100);
+
     const target: Target = {
-      id: `sequence-${i}-${currentTime}`,
-      x: Math.random() * (screenSize.width - 100) + 50,
-      y: Math.random() * (screenSize.height - 100) + 50,
+      id: `target-${currentTime}-${i}`,
+      x,
+      y,
       type: 'sequence',
       createdAt: currentTime,
-      duration: 0, // Will be controlled by sequence state
+      duration: 1.0,
+      lifespan: 1.0,
       sequenceIndex: i,
-      isActive: false,
+      isActive: false
     };
-    newSequence.push(target);
+
+    newTargets.push(target);
   }
 
-  // Update sequence state
-  sequenceState = {
-    sequence: newSequence,
-    currentIndex: 0,
-    isShowingSequence: true,
-    isWaitingForInput: false,
-    replayAvailable: true,
-  };
-
-  // Start showing the sequence
-  return showNextInSequence();
+  return newTargets;
 };
 
 const showNextInSequence = (): Target[] => {

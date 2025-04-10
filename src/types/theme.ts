@@ -37,7 +37,7 @@ export interface BaseThemeConfig {
   targetColor: string;
   textColor: string;
   icon: {
-    type: 'emoji' | 'image';
+    type: 'image' | 'emoji';
     path: string;
   };
 }

@@ -1,49 +1,59 @@
+import { GameMode } from '../types/game';
 import { generateTargets as generateQuickTap } from '../modes/quickTap';
-import { generateTargets as generateSwipeStrike } from '../modes/swipeStrike';
 import { generateTargets as generateMultiTarget } from '../modes/multiTarget';
+import { generateTargets as generateSwipeStrike } from '../modes/swipeStrike';
 import { generateTargets as generateHoldTrack } from '../modes/holdTrack';
 import { generateTargets as generateSequenceMemory } from '../modes/sequenceMemory';
 
-export interface GameMode {
-  key: string;
-  name: string;
-  description: string;
-  generateTargets: (params: {
-    screenSize: { width: number; height: number };
-    existingTargets: any[];
-    currentTime: number;
-  }) => any[];
-}
-
 export const gameModes: Record<string, GameMode> = {
   quickTap: {
-    key: 'quickTap',
     name: 'Quick Tap',
-    description: 'Tap targets as they appear',
+    description: 'Tap targets as quickly as you can!',
     generateTargets: generateQuickTap,
-  },
-  swipeStrike: {
-    key: 'swipeStrike',
-    name: 'Swipe Strike',
-    description: 'Swipe through targets to score',
-    generateTargets: generateSwipeStrike,
+    config: {
+      targetLifespan: 1.5,
+      targetInterval: 1000,
+      maxTargets: 1
+    }
   },
   multiTarget: {
-    key: 'multiTarget',
     name: 'Multi Target',
-    description: 'Multiple targets at once',
+    description: 'Handle multiple targets at once!',
     generateTargets: generateMultiTarget,
+    config: {
+      targetLifespan: 1.5,
+      targetInterval: 800,
+      maxTargets: 5
+    }
+  },
+  swipeStrike: {
+    name: 'Swipe Strike',
+    description: 'Swipe through moving targets!',
+    generateTargets: generateSwipeStrike,
+    config: {
+      targetLifespan: 1.0,
+      targetInterval: 1200,
+      maxTargets: 1
+    }
   },
   holdTrack: {
-    key: 'holdTrack',
-    name: 'Hold & Track',
-    description: 'Hold on moving targets',
+    name: 'Hold Track',
+    description: 'Hold and track moving targets!',
     generateTargets: generateHoldTrack,
+    config: {
+      targetLifespan: 2.0,
+      targetInterval: 2000,
+      maxTargets: 1
+    }
   },
   sequenceMemory: {
-    key: 'sequenceMemory',
     name: 'Sequence Memory',
-    description: 'Remember and repeat the sequence',
+    description: 'Remember and repeat the sequence!',
     generateTargets: generateSequenceMemory,
-  },
+    config: {
+      targetLifespan: 1.0,
+      targetInterval: 1500,
+      maxTargets: 5
+    }
+  }
 }; 

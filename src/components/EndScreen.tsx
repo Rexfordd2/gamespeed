@@ -1,4 +1,4 @@
-import React from 'react';
+import { useTheme } from '../context/ThemeContext';
 
 interface EndScreenProps {
   score: number;
@@ -6,20 +6,26 @@ interface EndScreenProps {
 }
 
 export const EndScreen = ({ score, onPlayAgain }: EndScreenProps) => {
+  const { theme } = useTheme();
+
   return (
-    <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-      <div className="bg-green-900 p-8 rounded-lg text-center">
-        <h2 className="text-4xl font-bold text-white mb-4">Game Over!</h2>
-        <p className="text-2xl text-yellow-400 mb-8">Final Score: {score}</p>
-        <button
-          onClick={onPlayAgain}
-          className="px-6 py-3 bg-yellow-500 text-green-900 text-xl font-bold rounded-lg
-            hover:bg-yellow-400 active:scale-95 transition-all duration-200
-            shadow-lg hover:shadow-xl"
-        >
-          Play Again
-        </button>
-      </div>
+    <div className="flex flex-col items-center justify-center min-h-screen">
+      <h1 className="text-4xl font-bold mb-4" style={{ color: theme.textColor }}>
+        Game Over!
+      </h1>
+      <p className="text-2xl mb-8" style={{ color: theme.textColor }}>
+        Final Score: {score}
+      </p>
+      <button
+        onClick={onPlayAgain}
+        className="px-6 py-3 rounded-xl font-medium"
+        style={{
+          backgroundColor: theme.targetColor,
+          color: theme.backgroundColor,
+        }}
+      >
+        Play Again
+      </button>
     </div>
   );
 }; 

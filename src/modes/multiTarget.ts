@@ -6,18 +6,23 @@ interface GenerateTargetsParams {
 }
 
 export const generateTargets = ({ screenSize, existingTargets }: GenerateTargetsParams): Target[] => {
-  // Multi target mode allows up to 5 targets
+  // Multi target mode allows up to 5 targets at a time
   if (existingTargets.length >= 5) {
     return existingTargets;
   }
 
+  const x = Math.random() * (screenSize.width - 100);
+  const y = Math.random() * (screenSize.height - 100);
+  const currentTime = Date.now();
+
   const newTarget: Target = {
-    id: Math.random().toString(36).substr(2, 9),
-    x: Math.random() * (screenSize.width - 100) + 50, // Keep away from edges
-    y: Math.random() * (screenSize.height - 100) + 50,
+    id: `target-${currentTime}`,
+    x,
+    y,
     type: 'monkey',
-    createdAt: Date.now(),
-    duration: 1500, // 1.5 second lifespan
+    createdAt: currentTime,
+    duration: 1.5,
+    lifespan: 1.5
   };
 
   return [...existingTargets, newTarget];

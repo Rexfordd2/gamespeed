@@ -1,4 +1,4 @@
-import React from 'react';
+import { useTheme } from '../context/ThemeContext';
 
 interface GameHeaderProps {
   score: number;
@@ -6,13 +6,15 @@ interface GameHeaderProps {
 }
 
 export const GameHeader = ({ score, timeLeft }: GameHeaderProps) => {
+  const { theme } = useTheme();
+
   return (
-    <div className="absolute top-0 left-0 right-0 bg-green-900 bg-opacity-80 p-4 flex justify-between items-center text-white">
-      <div className="text-2xl font-bold">
-        Score: <span className="text-yellow-400">{score}</span>
+    <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center">
+      <div className="text-2xl font-bold" style={{ color: theme.textColor }}>
+        Score: {score}
       </div>
-      <div className="text-2xl font-bold">
-        Time: <span className="text-yellow-400">{timeLeft}s</span>
+      <div className="text-2xl font-bold" style={{ color: theme.textColor }}>
+        Time: {Math.ceil(timeLeft)}s
       </div>
     </div>
   );

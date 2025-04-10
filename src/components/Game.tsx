@@ -1,81 +1,81 @@
-import React, { useState, useEffect } from 'react';
-import { Target } from './Target';
+import { useState, useEffect } from 'react';
+import { Target } from '../types/game';
 import { useTheme } from '../context/ThemeContext';
 import { gameModes } from '../utils/gameModes';
-import { Target as TargetType } from '../types/game';
 
 interface GameProps {
-  mode: string;
+  mode?: string;
   onGameOver: (score: number) => void;
   initialScore: number;
 }
 
-export const Game: React.FC<GameProps> = ({ mode, onGameOver, initialScore }) => {
+export const Game = ({ mode = 'quickTap', onGameOver, initialScore = 0 }: GameProps) => {
   const { theme } = useTheme();
   const [score, setScore] = useState(initialScore);
-  const [targets, setTargets] = useState<TargetType[]>([]);
-  const [isGameOver, setIsGameOver] = useState(false);
+  const [targets, setTargets] = useState<Target[]>([]);
+  const [screenSize, setScreenSize] = useState({ width: window.innerWidth, height: window.innerHeight });
+
+  useEffect(() => {
+    const handleResize = () => {
+      setScreenSize({
+        width: window.innerWidth,
+        height: window.innerHeight
+      });
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     const gameMode = gameModes[mode];
     if (!gameMode) return;
 
-    const generateTargets = () => {
+    const interval = setInterval(() => {
       const newTargets = gameMode.generateTargets({
-        screenSize: { width: window.innerWidth, height: window.innerHeight },
+        screenSize,
         existingTargets: targets,
-        currentTime: Date.now(),
+        currentTime: Date.now()
       });
-      setTargets(newTargets);
-    };
 
-    const interval = setInterval(generateTargets, 1000);
+      // Check for game over condition
+      if (newTargets.length === 0 && targets.length > 0) {
+        onGameOver(score);
+      } else {
+        setTargets(newTargets);
+      }
+    }, gameMode.config.targetInterval);
+
     return () => clearInterval(interval);
-  }, [mode, targets]);
+  }, [mode, screenSize, targets, score, onGameOver]);
 
-  const handleTargetClick = () => {
-    setScore(prevScore => prevScore + 1);
+  const handleTargetClick = (targetId: string) => {
+    setScore(prev => prev + 1);
+    setTargets(prev => prev.filter(t => t.id !== targetId));
   };
-
-  const handleGameOver = () => {
-    setIsGameOver(true);
-    onGameOver(score);
-  };
-
-  if (isGameOver) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen">
-        <h1 className="text-4xl font-bold mb-4" style={{ color: theme.textColor }}>
-          Game Over!
-        </h1>
-        <p className="text-2xl mb-8" style={{ color: theme.textColor }}>
-          Final Score: {score}
-        </p>
-        <button
-          onClick={() => onGameOver(score)}
-          className="px-6 py-3 rounded-xl font-medium"
-          style={{
-            backgroundColor: theme.targetColor,
-            color: theme.backgroundColor,
-          }}
-        >
-          Play Again
-        </button>
-      </div>
-    );
-  }
 
   return (
-    <div className="relative w-full h-screen overflow-hidden">
+    <div 
+      className="relative min-h-screen"
+      style={{ backgroundColor: theme.backgroundColor }}
+    >
       <div className="absolute top-4 left-4 text-2xl font-bold" style={{ color: theme.textColor }}>
         Score: {score}
       </div>
+      
       {targets.map(target => (
-        <Target
+        <div
           key={target.id}
-          target={target}
-          onClick={handleTargetClick}
-          gameMode={mode}
+          className="absolute cursor-pointer transform transition-transform hover:scale-110"
+          style={{
+            left: target.x,
+            top: target.y,
+            width: 50,
+            height: 50,
+            backgroundColor: theme.targetColor,
+            borderRadius: '50%'
+          }}
+          onClick={() => handleTargetClick(target.id)}
         />
       ))}
     </div>

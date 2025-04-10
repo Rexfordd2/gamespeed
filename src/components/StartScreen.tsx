@@ -1,32 +1,31 @@
-import React from 'react';
-import { GameMode } from '../types/game';
+import { useTheme } from '../context/ThemeContext';
 import { GameModeSelector } from './GameModeSelector';
+import { JungleBackground } from './JungleBackground';
 
 interface StartScreenProps {
-  selectedMode: string;
-  onModeSelect: (mode: string) => void;
   onStart: () => void;
 }
 
-export const StartScreen = ({ selectedMode, onModeSelect, onStart }: StartScreenProps) => {
-  return (
-    <div className="absolute inset-0 bg-green-900 flex items-center justify-center">
-      <div className="text-center max-w-2xl mx-4">
-        <h1 className="text-6xl font-bold text-white mb-8">GameSpeed</h1>
-        
-        <GameModeSelector
-          selectedMode={selectedMode}
-          onModeChange={onModeSelect}
-        />
+export const StartScreen = ({ onStart }: StartScreenProps) => {
+  const { theme } = useTheme();
 
-        <button
-          onClick={onStart}
-          className="px-8 py-4 bg-yellow-500 text-green-900 text-2xl font-bold rounded-lg
-            hover:bg-yellow-400 active:scale-95 transition-all duration-200
-            shadow-lg hover:shadow-xl"
+  return (
+    <div className="relative min-h-screen flex flex-col items-center justify-center p-4">
+      <JungleBackground />
+      <div className="relative z-10 text-center">
+        <h1 
+          className="text-6xl font-bold mb-8"
+          style={{ color: theme.textColor }}
         >
-          Start Game
-        </button>
+          GameSpeed
+        </h1>
+        <p 
+          className="text-xl mb-12"
+          style={{ color: theme.textColor }}
+        >
+          Test your reflexes in the jungle!
+        </p>
+        <GameModeSelector onSelectMode={onStart} />
       </div>
     </div>
   );

@@ -1,43 +1,35 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { ThemeProvider } from './context/ThemeContext';
-import { GameModeSelector } from './components/GameModeSelector';
+import { jungleTheme } from './themes/jungle';
+import { StartScreen } from './components/StartScreen';
 import { Game } from './components/Game';
-import { JungleBackground } from './components/JungleBackground';
+import { GameState } from './types/game';
 import { AudioManager } from './components/AudioManager';
-import { jungleTheme } from './themes/jungleTheme';
 
-function App() {
-  const [gameMode, setGameMode] = useState<string | null>(null);
+export const App = () => {
+  const [gameState, setGameState] = useState<GameState>('start');
   const [score, setScore] = useState(0);
 
-  const handleModeSelect = (mode: string) => {
-    setGameMode(mode);
+  const handleGameStart = () => {
+    setGameState('playing');
     setScore(0);
   };
 
   const handleGameOver = (finalScore: number) => {
     setScore(finalScore);
-    setGameMode(null);
+    setGameState('end');
   };
 
   return (
     <ThemeProvider theme={jungleTheme}>
-      <div className="min-h-screen relative">
-        <JungleBackground />
-        <AudioManager />
-        
-        {gameMode ? (
-          <Game
-            mode={gameMode}
-            onGameOver={handleGameOver}
-            initialScore={score}
-          />
-        ) : (
-          <GameModeSelector onSelectMode={handleModeSelect} />
-        )}
-      </div>
+      <AudioManager />
+      {gameState === 'start' && <StartScreen onStart={handleGameStart} />}
+      {gameState === 'playing' && (
+        <Game
+          initialScore={score}
+          onGameOver={handleGameOver}
+        />
+      )}
     </ThemeProvider>
   );
-}
-
-export default App; 
+}; 
