@@ -11,7 +11,7 @@ interface TargetProps {
 
 export const Target: React.FC<TargetProps> = ({ target, onClick, gameMode }) => {
   const { theme } = useTheme();
-  const [isActive, setIsActive] = useState(false);
+  const [isActive, setIsActive] = useState(true); // Start active by default
   const [showSuccess, setShowSuccess] = useState(false);
   const [showError, setShowError] = useState(false);
   const [isHolding, setIsHolding] = useState(false);
@@ -28,6 +28,8 @@ export const Target: React.FC<TargetProps> = ({ target, onClick, gameMode }) => 
           setIsActive(false);
         }, timeLeft);
         return () => clearTimeout(timer);
+      } else {
+        setIsActive(false);
       }
     }
   }, [target.createdAt, target.lifespan]);
@@ -100,23 +102,33 @@ export const Target: React.FC<TargetProps> = ({ target, onClick, gameMode }) => 
       : showError 
         ? 'scale(0.8)' 
         : 'scale(1)',
+    position: 'absolute' as const,
+    left: `${target.x}%`,
+    top: `${target.y}%`,
+    width: '60px',
+    height: '60px',
+    borderRadius: '50%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    cursor: 'pointer',
+    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+    transition: 'all 0.2s ease-in-out',
+    zIndex: 10
   };
+
+  if (!isActive) return null;
 
   return (
     <motion.div
       initial={{ scale: 0, opacity: 0 }}
-      animate={controls}
-      exit={{ scale: 0, opacity: 0 }}
-      className="absolute cursor-pointer rounded-full flex items-center justify-center"
-      style={{
-        ...targetStyle,
-        left: `${target.x}%`,
-        top: `${target.y}%`,
-        width: '60px',
-        height: '60px',
-        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-        transition: 'all 0.2s ease-in-out',
+      animate={{ 
+        ...controls,
+        scale: 1,
+        opacity: 1
       }}
+      exit={{ scale: 0, opacity: 0 }}
+      style={targetStyle}
       onMouseDown={handleInteractionStart}
       onMouseUp={handleInteractionEnd}
       onMouseLeave={handleInteractionEnd}
@@ -133,16 +145,22 @@ export const Target: React.FC<TargetProps> = ({ target, onClick, gameMode }) => 
           repeat: Infinity,
           ease: 'easeInOut',
         }}
-        className="w-8 h-8 rounded-full"
         style={{
+          width: '32px',
+          height: '32px',
+          borderRadius: '50%',
           backgroundColor: theme.backgroundColor,
           border: `2px solid ${theme.textColor}`,
         }}
       />
       {target.sequenceIndex !== undefined && (
         <div 
-          className="absolute text-xl font-bold"
-          style={{ color: theme.textColor }}
+          style={{ 
+            position: 'absolute',
+            color: theme.textColor,
+            fontSize: '1.5rem',
+            fontWeight: 'bold'
+          }}
         >
           {target.sequenceIndex + 1}
         </div>
