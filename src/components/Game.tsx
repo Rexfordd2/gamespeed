@@ -18,6 +18,19 @@ export const Game = ({ mode = 'quickTap', onGameOver, initialScore = 0 }: GamePr
   const [timeLeft, setTimeLeft] = useState(60); // 60 seconds game duration
   const [screenSize, setScreenSize] = useState({ width: window.innerWidth, height: window.innerHeight });
 
+  // Initialize targets when game starts
+  useEffect(() => {
+    const gameMode = gameModes[mode];
+    if (!gameMode) return;
+
+    const initialTargets = gameMode.generateTargets({
+      screenSize,
+      existingTargets: [],
+      currentTime: Date.now()
+    });
+    setTargets(initialTargets);
+  }, [mode, screenSize]); // Only run when mode or screen size changes
+
   useEffect(() => {
     const handleResize = () => {
       setScreenSize({
@@ -51,22 +64,27 @@ export const Game = ({ mode = 'quickTap', onGameOver, initialScore = 0 }: GamePr
     if (!gameMode) return;
 
     const interval = setInterval(() => {
-      const newTargets = gameMode.generateTargets({
-        screenSize,
-        existingTargets: targets,
-        currentTime: Date.now()
-      });
-
-      // Check for game over condition
-      if (newTargets.length === 0 && targets.length > 0) {
-        onGameOver(score);
+      if (targets.length === 0) {
+        // Generate new targets if none exist
+        const newTargets = gameMode.generateTargets({
+          screenSize,
+          existingTargets: [],
+          currentTime: Date.now()
+        });
+        setTargets(newTargets);
       } else {
+        // Update existing targets
+        const newTargets = gameMode.generateTargets({
+          screenSize,
+          existingTargets: targets,
+          currentTime: Date.now()
+        });
         setTargets(newTargets);
       }
     }, gameMode.config.targetInterval);
 
     return () => clearInterval(interval);
-  }, [mode, screenSize, targets, score, onGameOver]);
+  }, [mode, screenSize, targets]);
 
   const handleTargetClick = (targetId: string) => {
     setScore(prev => prev + 1);

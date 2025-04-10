@@ -1,11 +1,21 @@
 import { Target, GenerateTargetsParams } from '../types/game';
 
 export const generateTargets = ({ screenSize, existingTargets }: GenerateTargetsParams): Target[] => {
-  // If we already have targets, keep them
+  // If we already have a target, keep it
   if (existingTargets.length > 0) {
-    return existingTargets;
+    // Check if target has expired
+    const now = Date.now();
+    const activeTargets = existingTargets.filter(target => {
+      const timeElapsed = now - target.createdAt;
+      return timeElapsed < target.lifespan * 1000;
+    });
+
+    if (activeTargets.length > 0) {
+      return activeTargets;
+    }
   }
 
+  // Generate a new target
   const currentTime = Date.now();
   const centerX = Math.random() * 60 + 20; // Keep center within 20-80% of screen width
   const centerY = Math.random() * 60 + 20; // Keep center within 20-80% of screen height

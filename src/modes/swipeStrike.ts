@@ -1,11 +1,21 @@
 import { Target, GenerateTargetsParams } from '../types/game';
 
 export const generateTargets = ({ screenSize, existingTargets }: GenerateTargetsParams): Target[] => {
-  // If we already have targets, keep them
+  // If we already have a target, keep it
   if (existingTargets.length > 0) {
-    return existingTargets;
+    // Check if target has expired
+    const now = Date.now();
+    const activeTargets = existingTargets.filter(target => {
+      const timeElapsed = now - target.createdAt;
+      return timeElapsed < target.lifespan * 1000;
+    });
+
+    if (activeTargets.length > 0) {
+      return activeTargets;
+    }
   }
 
+  // Generate a new target
   const currentTime = Date.now();
   const startX = Math.random() < 0.5 ? -10 : 110; // Start from outside the screen
   const endX = startX < 0 ? 110 : -10; // Move to the other side
@@ -17,8 +27,8 @@ export const generateTargets = ({ screenSize, existingTargets }: GenerateTargets
     y,
     type: 'swipe',
     createdAt: currentTime,
-    duration: 1.0,
-    lifespan: 1.0,
+    duration: 2.0,
+    lifespan: 2.0,
     movement: {
       startX,
       endX,
