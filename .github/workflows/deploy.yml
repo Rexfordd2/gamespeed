@@ -31,10 +31,18 @@ jobs:
           cache: 'npm'
           
       - name: Install dependencies
-        run: npm install
+        run: |
+          npm ci
+          npm install -g vite
+          
+      - name: Set execute permissions
+        run: chmod +x ./node_modules/.bin/vite
         
       - name: Build
-        run: npm run build
+        run: |
+          npm run build
+        env:
+          CI: false
         
       - name: Setup Pages
         uses: actions/configure-pages@v4
