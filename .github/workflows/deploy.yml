@@ -1,8 +1,10 @@
-name: Deploy to GitHub Pages
+name: CI & Deploy to GitHub Pages
 
 on:
   push:
-    branches: ['master'] # Set this to your default branch
+    branches: ['master']
+  pull_request:
+    branches: ['master']
   workflow_dispatch:
 
 permissions:
@@ -15,7 +17,36 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  quality:
+    name: Type-check, Lint & Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm run test
+
   deploy:
+    name: Build & Deploy
+    needs: quality
+    # Only deploy on pushes to master, not on pull requests
+    if: github.event_name != 'pull_request'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -23,35 +54,27 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      
+
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
           node-version: 18
           cache: 'npm'
-          
+
       - name: Install dependencies
-        run: |
-          npm ci
-          npm install -g vite
-          
-      - name: Set execute permissions
-        run: chmod +x ./node_modules/.bin/vite
-        
+        run: npm ci
+
       - name: Build
-        run: |
-          npm run build
-        env:
-          CI: false
-        
+        run: npm run build
+
       - name: Setup Pages
         uses: actions/configure-pages@v4
-        
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: './dist'
-          
+
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4 
+        uses: actions/deploy-pages@v4
