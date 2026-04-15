@@ -1,5 +1,28 @@
+# Dependencies / package manager artifacts
+node_modules/
+.pnpm-store/
+.npm/
+.yarn/
+
+# Build output and generated bundles
+dist/
+dist-ssr/
+build/
+coverage/
+
+# Tool caches and temporary files
+.cache/
+.vite/
+.turbo/
+.eslintcache
+*.tsbuildinfo
+tmp/
+temp/
+*.tmp
+*.local
+
 # Logs
-logs
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -7,24 +30,19 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-# Dependencies
-node_modules
-dist
-dist-ssr
-*.local
+# Environment variables (keep template tracked)
+.env
+.env.*
+!.env.example
 
-# Editor directories and files
+# Editor and OS files
 .vscode/*
 !.vscode/extensions.json
-.idea
+.idea/
 .DS_Store
+Thumbs.db
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
-
-# Environment variables
-.env
-.env.*
-!.env.example 
