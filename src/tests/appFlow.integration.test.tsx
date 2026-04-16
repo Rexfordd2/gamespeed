@@ -26,6 +26,9 @@ vi.mock('framer-motion', async () => {
 });
 
 class MockAudio {
+  static instances: MockAudio[] = [];
+  static rejectPlayback = true;
+
   public src: string;
   public muted = true;
   public loop = false;
@@ -33,26 +36,48 @@ class MockAudio {
   public volume = 1;
   public currentTime = 0;
   public currentSrc = '';
+  private listeners = new Map<string, Set<() => void>>();
 
   constructor(src = '') {
     this.src = src;
     this.currentSrc = src;
+    MockAudio.instances.push(this);
+  }
+
+  static reset() {
+    MockAudio.instances = [];
+    MockAudio.rejectPlayback = true;
+  }
+
+  static emitErrorForAsset(assetFileName: string) {
+    MockAudio.instances
+      .filter(instance => instance.src.includes(assetFileName))
+      .forEach(instance => instance.emit('error'));
   }
 
   play() {
-    return Promise.reject(new Error('audio blocked in test'));
+    if (MockAudio.rejectPlayback) {
+      return Promise.reject(new Error('audio blocked in test'));
+    }
+    return Promise.resolve();
   }
 
   pause() {
     // no-op
   }
 
-  addEventListener() {
-    // no-op
+  addEventListener(eventName: string, listener: () => void) {
+    const eventListeners = this.listeners.get(eventName) ?? new Set();
+    eventListeners.add(listener);
+    this.listeners.set(eventName, eventListeners);
   }
 
-  removeEventListener() {
-    // no-op
+  removeEventListener(eventName: string, listener: () => void) {
+    this.listeners.get(eventName)?.delete(listener);
+  }
+
+  private emit(eventName: string) {
+    this.listeners.get(eventName)?.forEach(listener => listener());
   }
 }
 
@@ -105,6 +130,7 @@ describe('App integration flow', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
+    MockAudio.reset();
     vi.stubGlobal('Audio', MockAudio as unknown as typeof Audio);
     vi.stubGlobal('confirm', vi.fn(() => true));
   });
@@ -216,5 +242,45 @@ describe('App integration flow', () => {
     await startMode('Quick Tap');
     await advance(500);
     expect(screen.getByRole('button', { name: /pause game/i })).toBeInTheDocument();
+  });
+
+  it('keeps UI/gameplay stable when required audio assets are missing', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    renderApp();
+
+    MockAudio.emitErrorForAsset('rainforest-loop.mp3');
+    MockAudio.emitErrorForAsset('target-hit.mp3');
+    MockAudio.emitErrorForAsset('target-miss.mp3');
+    MockAudio.emitErrorForAsset('round-complete.mp3');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Unmute audio' }));
+    await flushMicrotasks();
+    expect(screen.getByRole('button', { name: 'Mute audio' })).toBeInTheDocument();
+
+    await startMode('Quick Tap');
+    await advance(500);
+    expect(screen.getByRole('button', { name: /pause game/i })).toBeInTheDocument();
+    expect(screen.getByLabelText('Gameplay area')).toBeInTheDocument();
+    expect(warnSpy).toHaveBeenCalled();
+  });
+
+  it('continues full game flow when cue playback rejects', async () => {
+    renderApp();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Unmute audio' }));
+    await flushMicrotasks();
+    expect(screen.getByRole('button', { name: 'Mute audio' })).toBeInTheDocument();
+
+    await startMode('Quick Tap');
+    await advance(900);
+
+    const [target] = screen.getAllByRole('button', { name: 'Hit target' });
+    fireEvent.click(target);
+    await advance(120);
+
+    await advance(3_500);
+    await advance(57_000);
+
+    expect(screen.getByText('Final Score')).toBeInTheDocument();
   });
 });

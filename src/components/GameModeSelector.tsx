@@ -49,7 +49,7 @@ export const GameModeSelector: React.FC<GameModeSelectorProps> = ({ onSelectMode
         className="text-sm sm:text-base mb-6 sm:mb-7 text-center max-w-3xl leading-relaxed"
         style={{ color: theme.textColor, opacity: 0.85 }}
       >
-        Select a training mode and lock into focused rounds built for quick reactions and disciplined touch control.
+        Pick a live drill below, open the quick how-to, then tap Start Drill to begin your 60-second reaction round.
       </p>
 
       <div className="w-full">

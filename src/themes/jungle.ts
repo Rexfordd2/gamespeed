@@ -24,11 +24,32 @@ export const jungleTheme: JungleThemeConfig = {
     },
   },
   audio: {
-    background: jungleAssetManifest.audio.music.backgroundLoop,
-    effects: {
-      hit: jungleAssetManifest.audio.effects.hit,
-      miss: jungleAssetManifest.audio.effects.miss,
-      success: jungleAssetManifest.audio.effects.success,
+    music: {
+      backgroundLoop: {
+        src: jungleAssetManifest.audio.music.rainforestLoop,
+        loop: true,
+        volume: 0.25,
+      },
     },
+    gameplay: {
+      hit: {
+        src: jungleAssetManifest.audio.gameplay.targetHit,
+        fallbackEffect: 'hit',
+      },
+      miss: {
+        src: jungleAssetManifest.audio.gameplay.targetMiss,
+        fallbackEffect: 'miss',
+      },
+      success: {
+        src: jungleAssetManifest.audio.gameplay.roundComplete,
+        fallbackEffect: 'success',
+      },
+    },
+    // Anticipation/countdown/reaction timing cues can be added here.
+    training: {},
+    // Mode-specific cues (Swipe Strike, Hold Track, Sequence Memory) can live here.
+    mode: {},
+    // Menu/system interaction cues can be added here.
+    ui: {},
   },
 };

@@ -23,13 +23,29 @@ export interface ThemeBackground {
 }
 
 export interface ThemeAudio {
-  background: string;
-  effects: {
-    hit: string;
-    miss: string;
-    success: string;
+  music: ThemeAudioCueMap & {
+    backgroundLoop: ThemeAudioCue;
   };
+  gameplay: ThemeAudioCueMap & {
+    hit: ThemeAudioCue;
+    miss: ThemeAudioCue;
+    success: ThemeAudioCue;
+  };
+  training: ThemeAudioCueMap;
+  mode: ThemeAudioCueMap;
+  ui: ThemeAudioCueMap;
 }
+
+export type ThemeAudioFallbackEffect = 'hit' | 'miss' | 'success';
+
+export interface ThemeAudioCue {
+  src: string;
+  loop?: boolean;
+  volume?: number;
+  fallbackEffect?: ThemeAudioFallbackEffect;
+}
+
+export type ThemeAudioCueMap = Record<string, ThemeAudioCue>;
 
 export interface BaseThemeConfig {
   name: string;
@@ -53,14 +69,7 @@ export interface JungleThemeConfig extends BaseThemeConfig {
       bottom: string;
     };
   };
-  audio: {
-    background: string;
-    effects: {
-      hit: string;
-      miss: string;
-      success: string;
-    };
-  };
+  audio: ThemeAudio;
 }
 
-export type ThemeConfig = BaseThemeConfig | JungleThemeConfig; 
+export type ThemeConfig = BaseThemeConfig | JungleThemeConfig;

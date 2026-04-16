@@ -54,7 +54,7 @@ export const StartScreen = ({ onStart }: StartScreenProps) => {
             className="mt-3 text-sm sm:text-base md:text-lg max-w-2xl mx-auto leading-relaxed px-2"
             style={{ color: theme.textColor, opacity: 0.88 }}
           >
-            Athletic reaction drills built for touch-first speed, visual focus, and clean decision making.
+            Jungle reaction drills for athletes. Run a 60-second round, stay sharp, and build clean touch speed under pressure.
           </p>
         </div>
 
@@ -67,6 +67,24 @@ export const StartScreen = ({ onStart }: StartScreenProps) => {
           }}
         >
           <GameModeSelector onSelectMode={onStart} />
+        </div>
+
+        <div className="mt-4 sm:mt-5 text-center px-2">
+          <p
+            className="text-[11px] sm:text-xs tracking-wide uppercase font-semibold"
+            style={{ color: theme.textColor, opacity: 0.64 }}
+          >
+            v1 live modes: Quick Tap, Multi Target
+          </p>
+          <a
+            href="https://github.com/rexfordd2/gamespeed/issues"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-block mt-2 text-xs sm:text-sm underline underline-offset-2"
+            style={{ color: theme.targetColor }}
+          >
+            Send launch feedback
+          </a>
         </div>
       </motion.div>
     </div>

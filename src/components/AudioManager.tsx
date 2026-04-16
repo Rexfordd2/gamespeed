@@ -9,11 +9,17 @@ import {
   ReactNode,
 } from 'react';
 import { useTheme } from '../context/ThemeContext';
-import { JungleThemeConfig } from '../types/theme';
-import { FallbackEffect, playFallbackEffect } from '../utils/audioFallback';
+import { JungleThemeConfig, ThemeAudioCue, ThemeAudio } from '../types/theme';
+import { playFallbackEffect } from '../utils/audioFallback';
+
+type GameplayEffect = 'hit' | 'miss' | 'success';
+type AudioChannel = 'music' | 'gameplay' | 'training' | 'mode' | 'ui';
+type TriggerableChannel = Exclude<AudioChannel, 'music'>;
+type CueId = `${AudioChannel}:${string}`;
 
 interface AudioContextType {
-  playEffect: (effect: 'hit' | 'miss' | 'success') => void;
+  playEffect: (effect: GameplayEffect) => void;
+  playCue: (channel: TriggerableChannel, cue: string) => void;
   ensureAudioReady: () => Promise<void>;
   startBackgroundMusic: () => void;
   stopBackgroundMusic: () => void;
@@ -34,23 +40,38 @@ interface AudioManagerProps {
   children: ReactNode;
 }
 
+// Keep v1 behavior explicit while leaving a single place to extend cue trigger routes.
+const V1_TRIGGER_MAP = {
+  backgroundLoop: { channel: 'music', cue: 'backgroundLoop' },
+  effect: {
+    hit: { channel: 'gameplay', cue: 'hit' },
+    miss: { channel: 'gameplay', cue: 'miss' },
+    success: { channel: 'gameplay', cue: 'success' },
+  },
+} as const;
+
 export const AudioManager = ({ children }: AudioManagerProps) => {
   const { theme } = useTheme();
   const jungleTheme = theme as JungleThemeConfig;
-  const backgroundSource = jungleTheme.audio.background;
-  const { hit, miss, success } = jungleTheme.audio.effects;
+  const audioConfig = jungleTheme.audio;
 
-  const bgRef = useRef<HTMLAudioElement | null>(null);
-  const fxRef = useRef<Record<'hit' | 'miss' | 'success', HTMLAudioElement> | null>(null);
+  const cuesRef = useRef<Map<CueId, HTMLAudioElement>>(new Map());
+  const cueConfigsRef = useRef<Map<CueId, ThemeAudioCue>>(new Map());
+  const cueLabelsRef = useRef<Map<CueId, string>>(new Map());
+  const backgroundCueIdRef = useRef<CueId | null>(null);
   const hasInitializedRef = useRef(false);
   const initializePromiseRef = useRef<Promise<void> | null>(null);
   const shouldPlayBackgroundRef = useRef(false);
   const isMutedRef = useRef(true);
-  const backgroundUnavailableRef = useRef(false);
-  const unavailableEffectsRef = useRef<Set<FallbackEffect>>(new Set());
+  const unavailableCueIdsRef = useRef<Set<CueId>>(new Set());
   const warnedAssetsRef = useRef<Set<string>>(new Set());
   const [isMuted, setIsMuted] = useState(true);
   const [isReady, setIsReady] = useState(false);
+
+  const buildCueId = useCallback(
+    (channel: AudioChannel, cueName: string) => `${channel}:${cueName}` as CueId,
+    [],
+  );
 
   const warnAssetIssue = useCallback((assetLabel: string, assetPath: string) => {
     if (warnedAssetsRef.current.has(assetPath)) return;
@@ -58,68 +79,122 @@ export const AudioManager = ({ children }: AudioManagerProps) => {
     console.warn(`[assets] ${assetLabel} is unavailable: ${assetPath}`);
   }, []);
 
+  const getBackgroundAudio = useCallback(() => {
+    const backgroundCueId = backgroundCueIdRef.current;
+    if (!backgroundCueId) return null;
+    return cuesRef.current.get(backgroundCueId) ?? null;
+  }, []);
+
+  const triggerCuePlayback = useCallback(
+    (cueId: CueId) => {
+      if (!hasInitializedRef.current || isMutedRef.current) return;
+
+      const cueAudio = cuesRef.current.get(cueId);
+      if (!cueAudio) return;
+
+      const cueConfig = cueConfigsRef.current.get(cueId);
+      if (!cueConfig) return;
+
+      if (unavailableCueIdsRef.current.has(cueId)) {
+        if (cueConfig.fallbackEffect) {
+          playFallbackEffect(cueConfig.fallbackEffect);
+        }
+        return;
+      }
+
+      cueAudio.currentTime = 0;
+      cueAudio.play().catch(() => {
+        unavailableCueIdsRef.current.add(cueId);
+        warnAssetIssue(cueLabelsRef.current.get(cueId) ?? cueId, cueConfig.src);
+        if (cueConfig.fallbackEffect) {
+          playFallbackEffect(cueConfig.fallbackEffect);
+        }
+      });
+    },
+    [warnAssetIssue],
+  );
+
   useEffect(() => {
-    backgroundUnavailableRef.current = false;
-    unavailableEffectsRef.current.clear();
+    hasInitializedRef.current = false;
+    initializePromiseRef.current = null;
+    setIsReady(false);
+    unavailableCueIdsRef.current.clear();
 
-    const backgroundAudio = new Audio(backgroundSource);
-    backgroundAudio.loop = true;
-    backgroundAudio.volume = 0.25;
-    backgroundAudio.preload = 'auto';
-    backgroundAudio.muted = isMutedRef.current;
-    const onBackgroundError = () => {
-      backgroundUnavailableRef.current = true;
-      warnAssetIssue('Background music', backgroundSource);
-    };
-    backgroundAudio.addEventListener('error', onBackgroundError);
-    bgRef.current = backgroundAudio;
+    const nextCueElements = new Map<CueId, HTMLAudioElement>();
+    const nextCueConfigs = new Map<CueId, ThemeAudioCue>();
+    const nextCueLabels = new Map<CueId, string>();
+    const errorHandlers: Array<{ audio: HTMLAudioElement; onError: () => void }> = [];
 
-    const effects = {
-      hit: new Audio(hit),
-      miss: new Audio(miss),
-      success: new Audio(success),
+    const registerChannel = (channel: AudioChannel, channelCues: ThemeAudio[AudioChannel]) => {
+      Object.entries(channelCues).forEach(([cueName, cueConfig]) => {
+        const cueId = buildCueId(channel, cueName);
+        const cueAudio = new Audio(cueConfig.src);
+        cueAudio.preload = 'auto';
+        cueAudio.muted = isMutedRef.current;
+        cueAudio.loop = Boolean(cueConfig.loop);
+        cueAudio.volume = cueConfig.volume ?? 1;
+
+        const onError = () => {
+          unavailableCueIdsRef.current.add(cueId);
+          const cueLabel = `${channel} cue "${cueName}"`;
+          nextCueLabels.set(cueId, cueLabel);
+          warnAssetIssue(cueLabel, cueConfig.src);
+        };
+
+        cueAudio.addEventListener('error', onError);
+        errorHandlers.push({ audio: cueAudio, onError });
+
+        nextCueElements.set(cueId, cueAudio);
+        nextCueConfigs.set(cueId, cueConfig);
+        nextCueLabels.set(cueId, `${channel} cue "${cueName}"`);
+      });
     };
-    (Object.values(effects) as HTMLAudioElement[]).forEach(audio => {
-      audio.preload = 'auto';
-      audio.muted = isMutedRef.current;
-    });
-    const effectErrorHandlers: Array<() => void> = [];
-    (Object.entries(effects) as Array<[FallbackEffect, HTMLAudioElement]>).forEach(([effectKey, audio]) => {
-      const onError = () => {
-        unavailableEffectsRef.current.add(effectKey);
-        warnAssetIssue(`Effect "${effectKey}"`, audio.src || audio.currentSrc || effectKey);
-      };
-      effectErrorHandlers.push(onError);
-      audio.addEventListener('error', onError);
-    });
-    fxRef.current = effects;
+
+    registerChannel('music', audioConfig.music);
+    registerChannel('gameplay', audioConfig.gameplay);
+    registerChannel('training', audioConfig.training);
+    registerChannel('mode', audioConfig.mode);
+    registerChannel('ui', audioConfig.ui);
+
+    const preferredBackgroundCueId = buildCueId(
+      V1_TRIGGER_MAP.backgroundLoop.channel,
+      V1_TRIGGER_MAP.backgroundLoop.cue,
+    );
+    if (nextCueElements.has(preferredBackgroundCueId)) {
+      backgroundCueIdRef.current = preferredBackgroundCueId;
+    } else {
+      const firstMusicCue = Array.from(nextCueElements.keys()).find(cueId =>
+        cueId.startsWith('music:'),
+      );
+      backgroundCueIdRef.current = firstMusicCue ?? null;
+    }
+
+    cuesRef.current = nextCueElements;
+    cueConfigsRef.current = nextCueConfigs;
+    cueLabelsRef.current = nextCueLabels;
 
     return () => {
-      backgroundAudio.removeEventListener('error', onBackgroundError);
-      backgroundAudio.pause();
-      backgroundAudio.currentTime = 0;
-      (Object.values(effects) as HTMLAudioElement[]).forEach((a, index) => {
-        a.removeEventListener('error', effectErrorHandlers[index]);
-        a.pause();
-        a.currentTime = 0;
+      errorHandlers.forEach(({ audio, onError }) => {
+        audio.removeEventListener('error', onError);
+        audio.pause();
+        audio.currentTime = 0;
       });
 
-      if (bgRef.current === backgroundAudio) {
-        bgRef.current = null;
-      }
-      if (fxRef.current === effects) {
-        fxRef.current = null;
-      }
+      cuesRef.current = new Map();
+      cueConfigsRef.current = new Map();
+      cueLabelsRef.current = new Map();
+      backgroundCueIdRef.current = null;
     };
-  }, [backgroundSource, hit, miss, success, warnAssetIssue]);
+  }, [audioConfig, buildCueId, warnAssetIssue]);
 
   const ensureAudioReady = useCallback(async () => {
     if (hasInitializedRef.current) return;
     if (initializePromiseRef.current) return initializePromiseRef.current;
 
     initializePromiseRef.current = (async () => {
-      const bg = bgRef.current;
-      if (!bg || backgroundUnavailableRef.current) {
+      const bg = getBackgroundAudio();
+      const backgroundCueId = backgroundCueIdRef.current;
+      if (!bg || !backgroundCueId || unavailableCueIdsRef.current.has(backgroundCueId)) {
         hasInitializedRef.current = true;
         setIsReady(true);
         return;
@@ -148,37 +223,41 @@ export const AudioManager = ({ children }: AudioManagerProps) => {
     } finally {
       initializePromiseRef.current = null;
     }
-  }, []);
+  }, [getBackgroundAudio]);
 
-  const playEffect = useCallback((effect: 'hit' | 'miss' | 'success') => {
-    if (!hasInitializedRef.current || isMutedRef.current || !fxRef.current) return;
+  const playCue = useCallback(
+    (channel: TriggerableChannel, cue: string) => {
+      // Future modes hook in here: playCue('mode', 'swipe-direction-left') or playCue('training', 'countdown-3').
+      triggerCuePlayback(buildCueId(channel, cue));
+    },
+    [buildCueId, triggerCuePlayback],
+  );
 
-    if (unavailableEffectsRef.current.has(effect)) {
-      playFallbackEffect(effect);
-      return;
-    }
-
-    const a = fxRef.current[effect];
-    if (!a) return;
-    a.currentTime = 0;
-    a.play().catch(() => {
-      unavailableEffectsRef.current.add(effect);
-      warnAssetIssue(`Effect "${effect}"`, a.src || a.currentSrc || effect);
-      playFallbackEffect(effect);
-    });
-  }, [warnAssetIssue]);
+  const playEffect = useCallback(
+    (effect: GameplayEffect) => {
+      const mappedCue = V1_TRIGGER_MAP.effect[effect];
+      playCue(mappedCue.channel, mappedCue.cue);
+    },
+    [playCue],
+  );
 
   const startBackgroundMusic = useCallback(() => {
     shouldPlayBackgroundRef.current = true;
-    if (!hasInitializedRef.current || isMutedRef.current || backgroundUnavailableRef.current) return;
-    bgRef.current?.play().catch(() => undefined);
-  }, []);
+    const bg = getBackgroundAudio();
+    const backgroundCueId = backgroundCueIdRef.current;
+    if (!bg || !backgroundCueId) return;
+    if (!hasInitializedRef.current || isMutedRef.current || unavailableCueIdsRef.current.has(backgroundCueId)) {
+      return;
+    }
+    bg.play().catch(() => undefined);
+  }, [getBackgroundAudio]);
 
   const stopBackgroundMusic = useCallback(() => {
     shouldPlayBackgroundRef.current = false;
-    bgRef.current?.pause();
-    if (bgRef.current) bgRef.current.currentTime = 0;
-  }, []);
+    const bg = getBackgroundAudio();
+    bg?.pause();
+    if (bg) bg.currentTime = 0;
+  }, [getBackgroundAudio]);
 
   const toggleMute = useCallback(async () => {
     await ensureAudioReady();
@@ -187,28 +266,24 @@ export const AudioManager = ({ children }: AudioManagerProps) => {
       const nextMuted = !prev;
       isMutedRef.current = nextMuted;
 
-      if (bgRef.current) {
-        bgRef.current.muted = nextMuted;
-      }
-      if (fxRef.current) {
-        (Object.values(fxRef.current) as HTMLAudioElement[]).forEach(audio => {
-          audio.muted = nextMuted;
-        });
-      }
+      cuesRef.current.forEach(audio => {
+        audio.muted = nextMuted;
+      });
 
       if (nextMuted) {
-        bgRef.current?.pause();
+        getBackgroundAudio()?.pause();
       } else if (shouldPlayBackgroundRef.current) {
-        bgRef.current?.play().catch(() => undefined);
+        getBackgroundAudio()?.play().catch(() => undefined);
       }
 
       return nextMuted;
     });
-  }, [ensureAudioReady]);
+  }, [ensureAudioReady, getBackgroundAudio]);
 
   const contextValue = useMemo(
     () => ({
       playEffect,
+      playCue,
       ensureAudioReady,
       startBackgroundMusic,
       stopBackgroundMusic,
@@ -220,6 +295,7 @@ export const AudioManager = ({ children }: AudioManagerProps) => {
       ensureAudioReady,
       isMuted,
       isReady,
+      playCue,
       playEffect,
       startBackgroundMusic,
       stopBackgroundMusic,

@@ -40,13 +40,16 @@ export const jungleAssetManifest = {
   },
   audio: {
     music: {
-      backgroundLoop: buildAssetPath('audio/music/rainforest-loop.mp3'),
+      rainforestLoop: buildAssetPath('audio/music/rainforest-loop.mp3'),
     },
-    effects: {
-      hit: buildAssetPath('audio/effects/target-hit.mp3'),
-      miss: buildAssetPath('audio/effects/target-miss.mp3'),
-      success: buildAssetPath('audio/effects/round-complete.mp3'),
+    gameplay: {
+      targetHit: buildAssetPath('audio/effects/target-hit.mp3'),
+      targetMiss: buildAssetPath('audio/effects/target-miss.mp3'),
+      roundComplete: buildAssetPath('audio/effects/round-complete.mp3'),
     },
+    training: {},
+    mode: {},
+    ui: {},
   },
   ui: {
     vignetteMask: buildAssetPath('ui/hud-vignette.svg'),
