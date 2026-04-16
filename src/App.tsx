@@ -1,13 +1,15 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ThemeProvider } from './context/ThemeContext';
 import { jungleTheme } from './themes/jungle';
 import { AudioManager } from './components/AudioManager';
 import { StartScreen } from './components/StartScreen';
 import { Game } from './components/Game';
 import { EndScreen } from './components/EndScreen';
+import { StatsScreen } from './components/StatsScreen';
 import { AudioToggle } from './components/AudioToggle';
 import { GameModeType, GameState, GameResult } from './types/game';
 import { resolvePlayableMode } from './utils/gameModes';
+import { recordRound } from './utils/sessionStats';
 
 export const App = () => {
   const [gameState, setGameState] = useState<GameState>('start');
@@ -26,6 +28,7 @@ export const App = () => {
   };
 
   const handleGameOver = (result: GameResult) => {
+    recordRound(result);
     setGameResult(result);
     setGameState('end');
   };
@@ -38,11 +41,29 @@ export const App = () => {
     setGameState('start');
   };
 
+  const handleViewStats = () => {
+    setGameState('stats');
+  };
+
+  const handleCloseStats = () => {
+    setGameState('start');
+  };
+
+  useEffect(() => {
+    const isPlaying = gameState === 'playing';
+    document.body.classList.toggle('gameplay-scroll-lock', isPlaying);
+    return () => {
+      document.body.classList.remove('gameplay-scroll-lock');
+    };
+  }, [gameState]);
+
   return (
     <ThemeProvider theme={jungleTheme}>
       <AudioManager>
         <AudioToggle />
-        {gameState === 'start' && <StartScreen onStart={handleGameStart} />}
+        {gameState === 'start' && (
+          <StartScreen onStart={handleGameStart} onViewStats={handleViewStats} />
+        )}
         {gameState === 'playing' && (
           <Game
             mode={selectedMode}
@@ -55,8 +76,10 @@ export const App = () => {
             result={gameResult}
             onPlayAgain={handlePlayAgain}
             onMainMenu={handleMainMenu}
+            onViewStats={handleViewStats}
           />
         )}
+        {gameState === 'stats' && <StatsScreen onClose={handleCloseStats} />}
       </AudioManager>
     </ThemeProvider>
   );

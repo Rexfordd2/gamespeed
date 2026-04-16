@@ -8,6 +8,7 @@ interface EndScreenProps {
   result: GameResult;
   onPlayAgain: () => void;
   onMainMenu: () => void;
+  onViewStats: () => void;
 }
 
 type Tier = { label: string; color: string; emoji: string };
@@ -19,7 +20,7 @@ function getTier(accuracy: number): Tier {
   return { label: 'Keep Going', color: '#fb923c', emoji: '💪' };
 }
 
-export const EndScreen = ({ result, onPlayAgain, onMainMenu }: EndScreenProps) => {
+export const EndScreen = ({ result, onPlayAgain, onMainMenu, onViewStats }: EndScreenProps) => {
   const { theme } = useTheme();
   const totalAttempts = result.score + result.misses;
   const accuracy = totalAttempts > 0 ? Math.round((result.score / totalAttempts) * 100) : 0;
@@ -34,12 +35,17 @@ export const EndScreen = ({ result, onPlayAgain, onMainMenu }: EndScreenProps) =
 
   return (
     <div
-      className="relative flex flex-col items-center justify-center overflow-hidden"
-      style={{ minHeight: '100dvh', backgroundColor: theme.backgroundColor }}
+      className="relative w-full overflow-y-auto overflow-x-hidden"
+      style={{
+        minHeight: '100dvh',
+        backgroundColor: theme.backgroundColor,
+        paddingTop: 'max(1.25rem, env(safe-area-inset-top, 0px))',
+        paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom, 0px))',
+      }}
     >
       <JungleBackground />
 
-      <div className="relative z-10 flex flex-col items-center w-full max-w-lg mx-auto px-4 sm:px-6 py-7 sm:py-10">
+      <div className="relative z-10 mx-auto flex min-h-[calc(100dvh-2.5rem)] w-full max-w-lg flex-col items-center justify-center px-4 py-7 sm:px-6 sm:py-10">
         <motion.div
           initial={{ scale: 0, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
@@ -129,6 +135,53 @@ export const EndScreen = ({ result, onPlayAgain, onMainMenu }: EndScreenProps) =
           </div>
         </motion.div>
 
+        {result.benchmarkScore !== undefined && (
+          <motion.div
+            initial={{ y: 16, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.52 }}
+            className="w-full rounded-2xl px-5 py-4 mb-4"
+            style={{
+              backgroundColor: 'rgba(56, 189, 248, 0.07)',
+              border: '1px solid rgba(56, 189, 248, 0.28)',
+            }}
+          >
+            <p
+              className="text-[10px] sm:text-xs uppercase tracking-widest opacity-60 text-center mb-3"
+              style={{ color: theme.textColor }}
+            >
+              Benchmark Result
+            </p>
+            <div className="flex justify-around items-center">
+              <div className="text-center">
+                <p className="text-4xl sm:text-5xl font-black tabular-nums" style={{ color: '#7dd3fc' }}>
+                  {result.benchmarkScore}
+                </p>
+                <p
+                  className="text-[10px] uppercase tracking-widest opacity-60 mt-1"
+                  style={{ color: theme.textColor }}
+                >
+                  Score / 100
+                </p>
+              </div>
+              {result.medianReactionTimeMs !== undefined && (
+                <div className="text-center">
+                  <p className="text-4xl sm:text-5xl font-black tabular-nums" style={{ color: '#a5f3fc' }}>
+                    {result.medianReactionTimeMs}
+                    <span className="text-xl sm:text-2xl font-semibold">ms</span>
+                  </p>
+                  <p
+                    className="text-[10px] uppercase tracking-widest opacity-60 mt-1"
+                    style={{ color: theme.textColor }}
+                  >
+                    Median RT
+                  </p>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+
         <motion.div
           initial={{ y: 16, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -138,6 +191,16 @@ export const EndScreen = ({ result, onPlayAgain, onMainMenu }: EndScreenProps) =
           <JungleButton onClick={onPlayAgain} className="w-full py-4 text-lg font-bold uppercase">
             Replay
           </JungleButton>
+          <button
+            onClick={onViewStats}
+            className="ui-secondary-button w-full py-3"
+            style={{
+              color: theme.targetColor,
+              borderColor: `${theme.targetColor}55`,
+            }}
+          >
+            View Stats
+          </button>
           <button
             onClick={onMainMenu}
             className="ui-secondary-button w-full py-3"

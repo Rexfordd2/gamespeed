@@ -146,7 +146,6 @@ describe('App integration flow', () => {
     expect(screen.getByRole('heading', { name: 'GameSpeed' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Choose Your Drill' })).toBeInTheDocument();
     expect(screen.getByText('Available now')).toBeInTheDocument();
-    expect(screen.getByText('Next release')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Unmute audio' })).toBeInTheDocument();
   });
 
@@ -160,16 +159,15 @@ describe('App integration flow', () => {
     expect(screen.getByLabelText('Gameplay area')).toBeInTheDocument();
   });
 
-  it('does not launch coming-soon modes', async () => {
+  it('launches Sequence Memory as a playable mode', async () => {
     renderApp();
-
-    fireEvent.click(screen.getByRole('heading', { name: 'Swipe Strike' }));
-
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /pause game/i })).not.toBeInTheDocument();
+    await startMode('Sequence Memory');
+    await advance(120);
+    expect(screen.getByText(/Watch sequence/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /pause game/i })).toBeInTheDocument();
   });
 
-  it('runs gameplay loop and reaches results for supported v1 modes', async () => {
+  it('runs gameplay loop and reaches results for supported v1.1 tap modes', async () => {
     renderApp();
 
     for (const modeName of ['Quick Tap', 'Multi Target']) {
@@ -190,6 +188,102 @@ describe('App integration flow', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Main Menu' }));
       expect(screen.getByRole('heading', { name: 'Choose Your Drill' })).toBeInTheDocument();
     }
+  });
+
+  it('keeps Swipe Strike playable in the full round flow', async () => {
+    renderApp();
+    await startMode('Swipe Strike');
+    await advance(1_000);
+
+    const swipeTargetButton = screen.getByRole('button', { name: /swipe target/i });
+    fireEvent.click(swipeTargetButton);
+    await advance(220);
+    expect(screen.getByLabelText('Current streak 0')).toBeInTheDocument();
+
+    await advance(60_500);
+    expect(screen.getByText('Final Score')).toBeInTheDocument();
+    expect(screen.getByText('Swipe Strike')).toBeInTheDocument();
+  });
+
+  it('keeps Hold Track playable with pointer interactions', async () => {
+    renderApp();
+    await startMode('Hold Track');
+    await advance(1_000);
+
+    const holdTarget = screen.getByRole('button', { name: 'Hold target' });
+    fireEvent.pointerDown(holdTarget, {
+      pointerId: 1,
+      clientX: 0,
+      clientY: 0,
+    });
+    await advance(120);
+    expect(screen.getByRole('button', { name: /pause game/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Hold target' })).toBeInTheDocument();
+  });
+
+  it('runs Sequence Memory preview then accepts correct ordered input', async () => {
+    renderApp();
+    await startMode('Sequence Memory');
+    await advance(180);
+    expect(screen.getByText(/Watch sequence/i)).toBeInTheDocument();
+
+    await advance(2_900);
+    expect(screen.getByText(/Tap the cues in the same order/i)).toBeInTheDocument();
+
+    const sequenceTargets = screen.getAllByRole('button', { name: 'Sequence target' });
+    const orderedTargets = sequenceTargets
+      .map(target => ({
+        element: target,
+        step: Number(target.getAttribute('data-sequence-step') ?? '0'),
+      }))
+      .sort((a, b) => a.step - b.step);
+
+    orderedTargets.forEach(({ element }) => {
+      fireEvent.click(element);
+    });
+    await advance(120);
+    expect(screen.getByLabelText('Current streak 3')).toBeInTheDocument();
+    expect(screen.getByText(/Sequence complete/i)).toBeInTheDocument();
+  });
+
+  it('marks failure when Sequence Memory input order is wrong', async () => {
+    renderApp();
+    await startMode('Sequence Memory');
+    await advance(3_200);
+
+    const sequenceTargets = screen.getAllByRole('button', { name: 'Sequence target' });
+    const descendingOrderTargets = sequenceTargets
+      .map(target => ({
+        element: target,
+        step: Number(target.getAttribute('data-sequence-step') ?? '0'),
+      }))
+      .sort((a, b) => b.step - a.step);
+
+    fireEvent.click(descendingOrderTargets[0].element);
+    await advance(100);
+    expect(screen.getByText(/Wrong order/i)).toBeInTheDocument();
+    expect(screen.getByLabelText('Current streak 0')).toBeInTheDocument();
+  });
+
+  it('counts a miss when Hold Track contact breaks early', async () => {
+    renderApp();
+    await startMode('Hold Track');
+    await advance(900);
+
+    const holdTarget = screen.getByRole('button', { name: 'Hold target' });
+    fireEvent.pointerDown(holdTarget, {
+      pointerId: 11,
+      clientX: 0,
+      clientY: 0,
+    });
+    fireEvent.pointerUp(holdTarget, {
+      pointerId: 11,
+      clientX: 0,
+      clientY: 0,
+    });
+    await advance(300);
+    expect(screen.getByRole('button', { name: 'Hold target' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Current streak 0')).toBeInTheDocument();
   });
 
   it('supports pause and resume without time leaking while paused', async () => {

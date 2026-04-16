@@ -6,13 +6,21 @@ import { motion } from 'framer-motion';
 
 interface StartScreenProps {
   onStart: (mode: GameModeType) => void;
+  onViewStats: () => void;
 }
 
-export const StartScreen = ({ onStart }: StartScreenProps) => {
+export const StartScreen = ({ onStart, onViewStats }: StartScreenProps) => {
   const { theme } = useTheme();
 
   return (
-    <div className="relative flex flex-col items-center justify-center px-4 py-5 sm:px-6 sm:py-7" style={{ minHeight: '100dvh' }}>
+    <div
+      className="relative w-full overflow-y-auto overflow-x-hidden px-4 sm:px-6"
+      style={{
+        minHeight: '100dvh',
+        paddingTop: 'max(1.25rem, env(safe-area-inset-top, 0px))',
+        paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom, 0px))',
+      }}
+    >
       <JungleBackground />
 
       <div
@@ -24,7 +32,7 @@ export const StartScreen = ({ onStart }: StartScreenProps) => {
       />
 
       <motion.div
-        className="relative z-10 w-full max-w-6xl"
+        className="relative z-10 mx-auto flex min-h-[calc(100dvh-2.5rem)] w-full max-w-6xl flex-col justify-center py-4 sm:py-6"
         initial={{ opacity: 0, y: 14 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.42, ease: 'easeOut' }}
@@ -74,17 +82,27 @@ export const StartScreen = ({ onStart }: StartScreenProps) => {
             className="text-[11px] sm:text-xs tracking-wide uppercase font-semibold"
             style={{ color: theme.textColor, opacity: 0.64 }}
           >
-            v1 live modes: Quick Tap, Multi Target
+            v1.3 — Reaction Benchmark + 5 drills + session stats
           </p>
-          <a
-            href="https://github.com/rexfordd2/gamespeed/issues"
-            target="_blank"
-            rel="noreferrer"
-            className="inline-block mt-2 text-xs sm:text-sm underline underline-offset-2"
-            style={{ color: theme.targetColor }}
-          >
-            Send launch feedback
-          </a>
+          <div className="flex items-center justify-center gap-4 mt-2">
+            <button
+              onClick={onViewStats}
+              className="text-xs sm:text-sm font-semibold underline underline-offset-2 transition-opacity hover:opacity-80"
+              style={{ color: theme.targetColor }}
+            >
+              View Stats
+            </button>
+            <span className="opacity-30" style={{ color: theme.textColor }}>·</span>
+            <a
+              href="https://github.com/rexfordd2/gamespeed/issues"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-block text-xs sm:text-sm underline underline-offset-2"
+              style={{ color: theme.textColor, opacity: 0.55 }}
+            >
+              Send feedback
+            </a>
+          </div>
         </div>
       </motion.div>
     </div>

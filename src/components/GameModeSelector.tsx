@@ -89,13 +89,21 @@ export const GameModeSelector: React.FC<GameModeSelectorProps> = ({ onSelectMode
                 </h2>
                 <span
                   className="text-[10px] sm:text-xs font-semibold px-2.5 py-1 rounded-full tracking-wide uppercase"
-                  style={{
-                    backgroundColor: `${theme.targetColor}20`,
-                    color: theme.targetColor,
-                    border: `1px solid ${theme.targetColor}55`,
-                  }}
+                  style={
+                    mode.category === 'benchmark'
+                      ? {
+                          backgroundColor: 'rgba(56,189,248,0.14)',
+                          color: '#7dd3fc',
+                          border: '1px solid rgba(56,189,248,0.38)',
+                        }
+                      : {
+                          backgroundColor: `${theme.targetColor}20`,
+                          color: theme.targetColor,
+                          border: `1px solid ${theme.targetColor}55`,
+                        }
+                  }
                 >
-                  Playable
+                  {mode.category === 'benchmark' ? 'Benchmark' : 'Playable'}
                 </span>
               </div>
 
@@ -135,7 +143,7 @@ export const GameModeSelector: React.FC<GameModeSelectorProps> = ({ onSelectMode
                 onClick={() => handleModeSelect(key)}
                 className="mt-1 w-full min-h-12 text-sm sm:text-base"
               >
-                Start Drill
+                {mode.category === 'benchmark' ? 'Start Test' : 'Start Drill'}
               </JungleButton>
             </motion.div>
           );

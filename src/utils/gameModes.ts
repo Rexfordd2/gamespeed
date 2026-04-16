@@ -1,4 +1,5 @@
 import { GameMode, GameModeType } from '../types/game';
+import { generateTargets as generateReactionBenchmark } from '../modes/reactionBenchmark';
 import { generateTargets as generateQuickTapTargets } from '../modes/quickTap';
 import { generateTargets as generateMultiTargets } from '../modes/multiTarget';
 import { generateTargets as generateSwipeStrike } from '../modes/swipeStrike';
@@ -6,6 +7,7 @@ import { generateTargets as generateHoldTrack } from '../modes/holdTrack';
 import { generateTargets as generateSequenceMemory } from '../modes/sequenceMemory';
 
 export const MODE_ORDER: GameModeType[] = [
+  'reactionBenchmark',
   'quickTap',
   'multiTarget',
   'swipeStrike',
@@ -14,6 +16,19 @@ export const MODE_ORDER: GameModeType[] = [
 ];
 
 export const gameModes: Record<GameModeType, GameMode> = {
+  reactionBenchmark: {
+    name: 'Reaction Benchmark',
+    description: 'Fixed 45-second readiness test. One paced stimulus every 2s with full reaction-time tracking.',
+    generateTargets: generateReactionBenchmark,
+    availability: 'playable',
+    category: 'benchmark',
+    config: {
+      maxTargets: 1,
+      targetInterval: 2000,
+      targetLifespan: 1.2,
+      roundSeconds: 45,
+    },
+  },
   quickTap: {
     name: 'Quick Tap',
     description: 'Explosive reaction drill. Hit each visual cue before it disappears.',
@@ -38,35 +53,35 @@ export const gameModes: Record<GameModeType, GameMode> = {
   },
   swipeStrike: {
     name: 'Swipe Strike',
-    description: 'Directional swipe drill for moving cues and fast hand transitions.',
+    description: 'Swipe through moving cues before they escape the lane.',
     generateTargets: generateSwipeStrike,
-    availability: 'comingSoon',
+    availability: 'playable',
     config: {
       maxTargets: 1,
-      targetInterval: 1200,
-      targetLifespan: 2.0,
+      targetInterval: 900,
+      targetLifespan: 2.1,
     },
   },
   holdTrack: {
     name: 'Hold Track',
-    description: 'Stability-under-motion drill focused on sustained visual tracking.',
+    description: 'Lock onto a moving cue and hold contact until the tracking meter is full.',
     generateTargets: generateHoldTrack,
-    availability: 'comingSoon',
+    availability: 'playable',
     config: {
       maxTargets: 1,
-      targetInterval: 2000,
-      targetLifespan: 3.0,
+      targetInterval: 1150,
+      targetLifespan: 3.2,
     },
   },
   sequenceMemory: {
     name: 'Sequence Memory',
-    description: 'Pattern recall drill that trains reaction under cognitive load.',
+    description: 'Watch a sequence, then repeat every cue in the exact order.',
     generateTargets: generateSequenceMemory,
-    availability: 'comingSoon',
+    availability: 'playable',
     config: {
-      maxTargets: 5,
-      targetInterval: 1500,
-      targetLifespan: 2.0,
+      maxTargets: 3,
+      targetInterval: 500,
+      targetLifespan: 120,
     },
   },
 };

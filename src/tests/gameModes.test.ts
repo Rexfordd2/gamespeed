@@ -1,6 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { generateTargets as quickTap } from '../modes/quickTap';
 import { generateTargets as multiTarget } from '../modes/multiTarget';
+import { generateTargets as swipeStrike } from '../modes/swipeStrike';
+import { generateTargets as holdTrack } from '../modes/holdTrack';
+import {
+  generateSequenceTargets,
+  getSequenceLengthForSuccesses,
+} from '../modes/sequenceMemory';
 import { gameModes } from '../utils/gameModes';
 import { GameModeType } from '../types/game';
 
@@ -122,17 +128,17 @@ describe('multiTarget.generateTargets', () => {
 // ---- gameModes registry -------------------------------------------------------
 
 describe('gameModes registry', () => {
-  it('contains quickTap and multiTarget as playable', () => {
+  it('contains all v1.2 modes as playable', () => {
     expect(gameModes.quickTap).toBeDefined();
     expect(gameModes.multiTarget).toBeDefined();
+    expect(gameModes.swipeStrike).toBeDefined();
+    expect(gameModes.holdTrack).toBeDefined();
+    expect(gameModes.sequenceMemory).toBeDefined();
     expect(gameModes.quickTap.availability).toBe('playable');
     expect(gameModes.multiTarget.availability).toBe('playable');
-  });
-
-  it('marks swipeStrike, holdTrack, sequenceMemory as comingSoon', () => {
-    expect(gameModes.swipeStrike.availability).toBe('comingSoon');
-    expect(gameModes.holdTrack.availability).toBe('comingSoon');
-    expect(gameModes.sequenceMemory.availability).toBe('comingSoon');
+    expect(gameModes.swipeStrike.availability).toBe('playable');
+    expect(gameModes.holdTrack.availability).toBe('playable');
+    expect(gameModes.sequenceMemory.availability).toBe('playable');
   });
 
   it('every mode has a generateTargets function', () => {
@@ -171,9 +177,9 @@ describe('gameModes registry', () => {
     expect(gameModes.multiTarget.config.maxTargets).toBe(5);
   });
 
-  it('locked modes still produce targets (generator must not crash)', () => {
-    const locked: GameModeType[] = ['swipeStrike', 'holdTrack', 'sequenceMemory'];
-    for (const key of locked) {
+  it('playable advanced modes still produce targets (generator must not crash)', () => {
+    const advancedModes: GameModeType[] = ['sequenceMemory', 'holdTrack', 'swipeStrike'];
+    for (const key of advancedModes) {
       const mode = gameModes[key];
       const result = mode.generateTargets({
         screenSize: screen,
@@ -184,6 +190,114 @@ describe('gameModes registry', () => {
       });
       expect(result.length).toBeGreaterThan(0);
     }
+  });
+});
+
+// ---- swipeStrike --------------------------------------------------------------
+
+describe('swipeStrike.generateTargets', () => {
+  it('returns one moving target with swipe metadata', () => {
+    const [target] = swipeStrike({ ...base, existingTargets: [] });
+    expect(target).toBeDefined();
+    expect(target.swipeDirection).toMatch(/left|right|up|down/);
+    expect(target.movement).toEqual({
+      fromX: expect.any(Number),
+      fromY: expect.any(Number),
+      toX: expect.any(Number),
+      toY: expect.any(Number),
+    });
+  });
+
+  it('spawns the target at the movement start point', () => {
+    const [target] = swipeStrike({ ...base, existingTargets: [] });
+    expect(target.movement).toBeDefined();
+    expect(target.x).toBe(target.movement?.fromX);
+    expect(target.y).toBe(target.movement?.fromY);
+  });
+
+  it('reuses active swipe targets', () => {
+    const now = Date.now();
+    const active = {
+      id: 'swipe-active',
+      x: 50,
+      y: 50,
+      type: 'monkey' as const,
+      createdAt: now,
+      duration: 2.1,
+      lifespan: 2.1,
+      swipeDirection: 'right' as const,
+      movement: { fromX: 35, fromY: 50, toX: 65, toY: 50 },
+    };
+    const result = swipeStrike({ ...base, existingTargets: [active] });
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe('swipe-active');
+  });
+});
+
+// ---- holdTrack --------------------------------------------------------------
+
+describe('holdTrack.generateTargets', () => {
+  it('returns one moving hold target with hold metadata', () => {
+    const [target] = holdTrack({ ...base, existingTargets: [] });
+    expect(target).toBeDefined();
+    expect(target.hold).toEqual({
+      requiredMs: expect.any(Number),
+      breakRadiusPx: expect.any(Number),
+    });
+    expect(target.movement).toEqual({
+      fromX: expect.any(Number),
+      fromY: expect.any(Number),
+      toX: expect.any(Number),
+      toY: expect.any(Number),
+    });
+  });
+
+  it('spawns at movement start position', () => {
+    const [target] = holdTrack({ ...base, existingTargets: [] });
+    expect(target.movement).toBeDefined();
+    expect(target.x).toBe(target.movement?.fromX);
+    expect(target.y).toBe(target.movement?.fromY);
+  });
+
+  it('reuses active hold targets while alive', () => {
+    const now = Date.now();
+    const active = {
+      id: 'hold-active',
+      x: 44,
+      y: 52,
+      type: 'monkey' as const,
+      createdAt: now,
+      duration: 3.2,
+      lifespan: 3.2,
+      movement: { fromX: 44, fromY: 52, toX: 60, toY: 60 },
+      hold: { requiredMs: 900, breakRadiusPx: 58 },
+    };
+    const result = holdTrack({ ...base, existingTargets: [active] });
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe('hold-active');
+  });
+});
+
+// ---- sequenceMemory ----------------------------------------------------------
+
+describe('sequenceMemory helpers', () => {
+  it('generates spaced targets with stable sequence length', () => {
+    const result = generateSequenceTargets({
+      screenSize: screen,
+      sequenceLength: 4,
+      currentTime: Date.now(),
+    });
+    expect(result).toHaveLength(4);
+    expect(result.every(target => target.id.startsWith('sm-'))).toBe(true);
+    expect(result.every(target => target.lifespan >= 60)).toBe(true);
+  });
+
+  it('ramps difficulty every two successful sequences', () => {
+    expect(getSequenceLengthForSuccesses(0)).toBe(3);
+    expect(getSequenceLengthForSuccesses(1)).toBe(3);
+    expect(getSequenceLengthForSuccesses(2)).toBe(4);
+    expect(getSequenceLengthForSuccesses(4)).toBe(5);
+    expect(getSequenceLengthForSuccesses(10)).toBe(6);
   });
 });
 

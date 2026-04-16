@@ -12,9 +12,9 @@ Live: **https://rexfordd2.github.io/gamespeed/**
 |---|---|---|
 | Quick Tap | Ready | Single target — tap before it disappears |
 | Multi Target | Ready | Five targets at once — hit as many as you can |
-| Swipe Strike | Coming Soon | Moving targets — swipe in their direction |
-| Hold Track | Coming Soon | Hold a moving target through its path |
-| Sequence Memory | Coming Soon | Memorize and replay a target sequence |
+| Swipe Strike | Ready | Moving targets — swipe in the shown direction before escape |
+| Hold Track | Ready | Hold a moving target through its path |
+| Sequence Memory | Ready | Watch a sequence, then replay it in order |
 
 ---
 

@@ -36,14 +36,21 @@ html {
 body {
   min-height: 100vh;
   min-height: 100dvh;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   /* Prevent pull-to-refresh on mobile browsers */
-  overscroll-behavior: none;
+  overscroll-behavior-y: contain;
 }
 
 #root {
   min-height: 100vh;
   min-height: 100dvh;
+}
+
+/* Lock document scrolling only during active gameplay. */
+body.gameplay-scroll-lock {
+  overflow: hidden;
+  overscroll-behavior: none;
 }
 
 /* Prevent iOS text-size adjustment */
