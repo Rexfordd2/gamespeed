@@ -1,25 +1,37 @@
 import { Target, GenerateTargetsParams } from '../types/game';
 
-export const generateTargets = ({ screenSize, existingTargets }: GenerateTargetsParams): Target[] => {
-  // If we already have a target, keep it
+export const generateTargets = ({
+  screenSize,
+  existingTargets,
+  maxTargets = 1,
+  targetLifespan = 1.5,
+}: GenerateTargetsParams): Target[] => {
   if (existingTargets.length > 0) {
-    return existingTargets;
+    const now = Date.now();
+    const active = existingTargets.filter(
+      t => now - t.createdAt < t.lifespan * 1000,
+    );
+    if (active.length >= maxTargets) return active;
   }
 
-  // Generate a new target
-  const x = (Math.random() * 80 + 10); // Keep targets within 10-90% of screen width
-  const y = (Math.random() * 80 + 10); // Keep targets within 10-90% of screen height
-  const currentTime = Date.now();
+  const now = Date.now();
+  const compactViewport = screenSize.width <= 768;
+  const xMarginPercent = compactViewport ? 16 : 11;
+  const yMarginPercent = 15;
+  const xRange = 100 - xMarginPercent * 2;
+  const yRange = 100 - yMarginPercent * 2;
+  const x = Math.random() * xRange + xMarginPercent;
+  const y = Math.random() * yRange + yMarginPercent;
 
-  const target: Target = {
-    id: `target-${currentTime}`,
-    x,
-    y,
-    type: 'monkey',
-    createdAt: currentTime,
-    duration: 1.5,
-    lifespan: 1.5
-  };
-
-  return [target];
-}; 
+  return [
+    {
+      id: `qt-${now}`,
+      x,
+      y,
+      type: 'monkey',
+      createdAt: now,
+      duration: targetLifespan,
+      lifespan: targetLifespan,
+    },
+  ];
+};

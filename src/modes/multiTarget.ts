@@ -1,34 +1,55 @@
 import { Target, GenerateTargetsParams } from '../types/game';
 
-export const generateTargets = ({ screenSize, existingTargets }: GenerateTargetsParams): Target[] => {
-  const maxTargets = 5;
-  const currentTime = Date.now();
-  const newTargets = [...existingTargets];
+export const generateTargets = ({
+  screenSize,
+  existingTargets,
+  maxTargets = 5,
+  targetLifespan = 2.5,
+}: GenerateTargetsParams): Target[] => {
+  if (existingTargets.length > 0) {
+    const now = Date.now();
+    const active = existingTargets.filter(
+      t => now - t.createdAt < t.lifespan * 1000,
+    );
+    if (active.length > 0) return active;
+  }
 
-  // Remove expired targets
   const now = Date.now();
-  const activeTargets = newTargets.filter(target => {
-    const timeElapsed = now - target.createdAt;
-    return timeElapsed < target.lifespan * 1000;
-  });
+  const targets: Target[] = [];
+  const compactViewport = screenSize.width <= 768;
+  const xMarginPercent = compactViewport ? 16 : 11;
+  const yMarginPercent = 15;
+  const xRange = 100 - xMarginPercent * 2;
+  const yRange = 100 - yMarginPercent * 2;
+  const minSpacingPercent = compactViewport ? 19 : 13;
 
-  // Generate new targets up to the maximum
-  while (activeTargets.length < maxTargets) {
-    const x = (Math.random() * 80 + 10); // Keep targets within 10-90% of screen width
-    const y = (Math.random() * 80 + 10); // Keep targets within 10-90% of screen height
+  const pointIsSpaced = (x: number, y: number) =>
+    targets.every(existing => {
+      const dx = x - existing.x;
+      const dy = y - existing.y;
+      return Math.hypot(dx, dy) >= minSpacingPercent;
+    });
 
-    const target: Target = {
-      id: `target-${currentTime}-${activeTargets.length}`,
+  for (let i = 0; i < maxTargets; i++) {
+    let x = Math.random() * xRange + xMarginPercent;
+    let y = Math.random() * yRange + yMarginPercent;
+
+    for (let attempt = 0; attempt < 20; attempt++) {
+      if (pointIsSpaced(x, y)) break;
+      x = Math.random() * xRange + xMarginPercent;
+      y = Math.random() * yRange + yMarginPercent;
+    }
+
+    targets.push({
+      id: `mt-${now}-${i}`,
       x,
       y,
       type: 'monkey',
-      createdAt: currentTime,
-      duration: 1.5,
-      lifespan: 1.5
-    };
-
-    activeTargets.push(target);
+      createdAt: now,
+      duration: targetLifespan,
+      lifespan: targetLifespan,
+    });
   }
 
-  return activeTargets;
-}; 
+  return targets;
+};

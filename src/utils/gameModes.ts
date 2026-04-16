@@ -1,59 +1,85 @@
-import { GameMode } from '../types/game';
-import { generateTargets as generateQuickTap } from '../modes/quickTap';
-import { generateTargets as generateMultiTarget } from '../modes/multiTarget';
+import { GameMode, GameModeType } from '../types/game';
+import { generateTargets as generateQuickTapTargets } from '../modes/quickTap';
+import { generateTargets as generateMultiTargets } from '../modes/multiTarget';
 import { generateTargets as generateSwipeStrike } from '../modes/swipeStrike';
 import { generateTargets as generateHoldTrack } from '../modes/holdTrack';
 import { generateTargets as generateSequenceMemory } from '../modes/sequenceMemory';
 
-export const gameModes: Record<string, GameMode> = {
+export const MODE_ORDER: GameModeType[] = [
+  'quickTap',
+  'multiTarget',
+  'swipeStrike',
+  'holdTrack',
+  'sequenceMemory',
+];
+
+export const gameModes: Record<GameModeType, GameMode> = {
   quickTap: {
     name: 'Quick Tap',
-    description: 'Tap targets as quickly as you can!',
-    generateTargets: generateQuickTap,
+    description: 'Explosive reaction drill. Hit each visual cue before it disappears.',
+    generateTargets: generateQuickTapTargets,
+    availability: 'playable',
     config: {
+      maxTargets: 1,
+      targetInterval: 400,
       targetLifespan: 1.5,
-      targetInterval: 1000,
-      maxTargets: 1
-    }
+    },
   },
   multiTarget: {
     name: 'Multi Target',
-    description: 'Handle multiple targets at once!',
-    generateTargets: generateMultiTarget,
+    description: 'Decision-speed wave drill. Clear every cue before the timer collapses.',
+    generateTargets: generateMultiTargets,
+    availability: 'playable',
     config: {
-      targetLifespan: 1.5,
-      targetInterval: 800,
-      maxTargets: 5
-    }
+      maxTargets: 5,
+      targetInterval: 600,
+      targetLifespan: 2.5,
+    },
   },
   swipeStrike: {
     name: 'Swipe Strike',
-    description: 'Swipe through moving targets!',
+    description: 'Directional swipe drill for moving cues and fast hand transitions.',
     generateTargets: generateSwipeStrike,
+    availability: 'comingSoon',
     config: {
-      targetLifespan: 1.0,
+      maxTargets: 1,
       targetInterval: 1200,
-      maxTargets: 1
-    }
+      targetLifespan: 2.0,
+    },
   },
   holdTrack: {
     name: 'Hold Track',
-    description: 'Hold and track moving targets!',
+    description: 'Stability-under-motion drill focused on sustained visual tracking.',
     generateTargets: generateHoldTrack,
+    availability: 'comingSoon',
     config: {
-      targetLifespan: 2.0,
+      maxTargets: 1,
       targetInterval: 2000,
-      maxTargets: 1
-    }
+      targetLifespan: 3.0,
+    },
   },
   sequenceMemory: {
     name: 'Sequence Memory',
-    description: 'Remember and repeat the sequence!',
+    description: 'Pattern recall drill that trains reaction under cognitive load.',
     generateTargets: generateSequenceMemory,
+    availability: 'comingSoon',
     config: {
-      targetLifespan: 1.0,
+      maxTargets: 5,
       targetInterval: 1500,
-      maxTargets: 5
-    }
+      targetLifespan: 2.0,
+    },
+  },
+};
+
+export const isGameModeType = (value: string): value is GameModeType => value in gameModes;
+
+export const isModePlayable = (mode: GameModeType) => gameModes[mode].availability === 'playable';
+
+export const playableModeKeys = MODE_ORDER.filter(mode => isModePlayable(mode));
+
+export const resolvePlayableMode = (mode: string): GameModeType => {
+  if (isGameModeType(mode) && isModePlayable(mode)) {
+    return mode;
   }
-}; 
+  return 'quickTap';
+};

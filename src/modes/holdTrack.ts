@@ -1,47 +1,28 @@
 import { Target, GenerateTargetsParams } from '../types/game';
 
-export const generateTargets = ({ screenSize, existingTargets }: GenerateTargetsParams): Target[] => {
-  // If we already have a target, keep it
+// Locked for v1 — mode is marked comingSoon in the registry.
+export const generateTargets = ({
+  existingTargets,
+  targetLifespan = 3.0,
+}: GenerateTargetsParams): Target[] => {
   if (existingTargets.length > 0) {
-    // Check if target has expired
     const now = Date.now();
-    const activeTargets = existingTargets.filter(target => {
-      const timeElapsed = now - target.createdAt;
-      return timeElapsed < target.lifespan * 1000;
-    });
-
-    if (activeTargets.length > 0) {
-      return activeTargets;
-    }
+    const active = existingTargets.filter(
+      t => now - t.createdAt < t.lifespan * 1000,
+    );
+    if (active.length > 0) return active;
   }
 
-  // Generate a new target
-  const currentTime = Date.now();
-  const centerX = Math.random() * 60 + 20; // Keep center within 20-80% of screen width
-  const centerY = Math.random() * 60 + 20; // Keep center within 20-80% of screen height
-  
-  // Create a circular movement pattern
-  const radius = 10; // 10% of screen size
-  const endX = centerX + radius;
-  const endY = centerY;
-
-  const target: Target = {
-    id: `target-${currentTime}`,
-    x: centerX,
-    y: centerY,
-    type: 'hold',
-    createdAt: currentTime,
-    duration: 2.0,
-    lifespan: 2.0,
-    movement: {
-      startX: centerX,
-      endX,
-      startY: centerY,
-      endY,
-      startTime: currentTime,
-      duration: 2000 // 2 seconds per movement cycle
-    }
-  };
-
-  return [target];
-}; 
+  const now = Date.now();
+  return [
+    {
+      id: `ht-${now}`,
+      x: Math.random() * 80 + 10,
+      y: Math.random() * 75 + 15,
+      type: 'monkey',
+      createdAt: now,
+      duration: targetLifespan,
+      lifespan: targetLifespan,
+    },
+  ];
+};
