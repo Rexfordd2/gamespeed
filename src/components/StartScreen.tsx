@@ -1,32 +1,74 @@
 import { useTheme } from '../context/ThemeContext';
 import { GameModeSelector } from './GameModeSelector';
 import { JungleBackground } from './JungleBackground';
+import { GameModeType } from '../types/game';
+import { motion } from 'framer-motion';
 
 interface StartScreenProps {
-  onStart: (mode: string) => void;
+  onStart: (mode: GameModeType) => void;
 }
 
 export const StartScreen = ({ onStart }: StartScreenProps) => {
   const { theme } = useTheme();
 
   return (
-    <div className="relative min-h-screen flex flex-col items-center justify-center p-4">
+    <div className="relative flex flex-col items-center justify-center px-4 py-5 sm:px-6 sm:py-7" style={{ minHeight: '100dvh' }}>
       <JungleBackground />
-      <div className="relative z-10 text-center">
-        <h1 
-          className="text-6xl font-bold mb-8"
-          style={{ color: theme.textColor }}
+
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            'radial-gradient(circle at 20% 20%, rgba(163,230,53,0.14), transparent 45%), radial-gradient(circle at 80% 80%, rgba(16,185,129,0.12), transparent 50%), linear-gradient(180deg, rgba(3,8,12,0.68), rgba(2,8,10,0.9))',
+        }}
+      />
+
+      <motion.div
+        className="relative z-10 w-full max-w-6xl"
+        initial={{ opacity: 0, y: 14 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.42, ease: 'easeOut' }}
+      >
+        <div className="text-center mb-6 sm:mb-8">
+          <span
+            className="inline-flex items-center justify-center rounded-full px-4 py-1.5 text-[11px] sm:text-xs font-semibold tracking-[0.2em] uppercase mb-3 sm:mb-4"
+            style={{
+              color: theme.targetColor,
+              backgroundColor: `${theme.targetColor}1c`,
+              border: `1px solid ${theme.targetColor}66`,
+            }}
+          >
+            Performance Lab
+          </span>
+
+          <h1
+            className="text-[2.1rem] sm:text-5xl md:text-6xl font-extrabold tracking-tight leading-[0.95]"
+            style={{
+              color: theme.textColor,
+              textShadow: `0 8px 28px ${theme.targetColor}22`,
+            }}
+          >
+            GameSpeed
+          </h1>
+          <p
+            className="mt-3 text-sm sm:text-base md:text-lg max-w-2xl mx-auto leading-relaxed px-2"
+            style={{ color: theme.textColor, opacity: 0.88 }}
+          >
+            Athletic reaction drills built for touch-first speed, visual focus, and clean decision making.
+          </p>
+        </div>
+
+        <div
+          className="rounded-3xl p-4 sm:p-6 md:p-8 backdrop-blur-md"
+          style={{
+            backgroundColor: 'rgba(6, 12, 18, 0.76)',
+            border: `1px solid ${theme.targetColor}44`,
+            boxShadow: '0 20px 52px rgba(0, 0, 0, 0.4)',
+          }}
         >
-          GameSpeed
-        </h1>
-        <p 
-          className="text-xl mb-12"
-          style={{ color: theme.textColor }}
-        >
-          Test your reflexes in the jungle!
-        </p>
-        <GameModeSelector onSelectMode={onStart} />
-      </div>
+          <GameModeSelector onSelectMode={onStart} />
+        </div>
+      </motion.div>
     </div>
   );
 }; 

@@ -1,56 +1,63 @@
 import { useState } from 'react';
 import { ThemeProvider } from './context/ThemeContext';
 import { jungleTheme } from './themes/jungle';
+import { AudioManager } from './components/AudioManager';
 import { StartScreen } from './components/StartScreen';
 import { Game } from './components/Game';
-import { GameState } from './types/game';
-import { AudioManager } from './components/AudioManager';
 import { EndScreen } from './components/EndScreen';
+import { AudioToggle } from './components/AudioToggle';
+import { GameModeType, GameState, GameResult } from './types/game';
+import { resolvePlayableMode } from './utils/gameModes';
 
 export const App = () => {
   const [gameState, setGameState] = useState<GameState>('start');
-  const [score, setScore] = useState(0);
-  const [selectedMode, setSelectedMode] = useState('quickTap');
+  const [selectedMode, setSelectedMode] = useState<GameModeType>('quickTap');
+  const [gameResult, setGameResult] = useState<GameResult>({
+    score: 0,
+    misses: 0,
+    bestStreak: 0,
+    mode: 'quickTap',
+    modeName: 'Quick Tap',
+  });
 
-  const handleGameStart = (mode: string) => {
-    setSelectedMode(mode);
+  const handleGameStart = (mode: GameModeType) => {
+    setSelectedMode(resolvePlayableMode(mode));
     setGameState('playing');
-    setScore(0);
   };
 
-  const handleGameOver = (finalScore: number) => {
-    setScore(finalScore);
+  const handleGameOver = (result: GameResult) => {
+    setGameResult(result);
     setGameState('end');
   };
 
   const handlePlayAgain = () => {
     setGameState('playing');
-    setScore(0);
   };
 
   const handleMainMenu = () => {
     setGameState('start');
-    setScore(0);
   };
 
   return (
     <ThemeProvider theme={jungleTheme}>
-      <AudioManager />
-      {gameState === 'start' && <StartScreen onStart={handleGameStart} />}
-      {gameState === 'playing' && (
-        <Game
-          mode={selectedMode}
-          initialScore={score}
-          onGameOver={handleGameOver}
-        />
-      )}
-      {gameState === 'end' && (
-        <EndScreen 
-          score={score} 
-          onPlayAgain={handlePlayAgain}
-          onMainMenu={handleMainMenu}
-        />
-      )}
+      <AudioManager>
+        <AudioToggle />
+        {gameState === 'start' && <StartScreen onStart={handleGameStart} />}
+        {gameState === 'playing' && (
+          <Game
+            mode={selectedMode}
+            onGameOver={handleGameOver}
+            onMainMenu={handleMainMenu}
+          />
+        )}
+        {gameState === 'end' && (
+          <EndScreen
+            result={gameResult}
+            onPlayAgain={handlePlayAgain}
+            onMainMenu={handleMainMenu}
+          />
+        )}
+      </AudioManager>
     </ThemeProvider>
   );
-}; 
+};

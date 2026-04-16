@@ -39,6 +39,7 @@ export interface BaseThemeConfig {
   icon: {
     type: 'image' | 'emoji';
     path: string;
+    fallbackPath?: string;
   };
 }
 

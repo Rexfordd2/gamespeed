@@ -1,9 +1,12 @@
 import React, { useEffect } from 'react';
 import { modeDescriptions } from '../utils/modeDescriptions';
 import { useTheme } from '../context/ThemeContext';
+import { JungleButton } from './JungleButton';
+import { GameModeType } from '../types/game';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface HowToPlayModalProps {
-  modeKey: string;
+  modeKey: GameModeType | null;
   isOpen: boolean;
   onClose: () => void;
   onStart?: () => void;
@@ -16,120 +19,156 @@ export const HowToPlayModal: React.FC<HowToPlayModalProps> = ({
   onStart,
 }) => {
   const { theme } = useTheme();
-  const modeInfo = modeDescriptions[modeKey as keyof typeof modeDescriptions];
+  const modeInfo = modeKey ? modeDescriptions[modeKey] : null;
 
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
+    document.body.style.overflow = isOpen ? 'hidden' : '';
+    return () => { document.body.style.overflow = ''; };
   }, [isOpen]);
 
-  if (!isOpen || !modeInfo) return null;
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [isOpen, onClose]);
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)' }}
-    >
-      <div
-        className="relative w-full max-w-2xl p-8 rounded-2xl shadow-2xl transform transition-all duration-300 ease-out"
-        style={{
-          backgroundColor: theme.backgroundColor,
-          color: theme.textColor,
-          animation: 'modalSlideIn 0.3s ease-out',
-        }}
-      >
-        <button
+    <AnimatePresence>
+      {isOpen && modeInfo && (
+        <motion.div
+          role="dialog"
+          aria-modal="true"
+          aria-label={`How to play ${modeInfo.title}`}
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-3 sm:p-4"
+          style={{ backgroundColor: 'rgba(0,0,0,0.74)', backdropFilter: 'blur(4px)' }}
           onClick={onClose}
-          className="absolute top-4 right-4 p-2 rounded-full hover:bg-opacity-20 transition-colors duration-200"
-          style={{ 
-            color: theme.textColor,
-            backgroundColor: `${theme.textColor}20`,
-          }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.18 }}
         >
-          ✕
-        </button>
-
-        <div className="space-y-6">
-          <div className="text-center">
-            <h2 className="text-3xl font-bold mb-3">{modeInfo.title}</h2>
-            <p className="text-lg opacity-90">{modeInfo.description}</p>
-          </div>
-
-          <div className="bg-opacity-20 rounded-xl p-6" style={{ backgroundColor: `${theme.targetColor}20` }}>
-            <h3 className="text-xl font-semibold mb-4 flex items-center">
-              <span className="mr-2">💡</span>
-              Pro Tips
-            </h3>
-            <ul className="space-y-3">
-              {modeInfo.tips.map((tip, index) => (
-                <li 
-                  key={index}
-                  className="flex items-start animate-fade-in"
-                  style={{ 
-                    animationDelay: `${index * 0.1}s`,
-                    opacity: 0,
-                    animation: 'fadeIn 0.3s ease-out forwards',
-                  }}
-                >
-                  <span className="mr-2 mt-1">•</span>
-                  <span>{tip}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div className="flex justify-end space-x-4 pt-4">
-            {onStart && (
-              <button
-                onClick={onStart}
-                className="px-6 py-3 rounded-xl font-medium transform hover:scale-105 transition-transform duration-200"
-                style={{
-                  backgroundColor: theme.targetColor,
-                  color: theme.backgroundColor,
-                }}
-              >
-                Start Game
-              </button>
-            )}
+          <motion.div
+            className="relative w-full max-w-lg rounded-2xl shadow-2xl p-5 sm:p-7"
+            style={{
+              backgroundColor: 'rgba(8, 16, 20, 0.92)',
+              border: `1px solid ${theme.targetColor}66`,
+            }}
+            onClick={e => e.stopPropagation()}
+            initial={{ opacity: 0, y: 18, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 12, scale: 0.99 }}
+            transition={{ duration: 0.24, ease: 'easeOut' }}
+          >
             <button
               onClick={onClose}
-              className="px-6 py-3 rounded-xl font-medium border transform hover:scale-105 transition-transform duration-200"
+              aria-label="Close"
+              className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full text-sm font-bold transition-opacity hover:opacity-70 active:opacity-50"
               style={{
-                borderColor: theme.textColor,
                 color: theme.textColor,
+                backgroundColor: `${theme.textColor}18`,
               }}
             >
-              Close
+              ✕
             </button>
-          </div>
-        </div>
-      </div>
 
-      <style>
-        {`
-          @keyframes modalSlideIn {
-            from {
-              opacity: 0;
-              transform: translateY(-20px);
-            }
-            to {
-              opacity: 1;
-              transform: translateY(0);
-            }
-          }
-          @keyframes fadeIn {
-            to {
-              opacity: 1;
-            }
-          }
-        `}
-      </style>
-    </div>
+            <div className="space-y-5 sm:space-y-6">
+              <div>
+                <h2
+                  className="text-xl sm:text-2xl font-bold mb-1"
+                  style={{ color: theme.textColor }}
+                >
+                  {modeInfo.title}
+                </h2>
+                <p
+                  className="text-sm sm:text-base opacity-80 leading-relaxed"
+                  style={{ color: theme.textColor }}
+                >
+                  {modeInfo.description}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <div
+                  className="rounded-lg px-3 py-2.5"
+                  style={{ backgroundColor: `${theme.textColor}10` }}
+                >
+                  <p className="text-[11px] uppercase tracking-[0.16em] opacity-60" style={{ color: theme.textColor }}>
+                    Focus
+                  </p>
+                  <p className="text-sm mt-1 font-semibold leading-tight" style={{ color: theme.textColor }}>
+                    {modeInfo.trainingFocus}
+                  </p>
+                </div>
+                <div
+                  className="rounded-lg px-3 py-2.5"
+                  style={{ backgroundColor: `${theme.textColor}10` }}
+                >
+                  <p className="text-[11px] uppercase tracking-[0.16em] opacity-60" style={{ color: theme.textColor }}>
+                    Intensity
+                  </p>
+                  <p className="text-sm mt-1 font-semibold leading-tight" style={{ color: theme.textColor }}>
+                    {modeInfo.intensity}
+                  </p>
+                </div>
+                <div
+                  className="rounded-lg px-3 py-2.5"
+                  style={{ backgroundColor: `${theme.textColor}10` }}
+                >
+                  <p className="text-[11px] uppercase tracking-[0.16em] opacity-60" style={{ color: theme.textColor }}>
+                    Rhythm
+                  </p>
+                  <p className="text-sm mt-1 font-semibold leading-tight" style={{ color: theme.textColor }}>
+                    {modeInfo.rhythm}
+                  </p>
+                </div>
+              </div>
+
+              <div
+                className="rounded-xl p-4 sm:p-5"
+                style={{ backgroundColor: `${theme.targetColor}18` }}
+              >
+                <h3
+                  className="text-sm font-bold tracking-widest uppercase mb-3 opacity-70"
+                  style={{ color: theme.targetColor }}
+                >
+                  Tips
+                </h3>
+                <ul className="space-y-2">
+                  {modeInfo.tips.map((tip, i) => (
+                    <li
+                      key={i}
+                      className="flex items-start gap-2 text-sm leading-relaxed"
+                      style={{ color: theme.textColor, opacity: 0.85 }}
+                    >
+                      <span style={{ color: theme.targetColor, flexShrink: 0 }}>›</span>
+                      <span>{tip}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3 pt-1">
+                {onStart && (
+                  <JungleButton onClick={onStart} className="flex-1 py-3.5 font-bold">
+                    Start Drill
+                  </JungleButton>
+                )}
+                <button
+                  onClick={onClose}
+                  className="ui-secondary-button flex-1 py-3.5"
+                  style={{
+                    color: theme.textColor,
+                    borderColor: `${theme.textColor}40`,
+                  }}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
-}; 
+};

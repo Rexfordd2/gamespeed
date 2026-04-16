@@ -7,7 +7,7 @@
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: light dark;
+  color-scheme: dark;
   background-color: #1a472a;
   color: #ffffff;
 
@@ -15,19 +15,117 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  /* Prevent double-tap zoom on iOS without disabling pinch-zoom */
+  touch-action: manipulation;
 }
 
-* {
+*,
+*::before,
+*::after {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
+html {
+  /* Use the full visual viewport including notch areas */
+  height: -webkit-fill-available;
+}
+
 body {
   min-height: 100vh;
+  min-height: 100dvh;
   overflow: hidden;
+  /* Prevent pull-to-refresh on mobile browsers */
+  overscroll-behavior: none;
 }
 
 #root {
   min-height: 100vh;
-} 
+  min-height: 100dvh;
+}
+
+/* Prevent iOS text-size adjustment */
+* {
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Remove tap highlight on touch devices */
+a,
+button,
+[role='button'] {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Countdown ring animation for Target component. */
+@keyframes countdown-ring {
+  0% {
+    stroke-dashoffset: 0;
+    stroke: #4ade80;
+  }
+  60% {
+    stroke-dashoffset: calc(var(--ring-circumference) * 0.4);
+    stroke: #facc15;
+  }
+  85% {
+    stroke-dashoffset: calc(var(--ring-circumference) * 0.75);
+    stroke: #f97316;
+  }
+  100% {
+    stroke-dashoffset: var(--ring-circumference);
+    stroke: #ef4444;
+  }
+}
+
+@keyframes miss-feedback-pulse {
+  0% {
+    opacity: 0.35;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.miss-feedback-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at center, rgba(239, 68, 68, 0.18) 0%, rgba(239, 68, 68, 0.02) 64%, rgba(0, 0, 0, 0) 100%);
+  animation: miss-feedback-pulse 180ms ease-out forwards;
+}
+
+.ui-secondary-button {
+  border-radius: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(0, 0, 0, 0.14);
+  color: #ffffff;
+  font-weight: 600;
+  transition: background-color 160ms ease, border-color 160ms ease, transform 140ms ease;
+}
+
+.ui-secondary-button:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.38);
+}
+
+.ui-secondary-button:active {
+  transform: scale(0.98);
+}
+
+button:focus-visible,
+[role='button']:focus-visible {
+  outline: 2px solid #86efac;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+}

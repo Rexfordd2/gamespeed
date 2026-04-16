@@ -1,82 +1,206 @@
 import React, { useState } from 'react';
-import { gameModes } from '../utils/gameModes';
+import { MODE_ORDER, gameModes, isModePlayable } from '../utils/gameModes';
 import { useTheme } from '../context/ThemeContext';
 import { HowToPlayModal } from './HowToPlayModal';
-import { JungleButton } from './JungleButton';
 import { motion } from 'framer-motion';
+import { GameModeType } from '../types/game';
+import { modeDescriptions } from '../utils/modeDescriptions';
+import { JungleButton } from './JungleButton';
 
 interface GameModeSelectorProps {
-  onSelectMode: (mode: string) => void;
+  onSelectMode: (mode: GameModeType) => void;
 }
+
+const modeKeys = MODE_ORDER;
 
 export const GameModeSelector: React.FC<GameModeSelectorProps> = ({ onSelectMode }) => {
   const { theme } = useTheme();
-  const [selectedMode, setSelectedMode] = useState<string | null>(null);
+  const [selectedMode, setSelectedMode] = useState<GameModeType | null>(null);
   const [showHowToPlay, setShowHowToPlay] = useState(false);
-  const [hoveredMode, setHoveredMode] = useState<string | null>(null);
+  const playableModes = modeKeys.filter(isModePlayable);
+  const upcomingModes = modeKeys.filter(mode => !isModePlayable(mode));
 
-  const handleModeSelect = (modeKey: string) => {
+  const handleModeSelect = (modeKey: GameModeType) => {
+    if (!isModePlayable(modeKey)) return;
     setSelectedMode(modeKey);
     setShowHowToPlay(true);
   };
 
   const handleStartGame = () => {
-    if (selectedMode) {
+    if (selectedMode && isModePlayable(selectedMode)) {
       onSelectMode(selectedMode);
       setShowHowToPlay(false);
     }
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-4">
-      <motion.h1 
-        className="text-5xl font-bold mb-12 text-center"
-        initial={{ opacity: 0, y: -20 }}
+    <div className="flex flex-col items-center w-full">
+      <motion.h1
+        className="text-2xl sm:text-3xl font-extrabold mb-2 text-center tracking-tight"
+        initial={{ opacity: 0, y: -16 }}
         animate={{ opacity: 1, y: 0 }}
-        style={{ 
+        style={{
           color: theme.textColor,
-          textShadow: `0 2px 4px ${theme.targetColor}40`,
         }}
       >
-        Select Game Mode
+        Choose Your Drill
       </motion.h1>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full max-w-5xl">
-        {Object.entries(gameModes).map(([key, mode]) => (
-          <motion.div
-            key={key}
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.1 * parseInt(key) }}
-            onMouseEnter={() => setHoveredMode(key)}
-            onMouseLeave={() => setHoveredMode(null)}
-            className="p-8 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1"
-            style={{
-              backgroundColor: theme.backgroundColor,
-              color: theme.textColor,
-              border: `2px solid ${theme.targetColor}`,
-              transform: hoveredMode === key ? 'scale(1.02)' : 'scale(1)',
-            }}
-          >
-            <div className="flex flex-col items-center text-center">
-              <h2 className="text-2xl font-bold mb-3">{mode.name}</h2>
-              <p className="text-base opacity-80 mb-4">{mode.description}</p>
-              <JungleButton
-                onClick={() => handleModeSelect(key)}
-                className="w-full"
-              >
-                Play
-              </JungleButton>
-            </div>
-          </motion.div>
-        ))}
+      <p
+        className="text-sm sm:text-base mb-6 sm:mb-7 text-center max-w-3xl leading-relaxed"
+        style={{ color: theme.textColor, opacity: 0.85 }}
+      >
+        Select a training mode and lock into focused rounds built for quick reactions and disciplined touch control.
+      </p>
+
+      <div className="w-full">
+        <p
+          className="text-[11px] sm:text-xs uppercase tracking-[0.18em] font-semibold mb-3 px-1"
+          style={{ color: theme.targetColor }}
+        >
+          Available now
+        </p>
       </div>
 
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4 w-full px-1">
+        {playableModes.map((key, cardIndex) => {
+          const mode = gameModes[key];
+          const details = modeDescriptions[key];
+
+          return (
+            <motion.div
+              key={key}
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: cardIndex * 0.06 }}
+              className="relative rounded-2xl p-4 sm:p-5 flex flex-col gap-3 select-none"
+              style={{
+                backgroundColor: 'rgba(11, 20, 24, 0.85)',
+                border: `1px solid ${theme.targetColor}4f`,
+                boxShadow: '0 10px 26px rgba(0,0,0,0.25)',
+              }}
+              whileHover={{ y: -2 }}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <h2
+                  className="text-lg sm:text-xl font-bold"
+                  style={{ color: theme.textColor }}
+                >
+                  {mode.name}
+                </h2>
+                <span
+                  className="text-[10px] sm:text-xs font-semibold px-2.5 py-1 rounded-full tracking-wide uppercase"
+                  style={{
+                    backgroundColor: `${theme.targetColor}20`,
+                    color: theme.targetColor,
+                    border: `1px solid ${theme.targetColor}55`,
+                  }}
+                >
+                  Playable
+                </span>
+              </div>
+
+              <p
+                className="text-sm leading-relaxed min-h-[44px]"
+                style={{ color: theme.textColor, opacity: 0.75 }}
+              >
+                {mode.description}
+              </p>
+
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div
+                  className="rounded-lg px-3 py-2"
+                  style={{ backgroundColor: `${theme.textColor}0f` }}
+                >
+                  <p className="uppercase tracking-[0.12em] opacity-60 mb-0.5" style={{ color: theme.textColor }}>
+                    Focus
+                  </p>
+                  <p className="font-semibold leading-tight" style={{ color: theme.textColor }}>
+                    {details.trainingFocus}
+                  </p>
+                </div>
+                <div
+                  className="rounded-lg px-3 py-2"
+                  style={{ backgroundColor: `${theme.textColor}0f` }}
+                >
+                  <p className="uppercase tracking-[0.12em] opacity-60 mb-0.5" style={{ color: theme.textColor }}>
+                    Intensity
+                  </p>
+                  <p className="font-semibold leading-tight" style={{ color: theme.textColor }}>
+                    {details.intensity}
+                  </p>
+                </div>
+              </div>
+
+              <JungleButton
+                onClick={() => handleModeSelect(key)}
+                className="mt-1 w-full min-h-12 text-sm sm:text-base"
+              >
+                Start Drill
+              </JungleButton>
+            </motion.div>
+          );
+        })}
+      </div>
+
+      {!!upcomingModes.length && (
+        <div className="w-full mt-6 sm:mt-8">
+          <p
+            className="text-[11px] sm:text-xs uppercase tracking-[0.18em] font-semibold mb-3 px-1"
+            style={{ color: theme.textColor, opacity: 0.66 }}
+          >
+            Next release
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 px-1">
+            {upcomingModes.map((key, idx) => {
+              const mode = gameModes[key];
+              const details = modeDescriptions[key];
+              return (
+                <motion.div
+                  key={key}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: idx * 0.05 + 0.2 }}
+                  className="rounded-2xl p-4"
+                  style={{
+                    backgroundColor: 'rgba(10, 16, 20, 0.55)',
+                    border: `1px dashed ${theme.targetColor}4a`,
+                    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03)',
+                  }}
+                >
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <h3 className="text-base font-semibold" style={{ color: theme.textColor, opacity: 0.9 }}>
+                      {mode.name}
+                    </h3>
+                    <span
+                      className="text-[10px] font-semibold uppercase tracking-wide px-2 py-1 rounded-full"
+                      style={{
+                        color: theme.targetColor,
+                        backgroundColor: `${theme.targetColor}1e`,
+                        border: `1px solid ${theme.targetColor}44`,
+                      }}
+                    >
+                      Coming Soon
+                    </span>
+                  </div>
+                  <p className="text-xs leading-relaxed mb-2" style={{ color: theme.textColor, opacity: 0.72 }}>
+                    {details.trainingFocus}
+                  </p>
+                  <p className="text-xs" style={{ color: theme.textColor, opacity: 0.55 }}>
+                    {details.rhythm}
+                  </p>
+                </motion.div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       <HowToPlayModal
-        modeKey={selectedMode || ''}
+        modeKey={selectedMode}
         isOpen={showHowToPlay}
         onClose={() => setShowHowToPlay(false)}
         onStart={handleStartGame}
       />
     </div>
   );
-}; 
+};

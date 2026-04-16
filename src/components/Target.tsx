@@ -1,170 +1,218 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Target as TargetType } from '../types/game';
 import { useTheme } from '../context/ThemeContext';
-import { motion, useAnimation } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface TargetProps {
   target: TargetType;
   onClick: () => void;
-  gameMode: string;
 }
 
-export const Target: React.FC<TargetProps> = ({ target, onClick, gameMode }) => {
+export const Target = ({ target, onClick }: TargetProps) => {
   const { theme } = useTheme();
-  const [isActive, setIsActive] = useState(true); // Start active by default
   const [showSuccess, setShowSuccess] = useState(false);
-  const [showError, setShowError] = useState(false);
-  const [isHolding, setIsHolding] = useState(false);
-  const controls = useAnimation();
-  const holdTimerRef = useRef<number>();
+  const [isPressed, setIsPressed] = useState(false);
+  const [iconSrc, setIconSrc] = useState(theme.icon.path);
+  const clickedRef = useRef(false);
+  const iconFallbackAttemptedRef = useRef(false);
 
   useEffect(() => {
-    if (target.createdAt) {
-      const now = Date.now();
-      const timeLeft = target.lifespan * 1000 - (now - target.createdAt);
-      if (timeLeft > 0) {
-        setIsActive(true);
-        const timer = setTimeout(() => {
-          setIsActive(false);
-        }, timeLeft);
-        return () => clearTimeout(timer);
-      } else {
-        setIsActive(false);
-      }
-    }
-  }, [target.createdAt, target.lifespan]);
+    setIconSrc(theme.icon.path);
+    iconFallbackAttemptedRef.current = false;
+  }, [theme.icon.fallbackPath, theme.icon.path]);
 
-  useEffect(() => {
-    if (target.movement && isActive) {
-      controls.start({
-        left: [
-          `${target.movement.startX}%`,
-          `${target.movement.endX}%`
-        ],
-        top: [
-          `${target.movement.startY}%`,
-          `${target.movement.endY}%`
-        ],
-        transition: {
-          duration: target.movement.duration / 1000,
-          ease: "linear",
-          repeat: gameMode === 'holdTrack' ? Infinity : 0,
-          repeatType: "reverse"
-        }
-      });
-    }
-  }, [target.movement, isActive, controls, gameMode]);
+  const { targetSize, ringRadius, ringCircumference, centerPoint, innerInset, iconSize, ringStroke } =
+    useMemo(() => {
+      const isTouchDevice =
+        typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches;
+      const size = isTouchDevice ? 84 : 70;
+      const stroke = size >= 84 ? 3.5 : 3;
+      const radius = size / 2 - stroke - 1;
+      const center = size / 2;
 
-  const handleInteractionStart = () => {
-    if (!isActive) return;
+      return {
+        targetSize: size,
+        ringRadius: radius,
+        ringCircumference: 2 * Math.PI * radius,
+        centerPoint: center,
+        innerInset: Math.round(size * 0.11),
+        iconSize: Math.round(size * 0.47),
+        ringStroke: stroke,
+      };
+    }, []);
 
-    if (gameMode === 'holdTrack') {
-      setIsHolding(true);
-      holdTimerRef.current = window.setTimeout(() => {
-        setShowSuccess(true);
-        setTimeout(() => setShowSuccess(false), 500);
-        onClick();
-      }, target.duration * 1000);
-    } else if (gameMode === 'swipeStrike') {
-      // Handle swipe interaction
-      setShowSuccess(true);
-      setTimeout(() => setShowSuccess(false), 500);
+  const handleClick = () => {
+    const isExpired = Date.now() - target.createdAt >= target.lifespan * 1000;
+    if (isExpired || clickedRef.current) return;
+    setIsPressed(false);
+    clickedRef.current = true;
+    setShowSuccess(true);
+    setTimeout(() => {
+      setShowSuccess(false);
       onClick();
-    } else {
-      // Quick tap and multi target modes
-      setShowSuccess(true);
-      setTimeout(() => setShowSuccess(false), 500);
-      onClick();
+    }, 120);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleClick();
     }
   };
 
-  const handleInteractionEnd = () => {
-    if (gameMode === 'holdTrack' && isHolding) {
-      setIsHolding(false);
-      if (holdTimerRef.current) {
-        clearTimeout(holdTimerRef.current);
-      }
-      setShowError(true);
-      setTimeout(() => setShowError(false), 500);
+  // Negative delay syncs the ring animation to when the target was actually created,
+  // so even targets that render slightly late show the correct remaining arc.
+  const ringDelay = -((Date.now() - target.createdAt) / 1000);
+
+  const handleIconError = () => {
+    if (!iconFallbackAttemptedRef.current && theme.icon.fallbackPath) {
+      iconFallbackAttemptedRef.current = true;
+      setIconSrc(theme.icon.fallbackPath);
+      return;
     }
+    setIconSrc('');
   };
-
-  const targetStyle = {
-    backgroundColor: showSuccess 
-      ? '#22c55e' 
-      : showError 
-        ? '#ef4444' 
-        : isHolding
-          ? '#60a5fa'
-          : theme.targetColor,
-    transform: showSuccess 
-      ? 'scale(1.2)' 
-      : showError 
-        ? 'scale(0.8)' 
-        : 'scale(1)',
-    position: 'absolute' as const,
-    left: `${target.x}%`,
-    top: `${target.y}%`,
-    width: '60px',
-    height: '60px',
-    borderRadius: '50%',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    cursor: 'pointer',
-    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-    transition: 'all 0.2s ease-in-out',
-    zIndex: 10
-  };
-
-  if (!isActive) return null;
 
   return (
-    <motion.div
-      initial={{ scale: 0, opacity: 0 }}
-      animate={{ 
-        ...controls,
-        scale: 1,
-        opacity: 1
-      }}
-      exit={{ scale: 0, opacity: 0 }}
-      style={targetStyle}
-      onMouseDown={handleInteractionStart}
-      onMouseUp={handleInteractionEnd}
-      onMouseLeave={handleInteractionEnd}
-      onTouchStart={handleInteractionStart}
-      onTouchEnd={handleInteractionEnd}
-    >
+    <AnimatePresence>
       <motion.div
-        animate={{
-          scale: [1, 1.1, 1],
-          opacity: [0.8, 1, 0.8],
-        }}
-        transition={{
-          duration: 2,
-          repeat: Infinity,
-          ease: 'easeInOut',
-        }}
+        role="button"
+        aria-label="Hit target"
+        tabIndex={0}
+        initial={{ scale: 0.76, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.78, opacity: 0 }}
+        transition={{ type: 'spring', stiffness: 500, damping: 30, mass: 0.55 }}
         style={{
-          width: '32px',
-          height: '32px',
-          borderRadius: '50%',
-          backgroundColor: theme.backgroundColor,
-          border: `2px solid ${theme.textColor}`,
+          position: 'absolute',
+          left: `${target.x}%`,
+          top: `${target.y}%`,
+          width: `${targetSize}px`,
+          height: `${targetSize}px`,
+          transform: 'translate(-50%, -50%)',
+          cursor: 'pointer',
+          zIndex: 10,
+          userSelect: 'none',
+          touchAction: 'manipulation',
+          outline: 'none',
         }}
-      />
-      {target.sequenceIndex !== undefined && (
-        <div 
-          style={{ 
+        onClick={handleClick}
+        onKeyDown={handleKeyDown}
+        onPointerDown={() => setIsPressed(true)}
+        onPointerUp={() => setIsPressed(false)}
+        onPointerCancel={() => setIsPressed(false)}
+        onPointerLeave={() => setIsPressed(false)}
+        whileTap={{ scale: 0.93 }}
+      >
+        {/* Countdown ring */}
+        <svg
+          viewBox={`0 0 ${targetSize} ${targetSize}`}
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
+        >
+          {/* Track ring */}
+          <circle
+            cx={centerPoint}
+            cy={centerPoint}
+            r={ringRadius}
+            fill="none"
+            stroke="rgba(255,255,255,0.15)"
+            strokeWidth={ringStroke}
+          />
+          {/* Countdown arc */}
+          <circle
+            cx={centerPoint}
+            cy={centerPoint}
+            r={ringRadius}
+            fill="none"
+            stroke={showSuccess ? '#22c55e' : theme.targetColor}
+            strokeWidth={ringStroke}
+            strokeDasharray={ringCircumference}
+            strokeLinecap="round"
+            style={{
+              transformOrigin: `${centerPoint}px ${centerPoint}px`,
+              transform: 'rotate(-90deg)',
+              animation: `countdown-ring ${target.lifespan}s linear forwards`,
+              animationDelay: `${ringDelay}s`,
+              transition: 'stroke 0.09s ease',
+              ['--ring-circumference' as string]: ringCircumference,
+            }}
+          />
+        </svg>
+
+        {/* Inner hit area */}
+        <div
+          style={{
             position: 'absolute',
-            color: theme.textColor,
-            fontSize: '1.5rem',
-            fontWeight: 'bold'
+            inset: `${innerInset}px`,
+            borderRadius: '50%',
+            backgroundColor: showSuccess
+              ? 'rgba(34, 197, 94, 0.85)'
+              : `${theme.targetColor}22`,
+            border: `2px solid ${showSuccess ? '#22c55e' : theme.targetColor}`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            transition:
+              'background-color 0.1s ease, border-color 0.1s ease, box-shadow 0.1s ease, transform 0.09s ease',
+          boxShadow: showSuccess
+              ? '0 0 24px rgba(34, 197, 94, 0.55)'
+              : isPressed
+                ? `0 0 20px ${theme.targetColor}88`
+                : `0 0 16px ${theme.targetColor}66`,
+            transform: isPressed ? 'scale(0.96)' : showSuccess ? 'scale(1.05)' : 'scale(1)',
           }}
         >
-          {target.sequenceIndex + 1}
+          {showSuccess && (
+            <motion.span
+              initial={{ scale: 0.84, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 1.08, opacity: 0 }}
+              transition={{ duration: 0.11, ease: 'easeOut' }}
+              style={{
+                position: 'absolute',
+                color: '#dcfce7',
+                fontSize: `${Math.round(iconSize * 0.5)}px`,
+                fontWeight: 800,
+                lineHeight: 1,
+                textShadow: '0 0 10px rgba(22, 163, 74, 0.45)',
+              }}
+              aria-hidden="true"
+            >
+              ✓
+            </motion.span>
+          )}
+          {iconSrc ? (
+            <img
+              src={iconSrc}
+              alt=""
+              aria-hidden="true"
+              draggable={false}
+              onError={handleIconError}
+              style={{
+                width: `${iconSize}px`,
+                height: `${iconSize}px`,
+                objectFit: 'contain',
+                pointerEvents: 'none',
+                transition: 'transform 0.09s ease, opacity 0.1s ease',
+                transform: showSuccess ? 'scale(0.9)' : isPressed ? 'scale(0.95)' : 'scale(1)',
+                opacity: showSuccess ? 0.88 : 1,
+              }}
+            />
+          ) : (
+            <span
+              aria-hidden="true"
+              style={{
+                fontSize: `${Math.round(iconSize * 0.52)}px`,
+                color: '#dcfce7',
+                lineHeight: 1,
+                textShadow: '0 0 10px rgba(16, 185, 129, 0.4)',
+              }}
+            >
+              ◉
+            </span>
+          )}
         </div>
-      )}
-    </motion.div>
+      </motion.div>
+    </AnimatePresence>
   );
-}; 
+};
