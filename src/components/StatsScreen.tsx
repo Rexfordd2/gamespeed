@@ -1,14 +1,22 @@
-import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useTheme } from '../context/ThemeContext';
 import { JungleBackground } from './JungleBackground';
 import { JungleButton } from './JungleButton';
-import { GameStats, StoredRound } from '../types/game';
-import { loadStats, clearStats, emptyStats, getTodayRoundsCount } from '../utils/sessionStats';
-import { gameModes, MODE_ORDER } from '../utils/gameModes';
+import { GameStats } from '../types/game';
+import { MODE_ORDER, gameModes } from '../utils/gameModes';
+import {
+  getDailyStreak,
+  getFriendLeaderboard,
+  getModeUnlockStatuses,
+  getRecentHistory,
+  getTodayRounds,
+  getWeeklyChallenge,
+} from '../utils/progression';
 
 interface StatsScreenProps {
   onClose: () => void;
+  stats: GameStats;
+  playerName: string;
 }
 
 const formatRelativeTime = (ts: number): string => {
@@ -17,31 +25,21 @@ const formatRelativeTime = (ts: number): string => {
   const nowDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   const dDay = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
   const diffDays = Math.round((nowDay - dDay) / 86_400_000);
-
-  const h = d.getHours();
-  const m = d.getMinutes().toString().padStart(2, '0');
-  const period = h >= 12 ? 'PM' : 'AM';
-  const time = `${h % 12 || 12}:${m} ${period}`;
-
-  if (diffDays === 0) return `Today ${time}`;
+  if (diffDays === 0) return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   if (diffDays === 1) return 'Yesterday';
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 };
 
-export const StatsScreen = ({ onClose }: StatsScreenProps) => {
+export const StatsScreen = ({ onClose, stats, playerName }: StatsScreenProps) => {
   const { theme } = useTheme();
-  const [stats, setStats] = useState<GameStats>(() => loadStats());
-
-  const todayCount = getTodayRoundsCount(stats);
-  const recentRounds: StoredRound[] = [...stats.rounds].reverse().slice(0, 10);
-  const hasPbs = MODE_ORDER.some(m => stats.pbs[m] !== undefined);
-
-  const handleClearStats = () => {
-    if (window.confirm('Clear all GameSpeed stats? This cannot be undone.')) {
-      clearStats();
-      setStats(emptyStats());
-    }
-  };
+  const todayRounds = getTodayRounds(stats);
+  const streak = getDailyStreak(stats);
+  const weeklyChallenge = getWeeklyChallenge(stats);
+  const unlockStatuses = getModeUnlockStatuses(stats);
+  const recentRounds = getRecentHistory(stats, 16);
+  const leaderboard = getFriendLeaderboard(stats, playerName).slice(0, 5);
+  const hasPbs = MODE_ORDER.some(mode => stats.pbs[mode] !== undefined);
+  const unlockedCount = unlockStatuses.filter(status => status.unlocked).length;
 
   const cardStyle = {
     backgroundColor: 'rgba(6, 12, 18, 0.76)',
@@ -60,34 +58,18 @@ export const StatsScreen = ({ onClose }: StatsScreenProps) => {
       }}
     >
       <JungleBackground />
-
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background:
-            'radial-gradient(circle at 20% 20%, rgba(163,230,53,0.10), transparent 45%), linear-gradient(180deg, rgba(3,8,12,0.7), rgba(2,8,10,0.92))',
-        }}
-      />
-
       <motion.div
-        className="relative z-10 mx-auto w-full max-w-3xl px-4 py-4 sm:px-6 sm:py-6"
+        className="relative z-10 mx-auto w-full max-w-4xl px-4 py-4 sm:px-6 sm:py-6"
         initial={{ opacity: 0, y: 14 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.38, ease: 'easeOut' }}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6 sm:mb-8">
+        <div className="flex items-center justify-between mb-6">
           <div>
-            <h1
-              className="text-2xl sm:text-3xl font-extrabold tracking-tight leading-tight"
-              style={{ color: theme.textColor }}
-            >
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight" style={{ color: theme.textColor }}>
               Session Stats
             </h1>
             <p className="text-sm mt-1 opacity-60" style={{ color: theme.textColor }}>
-              {todayCount > 0
-                ? `${todayCount} round${todayCount !== 1 ? 's' : ''} today`
-                : 'No rounds today yet'}
+              {todayRounds.length} round{todayRounds.length === 1 ? '' : 's'} today
             </p>
           </div>
           <JungleButton onClick={onClose} className="px-4 py-2.5 text-sm font-semibold">
@@ -95,160 +77,48 @@ export const StatsScreen = ({ onClose }: StatsScreenProps) => {
           </JungleButton>
         </div>
 
-        {/* Personal Bests */}
+        <section className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-7">
+          <div className="rounded-2xl p-4" style={cardStyle}>
+            <p className="text-[10px] uppercase tracking-[0.16em] opacity-60" style={{ color: theme.textColor }}>Daily streak</p>
+            <p className="text-3xl font-black tabular-nums mt-1" style={{ color: '#4ade80' }}>{streak}</p>
+          </div>
+          <div className="rounded-2xl p-4" style={cardStyle}>
+            <p className="text-[10px] uppercase tracking-[0.16em] opacity-60" style={{ color: theme.textColor }}>Weekly challenge</p>
+            <p className="text-2xl font-black tabular-nums mt-1" style={{ color: weeklyChallenge.completed ? '#4ade80' : '#facc15' }}>
+              {weeklyChallenge.roundsDone}/{weeklyChallenge.roundsTarget}
+            </p>
+          </div>
+          <div className="rounded-2xl p-4" style={cardStyle}>
+            <p className="text-[10px] uppercase tracking-[0.16em] opacity-60" style={{ color: theme.textColor }}>Modes unlocked</p>
+            <p className="text-3xl font-black tabular-nums mt-1" style={{ color: '#7dd3fc' }}>{unlockedCount}/{unlockStatuses.length}</p>
+          </div>
+          <div className="rounded-2xl p-4" style={cardStyle}>
+            <p className="text-[10px] uppercase tracking-[0.16em] opacity-60" style={{ color: theme.textColor }}>Total sessions</p>
+            <p className="text-3xl font-black tabular-nums mt-1" style={{ color: theme.targetColor }}>{stats.rounds.length}</p>
+          </div>
+        </section>
+
         <section className="mb-7">
-          <p
-            className="text-[11px] sm:text-xs uppercase tracking-[0.18em] font-semibold mb-3"
-            style={{ color: theme.targetColor }}
-          >
+          <p className="text-[11px] uppercase tracking-[0.18em] font-semibold mb-3" style={{ color: theme.targetColor }}>
             Personal Bests
           </p>
-
           {!hasPbs ? (
             <div className="rounded-2xl p-5 text-center" style={cardStyle}>
-              <p className="text-sm opacity-60" style={{ color: theme.textColor }}>
-                No rounds recorded yet. Complete a drill to start tracking.
-              </p>
+              <p className="text-sm opacity-60" style={{ color: theme.textColor }}>No rounds recorded yet.</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {MODE_ORDER.map(modeKey => {
-                const pb = stats.pbs[modeKey];
-                const modeInfo = gameModes[modeKey];
-                const isBenchmark = modeInfo.category === 'benchmark';
-
+              {MODE_ORDER.map(mode => {
+                const pb = stats.pbs[mode];
                 return (
-                  <div
-                    key={modeKey}
-                    className="rounded-2xl p-4"
-                    style={{ ...cardStyle, opacity: pb ? 1 : 0.4 }}
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <span
-                        className="text-sm font-bold"
-                        style={{ color: theme.textColor }}
-                      >
-                        {modeInfo.name}
-                      </span>
-                      <span
-                        className="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full"
-                        style={{
-                          color: isBenchmark ? '#7dd3fc' : theme.targetColor,
-                          backgroundColor: isBenchmark
-                            ? 'rgba(56,189,248,0.14)'
-                            : `${theme.targetColor}1e`,
-                          border: `1px solid ${
-                            isBenchmark ? 'rgba(56,189,248,0.32)' : `${theme.targetColor}44`
-                          }`,
-                        }}
-                      >
-                        {isBenchmark ? 'Benchmark' : 'Drill'}
-                      </span>
-                    </div>
-
+                  <div key={mode} className="rounded-2xl p-4" style={{ ...cardStyle, opacity: pb ? 1 : 0.45 }}>
+                    <p className="text-sm font-semibold mb-2" style={{ color: theme.textColor }}>{gameModes[mode].name}</p>
                     {pb ? (
-                      <div className="grid grid-cols-3 gap-2 text-center">
-                        {isBenchmark ? (
-                          <>
-                            <div>
-                              <p
-                                className="text-2xl font-extrabold tabular-nums"
-                                style={{ color: '#7dd3fc' }}
-                              >
-                                {pb.benchmarkScore ?? '—'}
-                              </p>
-                              <p
-                                className="text-[10px] uppercase tracking-wide opacity-55 mt-0.5"
-                                style={{ color: theme.textColor }}
-                              >
-                                Score
-                              </p>
-                            </div>
-                            <div>
-                              <p
-                                className="text-2xl font-extrabold tabular-nums"
-                                style={{ color: '#a5f3fc' }}
-                              >
-                                {pb.medianReactionTimeMs !== undefined
-                                  ? pb.medianReactionTimeMs
-                                  : '—'}
-                              </p>
-                              <p
-                                className="text-[10px] uppercase tracking-wide opacity-55 mt-0.5"
-                                style={{ color: theme.textColor }}
-                              >
-                                Best RT ms
-                              </p>
-                            </div>
-                            <div>
-                              <p
-                                className="text-2xl font-extrabold tabular-nums"
-                                style={{ color: theme.targetColor }}
-                              >
-                                {pb.accuracy}%
-                              </p>
-                              <p
-                                className="text-[10px] uppercase tracking-wide opacity-55 mt-0.5"
-                                style={{ color: theme.textColor }}
-                              >
-                                Hit Rate
-                              </p>
-                            </div>
-                          </>
-                        ) : (
-                          <>
-                            <div>
-                              <p
-                                className="text-2xl font-extrabold tabular-nums"
-                                style={{ color: theme.targetColor }}
-                              >
-                                {pb.score}
-                              </p>
-                              <p
-                                className="text-[10px] uppercase tracking-wide opacity-55 mt-0.5"
-                                style={{ color: theme.textColor }}
-                              >
-                                Hits
-                              </p>
-                            </div>
-                            <div>
-                              <p
-                                className="text-2xl font-extrabold tabular-nums"
-                                style={{ color: theme.targetColor }}
-                              >
-                                {pb.accuracy}%
-                              </p>
-                              <p
-                                className="text-[10px] uppercase tracking-wide opacity-55 mt-0.5"
-                                style={{ color: theme.textColor }}
-                              >
-                                Accuracy
-                              </p>
-                            </div>
-                            <div>
-                              <p
-                                className="text-2xl font-extrabold tabular-nums"
-                                style={{ color: '#38bdf8' }}
-                              >
-                                {pb.bestStreak}
-                              </p>
-                              <p
-                                className="text-[10px] uppercase tracking-wide opacity-55 mt-0.5"
-                                style={{ color: theme.textColor }}
-                              >
-                                Streak
-                              </p>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    ) : (
-                      <p
-                        className="text-xs text-center py-2 opacity-45"
-                        style={{ color: theme.textColor }}
-                      >
-                        No runs yet
+                      <p className="text-sm tabular-nums" style={{ color: theme.textColor }}>
+                        Score {pb.score} · Accuracy {pb.accuracy}% · Streak {pb.bestStreak}
                       </p>
+                    ) : (
+                      <p className="text-xs opacity-50" style={{ color: theme.textColor }}>No runs yet</p>
                     )}
                   </div>
                 );
@@ -257,96 +127,60 @@ export const StatsScreen = ({ onClose }: StatsScreenProps) => {
           )}
         </section>
 
-        {/* Recent Rounds */}
         <section className="mb-7">
-          <p
-            className="text-[11px] sm:text-xs uppercase tracking-[0.18em] font-semibold mb-3"
-            style={{ color: theme.targetColor }}
-          >
-            Recent Rounds
+          <p className="text-[11px] uppercase tracking-[0.18em] font-semibold mb-3" style={{ color: theme.targetColor }}>
+            Leaderboard Shell
           </p>
-
-          {recentRounds.length === 0 ? (
-            <div className="rounded-2xl p-5 text-center" style={cardStyle}>
-              <p className="text-sm opacity-60" style={{ color: theme.textColor }}>
-                No rounds recorded yet.
-              </p>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {recentRounds.map((round, i) => {
-                const isBenchmark = gameModes[round.mode]?.category === 'benchmark';
-                return (
-                  <div
-                    key={i}
-                    className="rounded-xl px-4 py-3 flex items-center justify-between gap-3"
-                    style={cardStyle}
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <span
-                        className="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full flex-shrink-0"
-                        style={{
-                          color: isBenchmark ? '#7dd3fc' : theme.targetColor,
-                          backgroundColor: isBenchmark
-                            ? 'rgba(56,189,248,0.14)'
-                            : `${theme.targetColor}1e`,
-                          border: `1px solid ${
-                            isBenchmark ? 'rgba(56,189,248,0.32)' : `${theme.targetColor}44`
-                          }`,
-                        }}
-                      >
-                        {round.modeName}
-                      </span>
-                      <span
-                        className="text-xs opacity-50 truncate"
-                        style={{ color: theme.textColor }}
-                      >
-                        {formatRelativeTime(round.ts)}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-3 text-xs flex-shrink-0 tabular-nums">
-                      {isBenchmark && round.benchmarkScore !== undefined ? (
-                        <>
-                          <span className="font-bold" style={{ color: '#7dd3fc' }}>
-                            {round.benchmarkScore}
-                            <span className="font-normal opacity-55">/100</span>
-                          </span>
-                          {round.medianReactionTimeMs !== undefined && (
-                            <span className="opacity-50" style={{ color: theme.textColor }}>
-                              {round.medianReactionTimeMs}ms
-                            </span>
-                          )}
-                        </>
-                      ) : (
-                        <>
-                          <span className="font-bold" style={{ color: theme.targetColor }}>
-                            {round.score}{' '}
-                            <span className="font-normal opacity-55">hits</span>
-                          </span>
-                          <span className="opacity-50" style={{ color: theme.textColor }}>
-                            {round.accuracy}%
-                          </span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+          <p className="text-[10px] uppercase tracking-[0.14em] mb-2" style={{ color: theme.textColor, opacity: 0.56 }}>
+            Placeholder rankings for launch shell
+          </p>
+          <div className="rounded-2xl p-4 space-y-2" style={cardStyle}>
+            {leaderboard.map((entry, idx) => (
+              <div key={entry.name} className="flex items-center justify-between">
+                <p className="text-sm" style={{ color: theme.textColor }}>{idx + 1}. {entry.name}</p>
+                <p className="text-sm font-bold tabular-nums" style={{ color: entry.isYou ? theme.targetColor : '#7dd3fc' }}>{entry.score}</p>
+              </div>
+            ))}
+          </div>
         </section>
 
-        {/* Clear Stats */}
-        <div className="text-center pt-2">
-          <button
-            onClick={handleClearStats}
-            className="text-xs underline underline-offset-2 opacity-35 hover:opacity-60 transition-opacity"
-            style={{ color: '#f87171' }}
-          >
-            Clear all stats
-          </button>
-        </div>
+        <section className="mb-7">
+          <p className="text-[11px] uppercase tracking-[0.18em] font-semibold mb-3" style={{ color: theme.targetColor }}>
+            Training Mode Unlocks
+          </p>
+          <div className="rounded-2xl p-4 space-y-2.5" style={cardStyle}>
+            {unlockStatuses.map(status => (
+              <div key={status.mode} className="flex items-center justify-between gap-3">
+                <p className="text-sm" style={{ color: theme.textColor }}>{gameModes[status.mode].name}</p>
+                <p className="text-xs font-semibold" style={{ color: status.unlocked ? '#4ade80' : '#facc15' }}>
+                  {status.progressLabel}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section>
+          <p className="text-[11px] uppercase tracking-[0.18em] font-semibold mb-3" style={{ color: theme.targetColor }}>
+            Session History
+          </p>
+          <div className="rounded-2xl p-4 space-y-2" style={cardStyle}>
+            {recentRounds.length === 0 ? (
+              <p className="text-sm opacity-60" style={{ color: theme.textColor }}>No rounds recorded yet.</p>
+            ) : (
+              recentRounds.map(round => (
+                <div key={`${round.ts}-${round.clientRoundId ?? 'local'}`} className="flex items-center justify-between">
+                  <p className="text-xs" style={{ color: theme.textColor }}>
+                    {round.modeName} · {formatRelativeTime(round.ts)}
+                  </p>
+                  <p className="text-xs font-semibold tabular-nums" style={{ color: theme.targetColor }}>
+                    {round.score} / {round.accuracy}%
+                  </p>
+                </div>
+              ))
+            )}
+          </div>
+        </section>
       </motion.div>
     </div>
   );

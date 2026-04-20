@@ -24,6 +24,8 @@ Live: **https://rexfordd2.github.io/gamespeed/**
 
 ```bash
 npm install
+# copy env vars and fill with your Supabase values
+# cp .env.example .env.local
 npm run dev        # dev server at http://localhost:5173/
 ```
 
@@ -46,10 +48,9 @@ npm run dev        # dev server at http://localhost:5173/
 
 ## Deployment
 
-**Host:** GitHub Pages  
-**Trigger:** Push to `master` branch  
-**Workflow:** `.github/workflows/deploy.yml`  
-**Base path:** `/gamespeed/` for production builds (GitHub Pages)
+**Host:** Vercel (recommended for auth-enabled app)
+
+Env vars are covered in the [Auth + Cloud Sync](#auth--cloud-sync-supabase) section below.
 
 The CI pipeline runs typecheck → lint → test → build. A deploy is only triggered after all quality gates pass.
 
@@ -93,16 +94,61 @@ See `public/assets/README.md` for the exact production file list and naming.
 
 ---
 
-## Launch Scope
+## Auth + Cloud Sync (Supabase)
 
-This version is a **client-side-only browser game**. The following are explicitly **out of scope** for the current release:
+The app uses Supabase Auth for identity, a `profiles` table for profile data, and a `user_rounds` table for append-only round sync.
 
-- User authentication / accounts
-- Database / leaderboard backend
-- Payment / subscription
-- Analytics / event tracking
+> **Nothing auth/cloud-related works until you complete *both* the Supabase setup *and* the host env vars below.**
 
-When any of these are added, document the required environment variables in `.env.example`.
+### 1. Supabase project setup
+
+1. Create a project at [supabase.com](https://supabase.com) (or use an existing one).
+2. **Redirect URLs** — in the Supabase Dashboard go to **Authentication → URL Configuration** and add every URL the app will be served from:
+   - `http://localhost:5173` (local dev)
+   - `https://<your-vercel-app>.vercel.app` (production)
+   - Any custom domain you point at the deployment
+   
+   Without these entries magic-link emails will fail silently or redirect to an error page.
+3. **Database tables** — open the SQL Editor and run, in order:
+   - `supabase/profiles.sql`
+   - `supabase/user_rounds.sql`
+   
+   This creates:
+   - `public.profiles` keyed by `auth.users.id`
+   - `public.user_rounds` for append-only per-user round writes (idempotent via `client_round_id`)
+   - automatic `updated_at` trigger on profiles
+   - row-level security policies so users can only access/insert their own rows
+
+### 2. Host environment variables
+
+Set these wherever the app is deployed **and** in `.env.local` for local dev:
+
+| Variable | Where to find it |
+|---|---|
+| `VITE_SUPABASE_URL` | Supabase Dashboard → Settings → API → Project URL |
+| `VITE_SUPABASE_ANON_KEY` | Supabase Dashboard → Settings → API → `anon` `public` key |
+
+**Vercel:** Project Settings → Environment Variables (set for Production + Preview + Development).
+
+If either variable is missing the app still runs — auth UI is hidden and round sync is skipped.
+
+### Auth flow (v1)
+- Magic-link sign in via email
+- Persistent session across reloads (Supabase client session storage)
+- Sign out from the start screen account panel
+- Profile onboarding if no `profiles` row exists yet
+
+### Round sync (v1)
+- Local stats are always written first (primary UX)
+- If authenticated, a fire-and-forget insert to `user_rounds` happens after local write
+- Idempotent via `client_round_id` unique constraint — safe to retry
+- No cloud-read or merge path yet
+
+---
+
+## Conversion Analytics
+
+Landing/first-run conversion instrumentation, experiment variants (A/B/C), and metric comparison instructions are documented in [`docs/conversion-analysis.md`](docs/conversion-analysis.md).
 
 ---
 

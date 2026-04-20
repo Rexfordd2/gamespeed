@@ -32,13 +32,19 @@ const saveStats = (stats: GameStats): void => {
   }
 };
 
-export const recordRound = (result: GameResult): void => {
+interface RecordRoundOptions {
+  clientRoundId?: string;
+  ts?: number;
+}
+
+export const recordRound = (result: GameResult, options?: RecordRoundOptions): StoredRound => {
   const stats = loadStats();
   const totalAttempts = result.score + result.misses;
   const accuracy = totalAttempts > 0 ? Math.round((result.score / totalAttempts) * 100) : 0;
 
   const round: StoredRound = {
-    ts: Date.now(),
+    ts: options?.ts ?? Date.now(),
+    clientRoundId: options?.clientRoundId,
     mode: result.mode,
     modeName: result.modeName,
     score: result.score,
@@ -86,6 +92,8 @@ export const recordRound = (result: GameResult): void => {
     rounds: trimmed,
     pbs: { ...stats.pbs, [result.mode]: newPb },
   });
+
+  return round;
 };
 
 export const clearStats = (): void => {

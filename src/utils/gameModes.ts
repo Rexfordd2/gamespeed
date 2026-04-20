@@ -18,7 +18,7 @@ export const MODE_ORDER: GameModeType[] = [
 export const gameModes: Record<GameModeType, GameMode> = {
   reactionBenchmark: {
     name: 'Reaction Benchmark',
-    description: 'Fixed 45-second readiness test. One paced stimulus every 2s with full reaction-time tracking.',
+    description: 'Fixed 60-second readiness test. One paced stimulus every 2s with full reaction-time tracking.',
     generateTargets: generateReactionBenchmark,
     availability: 'playable',
     category: 'benchmark',
@@ -26,7 +26,7 @@ export const gameModes: Record<GameModeType, GameMode> = {
       maxTargets: 1,
       targetInterval: 2000,
       targetLifespan: 1.2,
-      roundSeconds: 45,
+      roundSeconds: 60,
     },
   },
   quickTap: {

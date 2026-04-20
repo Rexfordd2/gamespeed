@@ -10,6 +10,25 @@ export type GameModeType =
 
 export type ModeAvailability = 'playable' | 'comingSoon';
 
+export type PlayerPersona = 'athlete' | 'gamer';
+
+export type AthleteGoal =
+  | 'firstStepQuickness'
+  | 'peripheralAwareness'
+  | 'gameSpeedDecisions';
+
+export type GamerGoal =
+  | 'rawReaction'
+  | 'flickResponse'
+  | 'focusUnderPressure';
+
+export type PlayerGoal = AthleteGoal | GamerGoal;
+
+export interface FirstRunSelection {
+  persona: PlayerPersona;
+  goal: PlayerGoal;
+}
+
 export interface Target {
   id: string;
   x: number;
@@ -74,6 +93,8 @@ export interface GameResult {
 
 export interface StoredRound {
   ts: number;
+  /** Stable client-generated id for idempotent cloud insert (optional for legacy local data). */
+  clientRoundId?: string;
   mode: GameModeType;
   modeName: string;
   score: number;

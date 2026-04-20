@@ -2,6 +2,7 @@ import React from 'react';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../App';
+import { AuthProvider } from '../context/AuthContext';
 
 vi.mock('framer-motion', async () => {
   const ReactLib = await import('react');
@@ -88,7 +89,11 @@ const advance = async (ms: number) => {
 };
 
 const renderApp = () => {
-  render(<App />);
+  render(
+    <AuthProvider>
+      <App />
+    </AuthProvider>,
+  );
 };
 
 const flushMicrotasks = async () => {
@@ -105,11 +110,11 @@ const getModeStartButton = (modeName: string) => {
   }
 
   const modeButton = cursor
-    ? within(cursor).queryByRole('button', { name: /start drill/i })
+    ? within(cursor).queryByRole('button', { name: /start today'?s session/i })
     : null;
 
   if (!modeButton) {
-    throw new Error(`Could not find Start Drill button for ${modeName}`);
+    throw new Error(`Could not find Start Today's Session button for ${modeName}`);
   }
 
   return modeButton;
@@ -117,11 +122,6 @@ const getModeStartButton = (modeName: string) => {
 
 const startMode = async (modeName: string) => {
   fireEvent.click(getModeStartButton(modeName));
-  await flushMicrotasks();
-  const dialog = screen.getByRole('dialog', {
-    name: new RegExp(`how to play ${modeName}`, 'i'),
-  });
-  fireEvent.click(within(dialog).getByRole('button', { name: /^start drill$/i }));
   await flushMicrotasks();
   expect(screen.getByRole('button', { name: /pause game/i })).toBeInTheDocument();
 };
@@ -140,13 +140,45 @@ describe('App integration flow', () => {
     vi.unstubAllGlobals();
   });
 
-  it('renders the start screen and mode sections', () => {
+  it('renders the first-run quickstart and drill sections', () => {
     renderApp();
 
-    expect(screen.getByRole('heading', { name: 'GameSpeed' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Choose Your Drill' })).toBeInTheDocument();
-    expect(screen.getByText('Available now')).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', {
+        name: 'Start in 60 seconds',
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('1. Choose role')).toBeInTheDocument();
+    expect(screen.queryByText('2. Choose one goal')).not.toBeInTheDocument();
+    expect(screen.getAllByRole('heading', { name: 'Choose Your Drill' }).length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: 'Unmute audio' })).toBeInTheDocument();
+  });
+
+  it('runs first-run role-and-goal flow into immediate benchmark', async () => {
+    renderApp();
+    fireEvent.click(screen.getByRole('button', { name: /Athlete/i }));
+    fireEvent.click(screen.getByRole('button', { name: /First-step quickness/i }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Run the 60-Second Test' })[0]);
+    await flushMicrotasks();
+
+    expect(screen.getByRole('button', { name: /pause game/i })).toBeInTheDocument();
+    expect(screen.getByLabelText('Gameplay area')).toBeInTheDocument();
+  });
+
+  it('reveals post-first-session dashboard, recommendation, checklist, and deferred signup', async () => {
+    renderApp();
+    fireEvent.click(screen.getByRole('button', { name: /Athlete/i }));
+    fireEvent.click(screen.getByRole('button', { name: /First-step quickness/i }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Run the 60-Second Test' })[0]);
+    await flushMicrotasks();
+
+    await advance(60_500);
+
+    expect(screen.getByText('Results Dashboard')).toBeInTheDocument();
+    expect(screen.getByText('Percentile')).toBeInTheDocument();
+    expect(screen.getByText('Recommended Next Mode')).toBeInTheDocument();
+    expect(screen.getByText('Onboarding Checklist')).toBeInTheDocument();
+    expect(screen.getByText('Save this progress')).toBeInTheDocument();
   });
 
   it('allows selecting a playable mode and starting gameplay', async () => {
@@ -183,10 +215,10 @@ describe('App integration flow', () => {
       await advance(60_500);
 
       expect(screen.getByText('Final Score')).toBeInTheDocument();
-      expect(screen.getByText(modeName)).toBeInTheDocument();
+      expect(screen.getAllByText(modeName).length).toBeGreaterThan(0);
 
       fireEvent.click(screen.getByRole('button', { name: 'Main Menu' }));
-      expect(screen.getByRole('heading', { name: 'Choose Your Drill' })).toBeInTheDocument();
+      expect(screen.getAllByRole('heading', { name: 'Choose Your Drill' }).length).toBeGreaterThan(0);
     }
   });
 
@@ -319,7 +351,7 @@ describe('App integration flow', () => {
     expect(screen.getByText('Final Score')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Main Menu' }));
-    expect(screen.getByRole('heading', { name: 'Choose Your Drill' })).toBeInTheDocument();
+    expect(screen.getAllByRole('heading', { name: 'Choose Your Drill' }).length).toBeGreaterThan(0);
   });
 
   it('toggles audio safely without crashing the UI', async () => {
