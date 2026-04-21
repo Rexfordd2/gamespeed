@@ -234,6 +234,28 @@ describe('App integration flow', () => {
     expect(screen.getByLabelText('Gameplay area')).toBeInTheDocument();
   });
 
+  it('resets bfcache restores to start shell instead of resuming gameplay', async () => {
+    renderApp();
+    fireEvent.click(screen.getByRole('button', { name: /Athlete/i }));
+    fireEvent.click(screen.getByRole('button', { name: /First-step quickness/i }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Run the 60-Second Test' })[0]);
+    await flushMicrotasks();
+
+    expect(screen.getByRole('button', { name: /pause game/i })).toBeInTheDocument();
+
+    const pageShowEvent = new Event('pageshow') as PageTransitionEvent;
+    Object.defineProperty(pageShowEvent, 'persisted', { value: true });
+    fireEvent(window, pageShowEvent);
+    await flushMicrotasks();
+
+    expect(screen.queryByRole('button', { name: /pause game/i })).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', {
+        name: 'Replace the pre-game scroll in 60 seconds',
+      }),
+    ).toBeInTheDocument();
+  });
+
   it('reveals post-first-session dashboard, recommendation, checklist, and deferred signup', async () => {
     renderApp();
     fireEvent.click(screen.getByRole('button', { name: /Athlete/i }));

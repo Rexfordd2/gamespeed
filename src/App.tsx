@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ThemeProvider } from './context/ThemeContext';
 import { jungleTheme } from './themes/jungle';
 import { AudioManager } from './components/AudioManager';
@@ -272,6 +272,17 @@ export const App = () => {
     setGameState('coach');
   };
 
+  const resetToEntryShell = useCallback(() => {
+    setActiveSessionOptions({
+      lowStimulus: false,
+      includeRoutine: false,
+    });
+    setGameState('start');
+    if (typeof window !== 'undefined') {
+      setPublicRoute(getPublicRouteFromPath(window.location.pathname));
+    }
+  }, []);
+
   useEffect(() => {
     const isPlaying = gameState === 'playing';
     document.body.classList.toggle('gameplay-scroll-lock', isPlaying);
@@ -287,6 +298,17 @@ export const App = () => {
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
   }, []);
+
+  useEffect(() => {
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (!event.persisted) {
+        return;
+      }
+      resetToEntryShell();
+    };
+    window.addEventListener('pageshow', onPageShow);
+    return () => window.removeEventListener('pageshow', onPageShow);
+  }, [resetToEntryShell]);
 
   useEffect(() => {
     const timerId = window.setInterval(() => {
