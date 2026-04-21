@@ -3,6 +3,10 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../App';
 import { AuthProvider } from '../context/AuthContext';
+import { SPORT_SELECTION_STORAGE_KEY } from '../config/sports';
+import { clearRunwayAnalytics, loadRunwayAnalytics } from '../utils/runwayStats';
+import { NIGHT_GUARDRAIL_STORAGE_KEY } from '../utils/nightGuardrail';
+import { clearSleepCheckIns } from '../utils/sleepCheckIn';
 
 vi.mock('framer-motion', async () => {
   const ReactLib = await import('react');
@@ -89,6 +93,7 @@ const advance = async (ms: number) => {
 };
 
 const renderApp = () => {
+  window.history.replaceState({}, '', '/');
   render(
     <AuthProvider>
       <App />
@@ -110,7 +115,7 @@ const getModeStartButton = (modeName: string) => {
   }
 
   const modeButton = cursor
-    ? within(cursor).queryByRole('button', { name: /start today'?s session/i })
+    ? within(cursor).queryByRole('button', { name: /start (today'?s session|readiness drill)/i })
     : null;
 
   if (!modeButton) {
@@ -133,6 +138,10 @@ describe('App integration flow', () => {
     MockAudio.reset();
     vi.stubGlobal('Audio', MockAudio as unknown as typeof Audio);
     vi.stubGlobal('confirm', vi.fn(() => true));
+    localStorage.removeItem(SPORT_SELECTION_STORAGE_KEY);
+    localStorage.removeItem(NIGHT_GUARDRAIL_STORAGE_KEY);
+    clearRunwayAnalytics();
+    clearSleepCheckIns();
   });
 
   afterEach(() => {
@@ -145,13 +154,73 @@ describe('App integration flow', () => {
 
     expect(
       screen.getByRole('heading', {
-        name: 'Start in 60 seconds',
+        name: 'Replace the pre-game scroll in 60 seconds',
       }),
     ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Soccer' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByText('1. Choose role')).toBeInTheDocument();
     expect(screen.queryByText('2. Choose one goal')).not.toBeInTheDocument();
-    expect(screen.getAllByRole('heading', { name: 'Choose Your Drill' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('heading', { name: 'Soccer Readiness Drills' }).length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: 'Unmute audio' })).toBeInTheDocument();
+  });
+
+  it('uses soccer as the default selected sport and persists sport choice', () => {
+    renderApp();
+    expect(screen.getByRole('button', { name: 'Soccer' })).toHaveAttribute('aria-pressed', 'true');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Boxing' }));
+    expect(localStorage.getItem(SPORT_SELECTION_STORAGE_KEY)).toBe('boxing');
+  });
+
+  it('renders sport-specific drill descriptions in mode cards', () => {
+    renderApp();
+    expect(screen.getByText('Match your first touch/pass release to the first open lane cue.')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Boxing' }));
+    expect(screen.getByText('Read incoming line and choose the right slip/roll/counter direction fast.')).toBeInTheDocument();
+  });
+
+  it('shows low-stimulation mode availability when competition night guardrail is active', () => {
+    vi.setSystemTime(new Date('2026-01-01T20:30:00'));
+    localStorage.setItem(
+      NIGHT_GUARDRAIL_STORAGE_KEY,
+      JSON.stringify({
+        targetBedtime: '22:00',
+        competitionTomorrow: true,
+        reminderPreference: 'inApp',
+        includeBreathingRoutine: true,
+      }),
+    );
+
+    renderApp();
+
+    expect(screen.getByText('Low-stimulation option')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Start low-stimulation session' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Soccer Readiness Drills' })).not.toBeInTheDocument();
+  });
+
+  it('runs the night-before low-stimulation flow into safe benchmark gameplay', async () => {
+    vi.setSystemTime(new Date('2026-01-01T20:45:00'));
+    localStorage.setItem(
+      NIGHT_GUARDRAIL_STORAGE_KEY,
+      JSON.stringify({
+        targetBedtime: '22:00',
+        competitionTomorrow: true,
+        reminderPreference: 'inApp',
+        includeBreathingRoutine: true,
+      }),
+    );
+    renderApp();
+
+    expect(screen.queryByRole('heading', { name: 'Soccer Readiness Drills' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Start low-stimulation session' }));
+    await flushMicrotasks();
+
+    expect(screen.getByRole('heading', { name: 'Breathing reset' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Skip routine' }));
+    await flushMicrotasks();
+    expect(screen.getByText('Reaction Benchmark')).toBeInTheDocument();
+    expect(screen.getByText('Benchmark protocol')).toBeInTheDocument();
   });
 
   it('runs first-run role-and-goal flow into immediate benchmark', async () => {
@@ -218,7 +287,7 @@ describe('App integration flow', () => {
       expect(screen.getAllByText(modeName).length).toBeGreaterThan(0);
 
       fireEvent.click(screen.getByRole('button', { name: 'Main Menu' }));
-      expect(screen.getAllByRole('heading', { name: 'Choose Your Drill' }).length).toBeGreaterThan(0);
+      expect(screen.getAllByRole('heading', { name: 'Soccer Readiness Drills' }).length).toBeGreaterThan(0);
     }
   });
 
@@ -258,9 +327,11 @@ describe('App integration flow', () => {
     await startMode('Sequence Memory');
     await advance(180);
     expect(screen.getByText(/Watch sequence/i)).toBeInTheDocument();
+    const previewTargets = screen.getAllByRole('button', { name: 'Sequence target' });
+    expect(previewTargets.some(target => target.textContent && target.textContent.trim().length > 0)).toBe(true);
 
     await advance(2_900);
-    expect(screen.getByText(/Tap the cues in the same order/i)).toBeInTheDocument();
+    expect(screen.getByText(/Tap the same cues in order/i)).toBeInTheDocument();
 
     const sequenceTargets = screen.getAllByRole('button', { name: 'Sequence target' });
     const orderedTargets = sequenceTargets
@@ -276,6 +347,69 @@ describe('App integration flow', () => {
     await advance(120);
     expect(screen.getByLabelText('Current streak 3')).toBeInTheDocument();
     expect(screen.getByText(/Sequence complete/i)).toBeInTheDocument();
+  });
+
+  it('opens benchmark methodology page from homepage links', async () => {
+    renderApp();
+    fireEvent.click(screen.getByRole('button', { name: /see benchmark methodology/i }));
+    await flushMicrotasks();
+
+    expect(screen.getByRole('heading', { name: /How GameSpeed Scoring Works/i })).toBeInTheDocument();
+    expect(screen.getByText(/Methodology and caveats/i)).toBeInTheDocument();
+  });
+
+  it('renders sport-specific runway copy for the selected sport', () => {
+    renderApp();
+    fireEvent.click(screen.getByRole('button', { name: 'Boxing' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Pre-Game Runway' }));
+
+    expect(screen.getByRole('heading', { name: 'Boxing pre-session runway' })).toBeInTheDocument();
+    expect(screen.getByText(/put the phone away/i)).toBeInTheDocument();
+  });
+
+  it('applies selected runway preset when starting the routine', async () => {
+    renderApp();
+    fireEvent.click(screen.getByRole('button', { name: 'Pre-Game Runway' }));
+    fireEvent.click(screen.getByRole('button', { name: '10 min' }));
+    expect(screen.getByRole('button', { name: '10 min' })).toHaveAttribute('aria-pressed', 'true');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Start runway session' }));
+    await flushMicrotasks();
+
+    expect(screen.getByText('10:00 total')).toBeInTheDocument();
+  });
+
+  it('progresses runway phases in sequence and reaches completion', async () => {
+    renderApp();
+    fireEvent.click(screen.getByRole('button', { name: 'Pre-Game Runway' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Start runway session' }));
+    await flushMicrotasks();
+
+    expect(screen.getByRole('heading', { name: 'Phase 1: Breathing Reset' })).toBeInTheDocument();
+    await advance(60_000);
+    expect(screen.getByRole('heading', { name: 'Phase 2: Gaze Stabilization' })).toBeInTheDocument();
+    await advance(60_000);
+    expect(screen.getByRole('heading', { name: 'Phase 3: Object Tracking' })).toBeInTheDocument();
+    await advance(120_000);
+    expect(screen.getByRole('heading', { name: 'Phase 4: Cue Review' })).toBeInTheDocument();
+    await advance(60_000);
+
+    expect(screen.getByRole('heading', { name: 'Runway complete' })).toBeInTheDocument();
+    expect(screen.getByText(/Runway completion badge earned/i)).toBeInTheDocument();
+  });
+
+  it('persists runway completion locally', async () => {
+    renderApp();
+    fireEvent.click(screen.getByRole('button', { name: 'Pre-Game Runway' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Start runway session' }));
+    await flushMicrotasks();
+    await advance(300_000);
+
+    const analytics = loadRunwayAnalytics();
+    expect(analytics.completions.length).toBe(1);
+    expect(analytics.completions[0].sport).toBe('soccer');
+    expect(analytics.completions[0].presetMinutes).toBe(5);
+    expect(analytics.completions[0].totalDurationSeconds).toBe(300);
   });
 
   it('marks failure when Sequence Memory input order is wrong', async () => {
@@ -351,7 +485,7 @@ describe('App integration flow', () => {
     expect(screen.getByText('Final Score')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Main Menu' }));
-    expect(screen.getAllByRole('heading', { name: 'Choose Your Drill' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('heading', { name: 'Soccer Readiness Drills' }).length).toBeGreaterThan(0);
   });
 
   it('toggles audio safely without crashing the UI', async () => {
@@ -408,5 +542,27 @@ describe('App integration flow', () => {
     await advance(57_000);
 
     expect(screen.getByText('Final Score')).toBeInTheDocument();
+  });
+
+  it('covers coach mode basics: add athlete and log activities', async () => {
+    renderApp();
+    fireEvent.click(screen.getByRole('button', { name: 'Coach Mode' }));
+    await flushMicrotasks();
+
+    expect(screen.getByRole('heading', { name: 'Team readiness challenge board' })).toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText('Athlete name'), { target: { value: 'Ava' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+
+    expect(screen.getByRole('heading', { name: 'Ava' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '+ Runway completion' }));
+    fireEvent.click(screen.getByRole('button', { name: '+ Readiness session' }));
+    fireEvent.click(screen.getByRole('button', { name: '+ Sleep check-in' }));
+
+    const athleteCard = screen.getByRole('heading', { name: 'Ava' }).closest('section');
+    if (!athleteCard) {
+      throw new Error('Athlete card not found');
+    }
+    expect(within(athleteCard).getAllByText('1').length).toBeGreaterThan(0);
+    expect(screen.getByText(/Recent reaction\/decision trend/i)).toBeInTheDocument();
   });
 });

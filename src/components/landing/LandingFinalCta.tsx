@@ -13,7 +13,7 @@ export const LandingFinalCta = ({ content, onPrimary, onSecondary }: LandingFina
 
   return (
     <section
-      className="rounded-3xl border p-6 text-center sm:p-8"
+      className="rounded-3xl border p-4 text-center sm:p-8"
       style={{
         borderColor: `${theme.targetColor}55`,
         background: 'linear-gradient(165deg, rgba(5,11,17,0.94), rgba(8,23,20,0.8))',
@@ -26,7 +26,7 @@ export const LandingFinalCta = ({ content, onPrimary, onSecondary }: LandingFina
       <p className="mx-auto mt-3 max-w-2xl text-sm leading-relaxed sm:text-base" style={{ color: theme.textColor, opacity: 0.84 }}>
         {content.body}
       </p>
-      <div className="mt-5 flex flex-col justify-center gap-3 sm:flex-row">
+      <div className="mt-4 flex flex-col justify-center gap-2.5 sm:mt-5 sm:gap-3 sm:flex-row">
         <JungleButton onClick={onPrimary} className="min-h-12 sm:min-w-56">
           {content.primaryCta}
         </JungleButton>

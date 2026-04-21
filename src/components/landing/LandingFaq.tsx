@@ -13,11 +13,11 @@ export const LandingFaq = ({ content }: LandingFaqProps) => {
       <h2 className="text-xl font-bold sm:text-2xl" style={{ color: theme.textColor }}>
         {content.heading}
       </h2>
-      <div className="mt-4 space-y-3">
+      <div className="mt-3 space-y-2.5 sm:mt-4 sm:space-y-3">
         {content.items.map(item => (
           <details
             key={item.question}
-            className="rounded-2xl border px-4 py-3"
+            className="rounded-2xl border px-3.5 py-3 sm:px-4"
             style={{
               borderColor: `${theme.targetColor}35`,
               backgroundColor: 'rgba(6, 12, 16, 0.72)',

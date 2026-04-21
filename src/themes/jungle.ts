@@ -1,9 +1,9 @@
 import { JungleThemeConfig } from '../types/theme';
 import { jungleAssetManifest, jungleVisualFallbacks } from './assetManifest';
 
-// import.meta.env.BASE_URL resolves to the `base` value set in vite.config.ts
-// ('/gamespeed/' for GitHub Pages, '/' for a root domain deployment).
-// Using it here ensures asset URLs are always correct regardless of hosting target.
+// import.meta.env.BASE_URL resolves to the `base` value set in vite.config.ts.
+// For production this is `/` on Vercel root-domain deployments.
+// Using it here keeps asset URLs consistent with the configured build base.
 export const jungleTheme: JungleThemeConfig = {
   name: 'jungle',
   backgroundColor: '#06120f',
@@ -47,8 +47,44 @@ export const jungleTheme: JungleThemeConfig = {
     },
     // Anticipation/countdown/reaction timing cues can be added here.
     training: {},
-    // Mode-specific cues (Swipe Strike, Hold Track, Sequence Memory) can live here.
-    mode: {},
+    mode: {
+      'swipe-left': {
+        src: jungleAssetManifest.audio.mode.swipeLeft,
+        fallbackEffect: 'hit',
+      },
+      'swipe-right': {
+        src: jungleAssetManifest.audio.mode.swipeRight,
+        fallbackEffect: 'hit',
+      },
+      'swipe-up': {
+        src: jungleAssetManifest.audio.mode.swipeUp,
+        fallbackEffect: 'hit',
+      },
+      'swipe-down': {
+        src: jungleAssetManifest.audio.mode.swipeDown,
+        fallbackEffect: 'hit',
+      },
+      'hold-lock': {
+        src: jungleAssetManifest.audio.mode.holdLock,
+        fallbackEffect: 'hit',
+      },
+      'sequence-preview': {
+        src: jungleAssetManifest.audio.mode.sequencePreview,
+        fallbackEffect: 'hit',
+      },
+      'sequence-input': {
+        src: jungleAssetManifest.audio.mode.sequenceInput,
+        fallbackEffect: 'hit',
+      },
+      'sequence-success': {
+        src: jungleAssetManifest.audio.mode.sequenceSuccess,
+        fallbackEffect: 'success',
+      },
+      'sequence-fail': {
+        src: jungleAssetManifest.audio.mode.sequenceFail,
+        fallbackEffect: 'miss',
+      },
+    },
     // Menu/system interaction cues can be added here.
     ui: {},
   },

@@ -1,12 +1,14 @@
 import React, { useEffect } from 'react';
-import { modeDescriptions } from '../utils/modeDescriptions';
+import { getModePresentation } from '../utils/modeDescriptions';
 import { useTheme } from '../context/ThemeContext';
 import { JungleButton } from './JungleButton';
 import { GameModeType } from '../types/game';
 import { motion, AnimatePresence } from 'framer-motion';
+import { DEFAULT_SPORT, SportType } from '../config/sports';
 
 interface HowToPlayModalProps {
   modeKey: GameModeType | null;
+  selectedSport?: SportType;
   isOpen: boolean;
   onClose: () => void;
   onStart?: () => void;
@@ -14,12 +16,13 @@ interface HowToPlayModalProps {
 
 export const HowToPlayModal: React.FC<HowToPlayModalProps> = ({
   modeKey,
+  selectedSport = DEFAULT_SPORT,
   isOpen,
   onClose,
   onStart,
 }) => {
   const { theme } = useTheme();
-  const modeInfo = modeKey ? modeDescriptions[modeKey] : null;
+  const modeInfo = modeKey ? getModePresentation(modeKey, selectedSport) : null;
 
   useEffect(() => {
     document.body.style.overflow = isOpen ? 'hidden' : '';
@@ -84,7 +87,10 @@ export const HowToPlayModal: React.FC<HowToPlayModalProps> = ({
                   className="text-sm sm:text-base opacity-80 leading-relaxed"
                   style={{ color: theme.textColor }}
                 >
-                  {modeInfo.description}
+                  {modeInfo.sportDescription}
+                </p>
+                <p className="mt-2 text-xs uppercase tracking-[0.14em] font-semibold" style={{ color: theme.targetColor }}>
+                  {modeInfo.sportLabel}
                 </p>
               </div>
 
@@ -146,6 +152,42 @@ export const HowToPlayModal: React.FC<HowToPlayModalProps> = ({
                     </li>
                   ))}
                 </ul>
+              </div>
+
+              <div
+                className="rounded-xl p-4 sm:p-5"
+                style={{
+                  backgroundColor: 'rgba(7, 16, 24, 0.8)',
+                  border: `1px solid ${theme.targetColor}4a`,
+                }}
+              >
+                <h3
+                  className="text-sm font-bold tracking-widest uppercase mb-2 opacity-80"
+                  style={{ color: theme.targetColor }}
+                >
+                  Why this matters
+                </h3>
+                <p className="text-sm leading-relaxed mb-3" style={{ color: theme.textColor, opacity: 0.86 }}>
+                  {modeInfo.whyThisMatters}
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs sm:text-sm">
+                  <div className="rounded-lg px-3 py-2" style={{ backgroundColor: `${theme.textColor}0f` }}>
+                    <p className="font-semibold mb-0.5" style={{ color: theme.textColor }}>Cue pickup</p>
+                    <p style={{ color: theme.textColor, opacity: 0.76 }}>{modeInfo.evidenceStyle.cuePickup}</p>
+                  </div>
+                  <div className="rounded-lg px-3 py-2" style={{ backgroundColor: `${theme.textColor}0f` }}>
+                    <p className="font-semibold mb-0.5" style={{ color: theme.textColor }}>Anticipation</p>
+                    <p style={{ color: theme.textColor, opacity: 0.76 }}>{modeInfo.evidenceStyle.anticipation}</p>
+                  </div>
+                  <div className="rounded-lg px-3 py-2" style={{ backgroundColor: `${theme.textColor}0f` }}>
+                    <p className="font-semibold mb-0.5" style={{ color: theme.textColor }}>Decision speed</p>
+                    <p style={{ color: theme.textColor, opacity: 0.76 }}>{modeInfo.evidenceStyle.decisionSpeed}</p>
+                  </div>
+                  <div className="rounded-lg px-3 py-2" style={{ backgroundColor: `${theme.textColor}0f` }}>
+                    <p className="font-semibold mb-0.5" style={{ color: theme.textColor }}>Gaze stability</p>
+                    <p style={{ color: theme.textColor, opacity: 0.76 }}>{modeInfo.evidenceStyle.gazeStability}</p>
+                  </div>
+                </div>
               </div>
 
               {modeKey === 'reactionBenchmark' && (

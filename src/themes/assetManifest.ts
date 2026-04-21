@@ -48,7 +48,17 @@ export const jungleAssetManifest = {
       roundComplete: buildAssetPath('audio/effects/round-complete.mp3'),
     },
     training: {},
-    mode: {},
+    mode: {
+      swipeLeft: buildAssetPath('audio/effects/target-hit.mp3'),
+      swipeRight: buildAssetPath('audio/effects/target-hit.mp3'),
+      swipeUp: buildAssetPath('audio/effects/target-hit.mp3'),
+      swipeDown: buildAssetPath('audio/effects/target-hit.mp3'),
+      holdLock: buildAssetPath('audio/effects/target-hit.mp3'),
+      sequencePreview: buildAssetPath('audio/effects/target-hit.mp3'),
+      sequenceInput: buildAssetPath('audio/effects/target-hit.mp3'),
+      sequenceSuccess: buildAssetPath('audio/effects/round-complete.mp3'),
+      sequenceFail: buildAssetPath('audio/effects/target-miss.mp3'),
+    },
     ui: {},
   },
   ui: {

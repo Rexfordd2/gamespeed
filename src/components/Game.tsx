@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Target as TargetType, GameModeType, GameResult } from '../types/game';
 import { useTheme } from '../context/ThemeContext';
 import { useAudio } from './AudioManager';
+import { SportType } from '../config/sports';
 import { gameModes, resolvePlayableMode } from '../utils/gameModes';
 import {
   calculateHoldProgress,
@@ -15,14 +16,21 @@ import {
   getSequencePreviewStepMs,
   SEQUENCE_MIN_LENGTH,
 } from '../modes/sequenceMemory';
+import { scaleMsByStreak, scaleSecondsByStreak } from '../utils/streakScaling';
+import { getSwipeCueLabel, getHoldTrackCueLabel, getSequenceCueLabels } from '../utils/modeCueLanguage';
+import { getSwipeTimingVerdict, getSwipeTimingWindow } from '../utils/modeMechanics';
+import { deriveReadinessMetrics } from '../utils/readinessMetrics';
 import { GameHeader } from './GameHeader';
 import { Target } from './Target';
 import { JungleButton } from './JungleButton';
 
 interface GameProps {
   mode?: GameModeType;
+  selectedSport: SportType;
   onGameOver: (result: GameResult) => void;
   onMainMenu: () => void;
+  lowStimulusMode?: boolean;
+  includeBreathingRoutine?: boolean;
 }
 
 const DEFAULT_ROUND_SECONDS = 60;
@@ -30,6 +38,12 @@ const LOOP_TICK_MS = 50;
 const HOLD_BREAK_FEEDBACK_MS = 210;
 const SEQUENCE_SUCCESS_FEEDBACK_MS = 520;
 const SEQUENCE_FAILURE_FEEDBACK_MS = 720;
+const MIN_SPAWN_INTERVAL_MS = 120;
+const MIN_TARGET_LIFESPAN_SECONDS = 0.3;
+const MIN_SEQUENCE_PREVIEW_STEP_MS = 240;
+const MIN_SEQUENCE_FEEDBACK_MS = 220;
+const LOW_STIM_ROUTINE_PHASE_SECONDS = 45;
+const MISS_FEEDBACK_COOLDOWN_MS = 180;
 const PLAYFIELD_TOP_OFFSET = 'max(96px, calc(env(safe-area-inset-top, 0px) + 82px))';
 const TARGET_SAFE_TOP_PERCENT = 18;
 const TARGET_SAFE_BOTTOM_PERCENT = 7;
@@ -48,19 +62,28 @@ type HoldTrackingState = {
   pointerX: number;
   pointerY: number;
   heldMs: number;
+  decisionReactionMs: number;
   lastTickAt: number;
 };
 
 type SequencePhase = 'preview' | 'input' | 'feedback';
 type SequenceFeedback = 'success' | 'failure' | null;
+type SwipeTimingFeedback = 'early' | 'late' | null;
 
-export const Game = ({ mode = 'quickTap', onGameOver, onMainMenu }: GameProps) => {
+export const Game = ({
+  mode = 'quickTap',
+  selectedSport,
+  onGameOver,
+  onMainMenu,
+  lowStimulusMode = false,
+  includeBreathingRoutine = false,
+}: GameProps) => {
   const activeMode = resolvePlayableMode(mode);
   const ROUND_SECONDS = gameModes[activeMode].config.roundSeconds ?? DEFAULT_ROUND_SECONDS;
   const ROUND_MS = ROUND_SECONDS * 1000;
 
   const { theme } = useTheme();
-  const { playEffect, startBackgroundMusic, stopBackgroundMusic } = useAudio();
+  const { playEffect, playCue, startBackgroundMusic, stopBackgroundMusic } = useAudio();
 
   const [score, setScore] = useState(0);
   const [misses, setMisses] = useState(0);
@@ -75,6 +98,11 @@ export const Game = ({ mode = 'quickTap', onGameOver, onMainMenu }: GameProps) =
   const [sequencePreviewStep, setSequencePreviewStep] = useState(0);
   const [sequenceInputStep, setSequenceInputStep] = useState(0);
   const [sequenceLength, setSequenceLength] = useState(SEQUENCE_MIN_LENGTH);
+  const [swipeTimingFeedback, setSwipeTimingFeedback] = useState<SwipeTimingFeedback>(null);
+  const [routineStep, setRoutineStep] = useState<'breathing' | 'gaze' | null>(
+    lowStimulusMode && includeBreathingRoutine ? 'breathing' : null,
+  );
+  const [routineSecondsLeft, setRoutineSecondsLeft] = useState(LOW_STIM_ROUTINE_PHASE_SECONDS);
   const [, setBestStreak] = useState(0);
   const screenSizeRef = useRef({
     width: window.innerWidth,
@@ -98,9 +126,13 @@ export const Game = ({ mode = 'quickTap', onGameOver, onMainMenu }: GameProps) =
     pointerX: 0,
     pointerY: 0,
     heldMs: 0,
+    decisionReactionMs: 0,
     lastTickAt: 0,
   });
   const reactionTimesRef = useRef<number[]>([]);
+  const attemptsRef = useRef(0);
+  const lateDecisionsRef = useRef(0);
+  const streakRunsRef = useRef<number[]>([]);
   const holdBreakUntilRef = useRef<Record<string, number>>({});
   const sequencePhaseRef = useRef<SequencePhase>('preview');
   const sequenceFeedbackRef = useRef<SequenceFeedback>(null);
@@ -111,6 +143,19 @@ export const Game = ({ mode = 'quickTap', onGameOver, onMainMenu }: GameProps) =
   const sequenceOrderRef = useRef<string[]>([]);
   const sequencePhaseEndsAtRef = useRef(0);
   const sequencePhaseRemainingMsRef = useRef(0);
+  const swipeFeedbackTimeoutRef = useRef<number | null>(null);
+  const lastMissFeedbackAtRef = useRef(0);
+  const isRoutineActive = routineStep !== null;
+  const sequenceCueLabelsRef = useRef<string[]>([]);
+
+  const triggerMissFeedback = useCallback(() => {
+    const now = Date.now();
+    if (now - lastMissFeedbackAtRef.current < MISS_FEEDBACK_COOLDOWN_MS) {
+      return;
+    }
+    lastMissFeedbackAtRef.current = now;
+    setMissFeedbackId(prev => prev + 1);
+  }, []);
 
   const keepTargetsInPlayfield = useCallback((targetsToAdjust: TargetType[]) => {
     return targetsToAdjust.map(target => ({
@@ -185,6 +230,7 @@ export const Game = ({ mode = 'quickTap', onGameOver, onMainMenu }: GameProps) =
       pointerX: 0,
       pointerY: 0,
       heldMs: 0,
+      decisionReactionMs: 0,
       lastTickAt: 0,
     };
   }, []);
@@ -216,6 +262,11 @@ export const Game = ({ mode = 'quickTap', onGameOver, onMainMenu }: GameProps) =
 
   const startSequenceRound = useCallback(
     (now: number, nextLength: number) => {
+      const streakScaledPreviewMs = scaleMsByStreak(
+        getSequencePreviewStepMs(screenSizeRef.current.width),
+        streakRef.current,
+        MIN_SEQUENCE_PREVIEW_STEP_MS,
+      );
       const generated = keepTargetsInPlayfield(
         generateSequenceTargets({
           screenSize: screenSizeRef.current,
@@ -224,16 +275,23 @@ export const Game = ({ mode = 'quickTap', onGameOver, onMainMenu }: GameProps) =
           targetLifespan: 120,
         }),
       );
-      targetsRef.current = generated;
-      setTargets(generated);
-      sequenceOrderRef.current = generated.map(target => target.id);
+      const cueLabels = getSequenceCueLabels(selectedSport, nextLength);
+      sequenceCueLabelsRef.current = cueLabels;
+      const labeledTargets = generated.map((target, index) => ({
+        ...target,
+        cueLabel: cueLabels[index] ?? `cue ${index + 1}`,
+      }));
+      targetsRef.current = labeledTargets;
+      setTargets(labeledTargets);
+      sequenceOrderRef.current = labeledTargets.map(target => target.id);
       updateSequenceLength(nextLength);
       updateSequencePreviewStep(0);
       updateSequenceInputStep(0);
       updateSequenceFeedback(null);
       updateSequencePhase('preview');
-      sequencePhaseEndsAtRef.current = now + getSequencePreviewStepMs(screenSizeRef.current.width);
+      sequencePhaseEndsAtRef.current = now + streakScaledPreviewMs;
       sequencePhaseRemainingMsRef.current = Math.max(0, sequencePhaseEndsAtRef.current - now);
+      playCue('mode', 'sequence-preview');
     },
     [
       keepTargetsInPlayfield,
@@ -242,6 +300,8 @@ export const Game = ({ mode = 'quickTap', onGameOver, onMainMenu }: GameProps) =
       updateSequenceLength,
       updateSequencePhase,
       updateSequencePreviewStep,
+      playCue,
+      selectedSport,
     ],
   );
 
@@ -257,19 +317,30 @@ export const Game = ({ mode = 'quickTap', onGameOver, onMainMenu }: GameProps) =
   }, []);
 
   useEffect(() => {
-    startBackgroundMusic();
+    if (!lowStimulusMode) {
+      startBackgroundMusic();
+    }
     return () => {
       stopBackgroundMusic();
     };
-  }, [startBackgroundMusic, stopBackgroundMusic]);
+  }, [lowStimulusMode, startBackgroundMusic, stopBackgroundMusic]);
 
   useEffect(() => {
-    if (isPaused) {
+    if (isPaused || lowStimulusMode) {
       stopBackgroundMusic();
     } else {
       startBackgroundMusic();
     }
-  }, [isPaused, startBackgroundMusic, stopBackgroundMusic]);
+  }, [isPaused, lowStimulusMode, startBackgroundMusic, stopBackgroundMusic]);
+
+  useEffect(
+    () => () => {
+      if (swipeFeedbackTimeoutRef.current !== null) {
+        window.clearTimeout(swipeFeedbackTimeoutRef.current);
+      }
+    },
+    [],
+  );
 
   const finishGame = useCallback(
     (trigger: 'timeout' | 'quit') => {
@@ -305,19 +376,37 @@ export const Game = ({ mode = 'quickTap', onGameOver, onMainMenu }: GameProps) =
         );
       }
 
+      if (streakRef.current > 0) {
+        streakRunsRef.current.push(streakRef.current);
+      }
+
+      const readinessMetrics = deriveReadinessMetrics({
+        score: scoreRef.current,
+        misses: missesRef.current,
+        totalAttempts: attemptsRef.current,
+        lateDecisions: lateDecisionsRef.current,
+        reactionTimesMs: reactionTimesRef.current,
+        streakRuns: streakRunsRef.current.length > 0 ? streakRunsRef.current : [bestStreakRef.current],
+      });
+
       onGameOver({
         score: scoreRef.current,
         misses: missesRef.current,
         bestStreak: bestStreakRef.current,
         mode: activeMode,
         modeName: gameMode.name,
+        sport: selectedSport,
+        totalAttempts: attemptsRef.current,
+        lateDecisions: lateDecisionsRef.current,
+        streakRuns: streakRunsRef.current,
         reactionTimesMs:
           activeMode === 'reactionBenchmark' ? [...reactionTimesRef.current] : undefined,
         medianReactionTimeMs,
         benchmarkScore,
+        readinessMetrics,
       });
     },
-    [activeMode, onGameOver, playEffect],
+    [activeMode, onGameOver, playEffect, selectedSport],
   );
 
   useEffect(() => {
@@ -328,6 +417,9 @@ export const Game = ({ mode = 'quickTap', onGameOver, onMainMenu }: GameProps) =
     bestStreakRef.current = 0;
     isPausedRef.current = false;
     gameOverFiredRef.current = false;
+    attemptsRef.current = 0;
+    lateDecisionsRef.current = 0;
+    streakRunsRef.current = [];
     const resetRoundSecs = gameModes[activeMode].config.roundSeconds ?? DEFAULT_ROUND_SECONDS;
     const resetRoundMs = resetRoundSecs * 1000;
     remainingMsRef.current = resetRoundMs;
@@ -345,6 +437,11 @@ export const Game = ({ mode = 'quickTap', onGameOver, onMainMenu }: GameProps) =
     sequencePreviewStepRef.current = 0;
     sequenceInputStepRef.current = 0;
     sequenceLengthRef.current = SEQUENCE_MIN_LENGTH;
+    sequenceCueLabelsRef.current = [];
+    if (swipeFeedbackTimeoutRef.current !== null) {
+      window.clearTimeout(swipeFeedbackTimeoutRef.current);
+      swipeFeedbackTimeoutRef.current = null;
+    }
 
     setTargets([]);
     setTimeLeft(resetRoundSecs);
@@ -359,12 +456,41 @@ export const Game = ({ mode = 'quickTap', onGameOver, onMainMenu }: GameProps) =
     setSequencePreviewStep(0);
     setSequenceInputStep(0);
     setSequenceLength(SEQUENCE_MIN_LENGTH);
-  }, [activeMode, clearHoldTrackingState]);
+    setSwipeTimingFeedback(null);
+    setRoutineStep(lowStimulusMode && includeBreathingRoutine ? 'breathing' : null);
+    setRoutineSecondsLeft(LOW_STIM_ROUTINE_PHASE_SECONDS);
+  }, [activeMode, clearHoldTrackingState, includeBreathingRoutine, lowStimulusMode]);
+
+  useEffect(() => {
+    if (!isRoutineActive) {
+      return;
+    }
+
+    const timerId = window.setInterval(() => {
+      setRoutineSecondsLeft(prev => {
+        if (prev > 1) {
+          return prev - 1;
+        }
+        if (routineStep === 'breathing') {
+          setRoutineStep('gaze');
+          return LOW_STIM_ROUTINE_PHASE_SECONDS;
+        }
+        setRoutineStep(null);
+        roundEndsAtRef.current = Date.now() + remainingMsRef.current;
+        return 0;
+      });
+    }, 1000);
+
+    return () => window.clearInterval(timerId);
+  }, [isRoutineActive, routineStep]);
 
   useEffect(() => {
     const gameMode = gameModes[activeMode];
     const interval = window.setInterval(() => {
       if (gameOverFiredRef.current || isPausedRef.current) {
+        return;
+      }
+      if (isRoutineActive) {
         return;
       }
 
@@ -377,6 +503,16 @@ export const Game = ({ mode = 'quickTap', onGameOver, onMainMenu }: GameProps) =
 
       const currentTargets = targetsRef.current;
       let nextTargets = currentTargets;
+      const streakScaledIntervalMs = scaleMsByStreak(
+        gameMode.config.targetInterval,
+        streakRef.current,
+        MIN_SPAWN_INTERVAL_MS,
+      );
+      const streakScaledLifespanSeconds = scaleSecondsByStreak(
+        gameMode.config.targetLifespan,
+        streakRef.current,
+        MIN_TARGET_LIFESPAN_SECONDS,
+      );
 
       if (activeMode === 'sequenceMemory') {
         if (sequencePhaseRef.current === 'feedback' && now >= sequencePhaseEndsAtRef.current) {
@@ -401,9 +537,16 @@ export const Game = ({ mode = 'quickTap', onGameOver, onMainMenu }: GameProps) =
               updateSequenceInputStep(0);
               sequencePhaseEndsAtRef.current = 0;
               sequencePhaseRemainingMsRef.current = 0;
+              playCue('mode', 'sequence-input');
             } else {
               updateSequencePreviewStep(nextStep);
-              sequencePhaseEndsAtRef.current = now + getSequencePreviewStepMs(screenSizeRef.current.width);
+              sequencePhaseEndsAtRef.current =
+                now +
+                scaleMsByStreak(
+                  getSequencePreviewStepMs(screenSizeRef.current.width),
+                  streakRef.current,
+                  MIN_SEQUENCE_PREVIEW_STEP_MS,
+                );
               sequencePhaseRemainingMsRef.current = Math.max(0, sequencePhaseEndsAtRef.current - now);
             }
           }
@@ -417,10 +560,13 @@ export const Game = ({ mode = 'quickTap', onGameOver, onMainMenu }: GameProps) =
 
         if (expiredCount > 0) {
           playEffect('miss');
-          setMissFeedbackId(prev => prev + 1);
+          triggerMissFeedback();
+          attemptsRef.current += expiredCount;
+          lateDecisionsRef.current += expiredCount;
           missesRef.current += expiredCount;
           setMisses(prev => prev + expiredCount);
           if (streakRef.current !== 0) {
+            streakRunsRef.current.push(streakRef.current);
             streakRef.current = 0;
             setStreak(0);
           }
@@ -433,7 +579,7 @@ export const Game = ({ mode = 'quickTap', onGameOver, onMainMenu }: GameProps) =
             existingTargets: aliveTargets,
             currentTime: now,
             maxTargets: gameMode.config.maxTargets,
-            targetLifespan: gameMode.config.targetLifespan,
+            targetLifespan: streakScaledLifespanSeconds,
           });
           const hasNewTarget = generatedTargets.some(
             generatedTarget =>
@@ -442,7 +588,13 @@ export const Game = ({ mode = 'quickTap', onGameOver, onMainMenu }: GameProps) =
           nextTargets = hasNewTarget
             ? keepTargetsInPlayfield(generatedTargets)
             : generatedTargets;
-          nextSpawnAtRef.current = now + gameMode.config.targetInterval;
+          if (hasNewTarget && activeMode === 'swipeStrike') {
+            const newestTarget = nextTargets[nextTargets.length - 1];
+            if (newestTarget?.swipeDirection) {
+              playCue('mode', `swipe-${newestTarget.swipeDirection}`);
+            }
+          }
+          nextSpawnAtRef.current = now + streakScaledIntervalMs;
         }
       }
 
@@ -474,10 +626,12 @@ export const Game = ({ mode = 'quickTap', onGameOver, onMainMenu }: GameProps) =
               holdBreakUntilRef.current[failedTargetId] = now + HOLD_BREAK_FEEDBACK_MS;
               setHoldVisual(failedTargetId, 'broken', calculateHoldProgress(holdState.heldMs, trackedTarget.hold.requiredMs));
               playEffect('miss');
-              setMissFeedbackId(prev => prev + 1);
+              triggerMissFeedback();
+              attemptsRef.current += 1;
               missesRef.current += 1;
               setMisses(prev => prev + 1);
               if (streakRef.current !== 0) {
+                streakRunsRef.current.push(streakRef.current);
                 streakRef.current = 0;
                 setStreak(0);
               }
@@ -504,6 +658,10 @@ export const Game = ({ mode = 'quickTap', onGameOver, onMainMenu }: GameProps) =
               setHoldVisual(trackedTarget.id, phase, holdProgress);
 
               if (holdProgress >= 1) {
+                if (holdState.decisionReactionMs > 0) {
+                  reactionTimesRef.current.push(holdState.decisionReactionMs);
+                }
+                attemptsRef.current += 1;
                 scoreRef.current += 1;
                 setScore(prev => prev + 1);
                 streakRef.current += 1;
@@ -554,6 +712,7 @@ export const Game = ({ mode = 'quickTap', onGameOver, onMainMenu }: GameProps) =
     finishGame,
     keepTargetsInPlayfield,
     playEffect,
+    playCue,
     startSequenceRound,
     setHoldVisual,
     updateSequenceInputStep,
@@ -561,6 +720,8 @@ export const Game = ({ mode = 'quickTap', onGameOver, onMainMenu }: GameProps) =
     updateSequencePreviewStep,
     updateHoldTargetsForTime,
     updateSwipeTargetsForTime,
+    isRoutineActive,
+    triggerMissFeedback,
   ]);
 
   useEffect(() => {
@@ -598,7 +759,46 @@ export const Game = ({ mode = 'quickTap', onGameOver, onMainMenu }: GameProps) =
   const handleTargetClick = useCallback(
     (targetId: string) => {
       if (isPausedRef.current || gameOverFiredRef.current) return;
-      if (!targetsRef.current.some(target => target.id === targetId)) return;
+      const hitTarget = targetsRef.current.find(target => target.id === targetId);
+      if (!hitTarget) return;
+
+      if (activeMode === 'swipeStrike') {
+        const elapsedMs = Date.now() - hitTarget.createdAt;
+        const swipeTiming = getSwipeTimingWindow(
+          Math.max(1, hitTarget.lifespan * 1000),
+          screenSizeRef.current.width,
+        );
+        const timingVerdict = getSwipeTimingVerdict(elapsedMs, swipeTiming);
+        if (timingVerdict !== 'on-time') {
+          setSwipeTimingFeedback(timingVerdict);
+          if (swipeFeedbackTimeoutRef.current !== null) {
+            window.clearTimeout(swipeFeedbackTimeoutRef.current);
+          }
+          swipeFeedbackTimeoutRef.current = window.setTimeout(() => {
+            setSwipeTimingFeedback(null);
+            swipeFeedbackTimeoutRef.current = null;
+          }, 240);
+          playEffect('miss');
+          triggerMissFeedback();
+          attemptsRef.current += 1;
+          if (timingVerdict === 'late') {
+            lateDecisionsRef.current += 1;
+          }
+          missesRef.current += 1;
+          setMisses(prev => prev + 1);
+          if (streakRef.current !== 0) {
+            streakRunsRef.current.push(streakRef.current);
+            streakRef.current = 0;
+            setStreak(0);
+          }
+          setTargets(prev => {
+            const next = prev.filter(target => target.id !== targetId);
+            targetsRef.current = next;
+            return next;
+          });
+          return;
+        }
+      }
 
       if (activeMode === 'sequenceMemory') {
         if (sequencePhaseRef.current !== 'input') return;
@@ -606,20 +806,30 @@ export const Game = ({ mode = 'quickTap', onGameOver, onMainMenu }: GameProps) =
         const expectedTargetId = sequenceOrderRef.current[sequenceInputStepRef.current];
         if (targetId !== expectedTargetId) {
           playEffect('miss');
-          setMissFeedbackId(prev => prev + 1);
+          triggerMissFeedback();
+          attemptsRef.current += 1;
           missesRef.current += 1;
           setMisses(prev => prev + 1);
           if (streakRef.current !== 0) {
+            streakRunsRef.current.push(streakRef.current);
             streakRef.current = 0;
             setStreak(0);
           }
           updateSequenceFeedback('failure');
           updateSequencePhase('feedback');
-          sequencePhaseEndsAtRef.current = Date.now() + SEQUENCE_FAILURE_FEEDBACK_MS;
-          sequencePhaseRemainingMsRef.current = SEQUENCE_FAILURE_FEEDBACK_MS;
+          playCue('mode', 'sequence-fail');
+          const failureFeedbackMs = scaleMsByStreak(
+            SEQUENCE_FAILURE_FEEDBACK_MS,
+            streakRef.current,
+            MIN_SEQUENCE_FEEDBACK_MS,
+          );
+          sequencePhaseEndsAtRef.current = Date.now() + failureFeedbackMs;
+          sequencePhaseRemainingMsRef.current = failureFeedbackMs;
           return;
         }
 
+        reactionTimesRef.current.push(Date.now() - hitTarget.createdAt);
+        attemptsRef.current += 1;
         scoreRef.current += 1;
         setScore(prev => prev + 1);
         streakRef.current += 1;
@@ -642,18 +852,20 @@ export const Game = ({ mode = 'quickTap', onGameOver, onMainMenu }: GameProps) =
           sequenceSuccessesRef.current += 1;
           updateSequenceFeedback('success');
           updateSequencePhase('feedback');
-          sequencePhaseEndsAtRef.current = Date.now() + SEQUENCE_SUCCESS_FEEDBACK_MS;
-          sequencePhaseRemainingMsRef.current = SEQUENCE_SUCCESS_FEEDBACK_MS;
+          playCue('mode', 'sequence-success');
+          const successFeedbackMs = scaleMsByStreak(
+            SEQUENCE_SUCCESS_FEEDBACK_MS,
+            streakRef.current,
+            MIN_SEQUENCE_FEEDBACK_MS,
+          );
+          sequencePhaseEndsAtRef.current = Date.now() + successFeedbackMs;
+          sequencePhaseRemainingMsRef.current = successFeedbackMs;
         }
         return;
       }
 
-      if (activeMode === 'reactionBenchmark') {
-        const hitTarget = targetsRef.current.find(t => t.id === targetId);
-        if (hitTarget) {
-          reactionTimesRef.current.push(Date.now() - hitTarget.createdAt);
-        }
-      }
+      reactionTimesRef.current.push(Date.now() - hitTarget.createdAt);
+      attemptsRef.current += 1;
       scoreRef.current += 1;
       setScore(prev => prev + 1);
       streakRef.current += 1;
@@ -670,7 +882,41 @@ export const Game = ({ mode = 'quickTap', onGameOver, onMainMenu }: GameProps) =
         return next;
       });
     },
-    [activeMode, playEffect, updateSequenceFeedback, updateSequenceInputStep, updateSequencePhase],
+    [activeMode, playCue, playEffect, triggerMissFeedback, updateSequenceFeedback, updateSequenceInputStep, updateSequencePhase],
+  );
+
+  const handleSwipeAttemptFail = useCallback(
+    (targetId: string) => {
+      if (isPausedRef.current || gameOverFiredRef.current || activeMode !== 'swipeStrike') return;
+      if (!targetsRef.current.some(target => target.id === targetId)) return;
+
+      setSwipeTimingFeedback(null);
+      if (swipeFeedbackTimeoutRef.current !== null) {
+        window.clearTimeout(swipeFeedbackTimeoutRef.current);
+      }
+      swipeFeedbackTimeoutRef.current = window.setTimeout(() => {
+        setSwipeTimingFeedback(null);
+        swipeFeedbackTimeoutRef.current = null;
+      }, 220);
+
+      playEffect('miss');
+      triggerMissFeedback();
+      attemptsRef.current += 1;
+      missesRef.current += 1;
+      setMisses(prev => prev + 1);
+      if (streakRef.current !== 0) {
+        streakRunsRef.current.push(streakRef.current);
+        streakRef.current = 0;
+        setStreak(0);
+      }
+
+      setTargets(prev => {
+        const next = prev.filter(target => target.id !== targetId);
+        targetsRef.current = next;
+        return next;
+      });
+    },
+    [activeMode, playEffect, triggerMissFeedback],
   );
 
   const togglePause = useCallback(() => {
@@ -736,11 +982,13 @@ export const Game = ({ mode = 'quickTap', onGameOver, onMainMenu }: GameProps) =
         pointerX: x,
         pointerY: y,
         heldMs: 0,
+        decisionReactionMs: Math.max(0, Date.now() - (targetsRef.current.find(target => target.id === targetId)?.createdAt ?? Date.now())),
         lastTickAt: Date.now(),
       };
       setHoldVisual(targetId, 'arming', 0);
+      playCue('mode', 'hold-lock');
     },
-    [activeMode, setHoldVisual],
+    [activeMode, playCue, setHoldVisual],
   );
 
   const handleHoldPointerMove = useCallback(({ pointerId, x, y }: { pointerId: number; x: number; y: number }) => {
@@ -767,10 +1015,12 @@ export const Game = ({ mode = 'quickTap', onGameOver, onMainMenu }: GameProps) =
       holdBreakUntilRef.current[targetId] = Date.now() + HOLD_BREAK_FEEDBACK_MS;
       setHoldVisual(targetId, 'broken', calculateHoldProgress(tracking.heldMs, target.hold.requiredMs));
       playEffect('miss');
-      setMissFeedbackId(prev => prev + 1);
+      triggerMissFeedback();
+      attemptsRef.current += 1;
       missesRef.current += 1;
       setMisses(prev => prev + 1);
       if (streakRef.current !== 0) {
+        streakRunsRef.current.push(streakRef.current);
         streakRef.current = 0;
         setStreak(0);
       }
@@ -785,7 +1035,7 @@ export const Game = ({ mode = 'quickTap', onGameOver, onMainMenu }: GameProps) =
       }, HOLD_BREAK_FEEDBACK_MS);
       clearHoldTrackingState();
     },
-    [activeMode, clearHoldTrackingState, clearHoldVisual, playEffect, setHoldVisual],
+    [activeMode, clearHoldTrackingState, clearHoldVisual, playEffect, setHoldVisual, triggerMissFeedback],
   );
 
   useEffect(() => {
@@ -810,12 +1060,19 @@ export const Game = ({ mode = 'quickTap', onGameOver, onMainMenu }: GameProps) =
   }, [handleHoldPointerEnd, handleHoldPointerMove]);
 
   const gameMode = gameModes[activeMode];
+  const isBenchmarkMode = gameMode.category === 'benchmark';
   const isSequenceMode = activeMode === 'sequenceMemory';
   const sequenceExpectedTargetId = sequenceOrderRef.current[sequenceInputStep];
+  const activeSwipeTarget = activeMode === 'swipeStrike' ? targets[0] : undefined;
+  const swipeCueLabel =
+    activeSwipeTarget?.swipeDirection && activeMode === 'swipeStrike'
+      ? getSwipeCueLabel(selectedSport, activeSwipeTarget.swipeDirection)
+      : null;
+  const holdCueLabel = activeMode === 'holdTrack' ? getHoldTrackCueLabel(selectedSport) : null;
 
   return (
     <div
-      className="game-container relative w-full overflow-hidden"
+      className={`game-container relative w-full overflow-hidden ${lowStimulusMode ? 'game-low-stimulus' : ''}`}
       style={{ backgroundColor: theme.backgroundColor, height: '100dvh' }}
     >
       <GameHeader
@@ -827,6 +1084,7 @@ export const Game = ({ mode = 'quickTap', onGameOver, onMainMenu }: GameProps) =
         onPause={togglePause}
         onMainMenu={handleQuit}
         isPaused={isPaused}
+        reducedMotion={lowStimulusMode}
       />
 
       <div
@@ -839,10 +1097,68 @@ export const Game = ({ mode = 'quickTap', onGameOver, onMainMenu }: GameProps) =
           className="absolute inset-0 pointer-events-none"
           style={{
             background:
-              'radial-gradient(circle at 50% 50%, rgba(0,0,0,0.02) 0%, rgba(0,0,0,0.22) 100%)',
+              lowStimulusMode
+                ? 'radial-gradient(circle at 50% 50%, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.45) 100%)'
+                : 'radial-gradient(circle at 50% 50%, rgba(0,0,0,0.02) 0%, rgba(0,0,0,0.22) 100%)',
           }}
         />
+        {lowStimulusMode && (
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{ backgroundColor: 'rgba(3, 6, 12, 0.28)', zIndex: 10 }}
+          />
+        )}
         {missFeedbackId > 0 && <div key={missFeedbackId} className="miss-feedback-overlay" />}
+        <div className="absolute left-3 top-3 z-[13] pointer-events-none">
+          <div
+            className="rounded-lg px-2.5 py-1.5 text-[10px] uppercase tracking-[0.14em]"
+            style={{
+              backgroundColor: 'rgba(4, 12, 12, 0.78)',
+              border: `1px solid ${isBenchmarkMode ? '#38bdf8' : theme.targetColor}88`,
+              color: theme.textColor,
+            }}
+          >
+            {isBenchmarkMode ? 'Benchmark protocol' : 'Drill protocol'}
+          </div>
+        </div>
+        {activeMode === 'swipeStrike' && activeSwipeTarget && activeSwipeTarget.swipeDirection && (
+          <div className="absolute inset-x-0 top-3 z-[14] pointer-events-none px-3 sm:px-4">
+            <div
+              className="mx-auto max-w-sm rounded-xl px-3 py-2 text-center"
+              style={{
+                backgroundColor: 'rgba(4, 12, 12, 0.8)',
+                border: `1px solid ${theme.targetColor}77`,
+                color: theme.textColor,
+              }}
+              aria-live="polite"
+            >
+              <p className="text-[10px] uppercase tracking-[0.18em] opacity-70">Swipe window</p>
+              <p className="mt-1 text-sm font-semibold">
+                {swipeCueLabel} ({activeSwipeTarget.swipeDirection})
+              </p>
+              {swipeTimingFeedback && (
+                <p className="mt-1 text-xs" style={{ color: '#fca5a5' }}>
+                  {swipeTimingFeedback === 'early' ? 'Too early. Let the cue settle.' : 'Too late. Commit sooner.'}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+        {activeMode === 'holdTrack' && holdCueLabel && (
+          <div className="absolute inset-x-0 top-3 z-[14] pointer-events-none px-3 sm:px-4">
+            <div
+              className="mx-auto max-w-sm rounded-xl px-3 py-2 text-center"
+              style={{
+                backgroundColor: 'rgba(4, 12, 12, 0.8)',
+                border: `1px solid ${theme.targetColor}77`,
+                color: theme.textColor,
+              }}
+            >
+              <p className="text-[10px] uppercase tracking-[0.18em] opacity-70">Hold track</p>
+              <p className="mt-1 text-sm font-semibold">Maintain lock: {holdCueLabel}</p>
+            </div>
+          </div>
+        )}
         {isSequenceMode && (
           <div className="absolute inset-0 pointer-events-none">
             <div
@@ -878,13 +1194,18 @@ export const Game = ({ mode = 'quickTap', onGameOver, onMainMenu }: GameProps) =
               </p>
               <p className="mt-1 text-sm font-semibold">
                 {sequencePhase === 'preview'
-                  ? 'Memorize the glowing cue order.'
+                  ? 'Memorize the cue language order.'
                   : sequencePhase === 'input'
-                    ? 'Tap the cues in the same order.'
+                    ? 'Tap the same cues in order.'
                     : sequenceFeedback === 'success'
                       ? 'Clean execution. Next sequence loading...'
                       : 'Order break. Reset and try again.'}
               </p>
+              {sequenceCueLabelsRef.current.length > 0 && (
+                <p className="mt-1 text-[11px] opacity-75">
+                  Pattern: {sequenceCueLabelsRef.current.join(' -> ')}
+                </p>
+              )}
             </div>
           </div>
         )}
@@ -895,6 +1216,7 @@ export const Game = ({ mode = 'quickTap', onGameOver, onMainMenu }: GameProps) =
                 sequencePhase === 'preview' &&
                 sequenceOrderRef.current[sequencePreviewStep] === target.id;
               const isInputFocus = sequencePhase === 'input' && sequenceExpectedTargetId === target.id;
+              const showSequenceNumber = sequencePhase === 'preview';
 
               return (
                 <button
@@ -936,9 +1258,23 @@ export const Game = ({ mode = 'quickTap', onGameOver, onMainMenu }: GameProps) =
                     cursor: sequencePhase === 'input' ? 'pointer' : 'default',
                   }}
                 >
-                  <span className="text-sm sm:text-base" style={{ textShadow: '0 1px 8px rgba(0,0,0,0.4)' }}>
-                    {orderIndex + 1}
-                  </span>
+                  {showSequenceNumber ? (
+                    <span
+                      className="text-[10px] sm:text-xs uppercase font-bold tracking-[0.1em] px-2 text-center"
+                      style={{ textShadow: '0 1px 8px rgba(0,0,0,0.4)' }}
+                    >
+                      {target.cueLabel ?? `cue ${orderIndex + 1}`}
+                    </span>
+                  ) : (
+                    <span
+                      aria-hidden="true"
+                      className="h-2.5 w-2.5 rounded-full"
+                      style={{
+                        backgroundColor: isInputFocus ? '#fde047' : `${theme.textColor}66`,
+                        boxShadow: isInputFocus ? '0 0 12px rgba(253, 224, 71, 0.7)' : 'none',
+                      }}
+                    />
+                  )}
                 </button>
               );
             })
@@ -950,6 +1286,7 @@ export const Game = ({ mode = 'quickTap', onGameOver, onMainMenu }: GameProps) =
                   activeMode === 'swipeStrike' ? 'swipe' : activeMode === 'holdTrack' ? 'hold' : 'tap'
                 }
                 onActivate={() => handleTargetClick(target.id)}
+                onSwipeAttemptFail={() => handleSwipeAttemptFail(target.id)}
                 holdVisualState={holdVisualByTarget[target.id]}
                 onHoldPointerStart={handleHoldPointerStart}
                 onHoldPointerMove={handleHoldPointerMove}
@@ -959,6 +1296,44 @@ export const Game = ({ mode = 'quickTap', onGameOver, onMainMenu }: GameProps) =
       </div>
 
       {/* Pause overlay */}
+      {isRoutineActive && (
+        <div
+          className="absolute inset-0 z-[120] flex items-center justify-center px-5"
+          style={{ backgroundColor: 'rgba(2, 6, 10, 0.86)', backdropFilter: 'blur(4px)' }}
+          aria-live="polite"
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border p-6"
+            style={{
+              borderColor: `${theme.textColor}40`,
+              backgroundColor: 'rgba(3, 10, 14, 0.84)',
+              color: theme.textColor,
+            }}
+          >
+            <p className="text-[11px] uppercase tracking-[0.15em] opacity-70">Low-stimulation routine</p>
+            <h2 className="mt-2 text-2xl font-bold">
+              {routineStep === 'breathing' ? 'Breathing reset' : 'Gaze stabilization'}
+            </h2>
+            <p className="mt-2 text-sm opacity-78">
+              {routineStep === 'breathing'
+                ? 'Breathe slowly: 4 seconds in, 4 seconds out.'
+                : 'Keep your eyes steady on one point, then softly widen focus.'}
+            </p>
+            <p className="mt-4 text-3xl font-extrabold tabular-nums">{routineSecondsLeft}s</p>
+            <button
+              type="button"
+              onClick={() => {
+                setRoutineStep(null);
+                roundEndsAtRef.current = Date.now() + remainingMsRef.current;
+              }}
+              className="ui-secondary-button mt-4 min-h-11 px-4 text-sm"
+              style={{ color: theme.textColor, borderColor: `${theme.textColor}45` }}
+            >
+              Skip routine
+            </button>
+          </div>
+        </div>
+      )}
       {isPaused && (
         <div
           className="absolute inset-0 flex items-center justify-center"

@@ -1,14 +1,17 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { MODE_ORDER, gameModes, isModePlayable } from '../utils/gameModes';
 import { useTheme } from '../context/ThemeContext';
 import { motion } from 'framer-motion';
 import { GameModeType } from '../types/game';
-import { modeDescriptions } from '../utils/modeDescriptions';
+import { getModePresentation } from '../utils/modeDescriptions';
 import { JungleButton } from './JungleButton';
 import { ModeUnlockStatus } from '../utils/progression';
+import { SportType } from '../config/sports';
+import { HowToPlayModal } from './HowToPlayModal';
 
 interface GameModeSelectorProps {
   onSelectMode: (mode: GameModeType) => void;
+  selectedSport: SportType;
   unlocks?: Partial<Record<GameModeType, ModeUnlockStatus>>;
   copy?: {
     title: string;
@@ -27,8 +30,9 @@ interface GameModeSelectorProps {
 
 const modeKeys = MODE_ORDER;
 
-export const GameModeSelector: React.FC<GameModeSelectorProps> = ({ onSelectMode, unlocks, copy }) => {
+export const GameModeSelector: React.FC<GameModeSelectorProps> = ({ onSelectMode, selectedSport, unlocks, copy }) => {
   const { theme } = useTheme();
+  const [activeDetailsMode, setActiveDetailsMode] = useState<GameModeType | null>(null);
   const playableModes = modeKeys.filter(isModePlayable);
   const upcomingModes = modeKeys.filter(mode => !isModePlayable(mode));
 
@@ -40,7 +44,7 @@ export const GameModeSelector: React.FC<GameModeSelectorProps> = ({ onSelectMode
   return (
     <div className="flex flex-col items-center w-full">
       <motion.h2
-        className="text-2xl sm:text-3xl font-extrabold mb-2 text-center tracking-tight"
+        className="text-xl sm:text-3xl font-extrabold mb-1.5 text-center tracking-tight"
         initial={{ opacity: 0, y: -16 }}
         animate={{ opacity: 1, y: 0 }}
         style={{
@@ -50,10 +54,11 @@ export const GameModeSelector: React.FC<GameModeSelectorProps> = ({ onSelectMode
         {copy?.title ?? 'Choose Your Drill'}
       </motion.h2>
       <p
-        className="text-sm sm:text-base mb-6 sm:mb-7 text-center max-w-3xl leading-relaxed"
+        className="text-sm sm:text-base mb-4 sm:mb-7 text-center max-w-3xl leading-relaxed"
         style={{ color: theme.textColor, opacity: 0.85 }}
       >
-        {copy?.subtitle ?? "Pick a live drill below, open the quick how-to, then tap Start Today's Session to begin your 60-second reaction round."}
+        {copy?.subtitle ??
+          'Pick a live drill below, review the quick protocol, then begin your 60-second pre-performance readiness round.'}
       </p>
 
       <div className="w-full">
@@ -65,10 +70,10 @@ export const GameModeSelector: React.FC<GameModeSelectorProps> = ({ onSelectMode
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4 w-full px-1">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 w-full px-0.5">
         {playableModes.map((key, cardIndex) => {
           const mode = gameModes[key];
-          const details = modeDescriptions[key];
+          const details = getModePresentation(key, selectedSport);
           const unlockStatus = unlocks?.[key];
           const isLocked = !!unlockStatus && !unlockStatus.unlocked;
 
@@ -78,7 +83,7 @@ export const GameModeSelector: React.FC<GameModeSelectorProps> = ({ onSelectMode
               initial={{ opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: cardIndex * 0.06 }}
-              className="relative rounded-2xl p-4 sm:p-5 flex flex-col gap-3 select-none"
+              className="relative rounded-2xl p-3.5 sm:p-5 flex flex-col gap-3 select-none"
               style={{
                 backgroundColor: 'rgba(11, 20, 24, 0.85)',
                 border: `1px solid ${isLocked ? `${theme.textColor}2e` : `${theme.targetColor}4f`}`,
@@ -89,13 +94,13 @@ export const GameModeSelector: React.FC<GameModeSelectorProps> = ({ onSelectMode
             >
               <div className="flex items-center justify-between gap-3">
                 <h2
-                  className="text-lg sm:text-xl font-bold"
+                className="text-base sm:text-xl font-bold"
                   style={{ color: theme.textColor }}
                 >
                   {mode.name}
                 </h2>
                 <span
-                  className="text-[10px] sm:text-xs font-semibold px-2.5 py-1 rounded-full tracking-wide uppercase"
+                  className="text-[10px] sm:text-xs font-semibold px-2 py-1 rounded-full tracking-wide uppercase"
                   style={
                     mode.category === 'benchmark'
                       ? {
@@ -116,11 +121,18 @@ export const GameModeSelector: React.FC<GameModeSelectorProps> = ({ onSelectMode
                 </span>
               </div>
 
+              <p className="text-[10px] uppercase tracking-[0.16em] font-semibold" style={{ color: theme.textColor, opacity: 0.64 }}>
+                {mode.category === 'benchmark' ? 'Fixed readiness protocol' : 'Variable drill protocol'}
+              </p>
+              <p className="text-sm leading-relaxed min-h-[52px]" style={{ color: theme.textColor, opacity: 0.75 }}>
+                {details.sportDescription}
+              </p>
+
               <p
-                className="text-sm leading-relaxed min-h-[44px]"
-                style={{ color: theme.textColor, opacity: 0.75 }}
+                className="text-xs uppercase tracking-[0.12em] font-semibold"
+                style={{ color: theme.targetColor, opacity: 0.85 }}
               >
-                {mode.description}
+                {details.sportLabel}
               </p>
 
               <div className="grid grid-cols-2 gap-2 text-xs">
@@ -148,14 +160,24 @@ export const GameModeSelector: React.FC<GameModeSelectorProps> = ({ onSelectMode
                 </div>
               </div>
 
-              <JungleButton
-                onClick={() => handleModeSelect(key)}
-                className="mt-1 w-full min-h-12 text-sm sm:text-base"
-              >
-                {mode.category === 'benchmark'
-                  ? (copy?.benchmarkCta ?? 'Run the 60-Second Test')
-                  : (copy?.drillCta ?? "Start Today's Session")}
-              </JungleButton>
+              <div className="mt-0.5 flex flex-col sm:flex-row gap-2">
+                <JungleButton onClick={() => handleModeSelect(key)} className="w-full min-h-12 text-sm sm:text-base">
+                  {mode.category === 'benchmark'
+                    ? (copy?.benchmarkCta ?? 'Run the 60-Second Test')
+                    : (copy?.drillCta ?? "Start Today's Session")}
+                </JungleButton>
+                <button
+                  type="button"
+                  onClick={() => setActiveDetailsMode(key)}
+                  className="ui-secondary-button w-full sm:w-auto px-4 min-h-12 text-sm"
+                  style={{
+                    color: theme.textColor,
+                    borderColor: `${theme.textColor}4a`,
+                  }}
+                >
+                  How to play
+                </button>
+              </div>
               {unlockStatus && (
                 <p className="text-[11px] leading-relaxed" style={{ color: theme.textColor, opacity: 0.62 }}>
                   {isLocked ? `Milestone pending: ${unlockStatus.progressLabel}` : unlockStatus.requirement}
@@ -177,7 +199,7 @@ export const GameModeSelector: React.FC<GameModeSelectorProps> = ({ onSelectMode
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 px-1">
             {upcomingModes.map((key, idx) => {
               const mode = gameModes[key];
-              const details = modeDescriptions[key];
+              const details = getModePresentation(key, selectedSport);
               return (
                 <motion.div
                   key={key}
@@ -207,10 +229,10 @@ export const GameModeSelector: React.FC<GameModeSelectorProps> = ({ onSelectMode
                     </span>
                   </div>
                   <p className="text-xs leading-relaxed mb-2" style={{ color: theme.textColor, opacity: 0.72 }}>
-                    {details.trainingFocus}
+                    {details.sportLabel}
                   </p>
                   <p className="text-xs" style={{ color: theme.textColor, opacity: 0.55 }}>
-                    {details.rhythm}
+                    {details.sportDescription}
                   </p>
                 </motion.div>
               );
@@ -218,6 +240,17 @@ export const GameModeSelector: React.FC<GameModeSelectorProps> = ({ onSelectMode
           </div>
         </div>
       )}
+      <HowToPlayModal
+        modeKey={activeDetailsMode}
+        selectedSport={selectedSport}
+        isOpen={activeDetailsMode !== null}
+        onClose={() => setActiveDetailsMode(null)}
+        onStart={() => {
+          if (!activeDetailsMode) return;
+          handleModeSelect(activeDetailsMode);
+          setActiveDetailsMode(null);
+        }}
+      />
     </div>
   );
 };

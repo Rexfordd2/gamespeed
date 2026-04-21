@@ -45,7 +45,7 @@ export const LandingHero = ({
 
   return (
     <section
-      className="relative overflow-hidden rounded-3xl border p-5 sm:p-7 lg:p-10 backdrop-blur-md"
+      className="relative overflow-hidden rounded-3xl border p-4 sm:p-7 lg:p-10 backdrop-blur-md"
       style={{
         backgroundColor: 'rgba(4, 9, 14, 0.82)',
         borderColor: `${theme.targetColor}4a`,
@@ -61,15 +61,15 @@ export const LandingHero = ({
       />
 
       <motion.div
-        className="relative grid gap-7 lg:grid-cols-[1.1fr_0.9fr]"
+        className="relative grid gap-5 sm:gap-7 lg:grid-cols-[1.1fr_0.9fr]"
         initial={{ opacity: 0, y: 14 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.38, ease: 'easeOut' }}
       >
         <div>
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
             <span
-              className="inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em]"
+              className="inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.17em] sm:text-[11px]"
               style={{
                 color: theme.targetColor,
                 borderColor: `${theme.targetColor}66`,
@@ -100,7 +100,7 @@ export const LandingHero = ({
                       });
                       onPersonaChange(togglePersona);
                     }}
-                    className="flex-1 rounded-xl px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] transition-all sm:text-sm"
+                    className="flex-1 rounded-xl px-3 py-2.5 text-xs font-semibold uppercase tracking-[0.1em] transition-all sm:text-sm"
                     style={{
                       color: isActive ? '#0a1b12' : theme.textColor,
                       backgroundColor: isActive ? theme.targetColor : 'transparent',
@@ -115,24 +115,24 @@ export const LandingHero = ({
           </div>
 
           <h1
-            className="mt-5 text-[2.15rem] font-black leading-[0.95] tracking-tight sm:text-5xl"
+            className="mt-4 text-[1.85rem] font-black leading-[0.98] tracking-tight sm:mt-5 sm:text-5xl"
             style={{ color: theme.textColor, textShadow: `0 10px 36px ${theme.targetColor}20` }}
           >
             {content.title}
           </h1>
 
-          <p className="mt-4 max-w-2xl text-sm leading-relaxed sm:text-base" style={{ color: theme.textColor, opacity: 0.9 }}>
+          <p className="mt-3 max-w-2xl text-sm leading-relaxed sm:mt-4 sm:text-base" style={{ color: theme.textColor, opacity: 0.9 }}>
             {content.subtitle}
           </p>
-          <p className="mt-4 max-w-2xl text-sm leading-relaxed sm:text-base" style={{ color: theme.textColor, opacity: 0.78 }}>
+          <p className="mt-3 max-w-2xl text-sm leading-relaxed sm:mt-4 sm:text-base" style={{ color: theme.textColor, opacity: 0.78 }}>
             {activePersona.supporting}
           </p>
 
-          <ul className="mt-5 grid gap-2 sm:grid-cols-3">
+          <ul className="mt-4 grid gap-2 sm:mt-5 sm:grid-cols-3">
             {activePersona.bullets.map(item => (
               <li
                 key={item}
-                className="rounded-xl border px-3 py-2 text-xs font-medium sm:text-sm"
+                className="rounded-xl border px-3 py-2.5 text-xs font-medium sm:text-sm"
                 style={{
                   color: theme.textColor,
                   borderColor: `${theme.targetColor}3f`,
@@ -145,7 +145,7 @@ export const LandingHero = ({
           </ul>
 
           <p
-            className="mt-4 rounded-xl border px-3 py-2 text-xs sm:text-sm"
+            className="mt-3 rounded-xl border px-3 py-2 text-xs sm:mt-4 sm:text-sm"
             style={{
               color: theme.textColor,
               borderColor: `${theme.targetColor}33`,
@@ -156,7 +156,7 @@ export const LandingHero = ({
             {content.benchmarkMicrocopy}
           </p>
 
-          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="mt-5 flex flex-col gap-2.5 sm:mt-6 sm:flex-row sm:items-center">
             <JungleButton
               onClick={() => {
                 trackConversionEvent('hero_cta_click', {
@@ -166,7 +166,7 @@ export const LandingHero = ({
                 });
                 onPrimaryCta();
               }}
-              className="w-full min-h-12 sm:w-auto"
+              className="w-full min-h-[48px] sm:w-auto"
             >
               {content.primaryCta}
             </JungleButton>
@@ -180,19 +180,19 @@ export const LandingHero = ({
                 });
                 onSecondaryCta();
               }}
-              className="ui-secondary-button min-h-12 rounded-xl px-5 text-sm sm:text-base"
+              className="ui-secondary-button min-h-[48px] rounded-xl px-5 text-sm sm:text-base"
             >
               {content.secondaryCta}
             </button>
           </div>
 
-          <p className="mt-3 text-xs sm:text-sm" style={{ color: theme.textColor, opacity: 0.74 }}>
+          <p className="mt-2.5 text-xs sm:mt-3 sm:text-sm" style={{ color: theme.textColor, opacity: 0.74 }}>
             {content.trustMicrocopy}
           </p>
         </div>
 
         <motion.aside
-          className="rounded-2xl border p-4 sm:p-5"
+          className="rounded-2xl border p-3.5 sm:p-5"
           style={{
             borderColor: `${theme.targetColor}44`,
             background: 'linear-gradient(180deg, rgba(8, 15, 22, 0.95), rgba(5, 11, 16, 0.9))',

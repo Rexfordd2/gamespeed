@@ -15,11 +15,11 @@ export const LandingWhyItMatters = ({ content, persona }: LandingWhyItMattersPro
       <h2 className="text-xl font-bold sm:text-2xl" style={{ color: theme.textColor }}>
         {content.heading} {content.personaSuffix[persona]}
       </h2>
-      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+      <div className="mt-3 grid gap-2.5 sm:mt-4 sm:gap-3 sm:grid-cols-3">
         {cards.map(card => (
           <article
             key={card.title}
-            className="rounded-2xl border p-4"
+            className="rounded-2xl border p-3.5 sm:p-4"
             style={{
               borderColor: `${theme.targetColor}36`,
               backgroundColor: 'rgba(7, 14, 20, 0.75)',

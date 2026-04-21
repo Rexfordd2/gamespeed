@@ -98,8 +98,8 @@ button,
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: radial-gradient(circle at center, rgba(239, 68, 68, 0.18) 0%, rgba(239, 68, 68, 0.02) 64%, rgba(0, 0, 0, 0) 100%);
-  animation: miss-feedback-pulse 180ms ease-out forwards;
+  background: radial-gradient(circle at center, rgba(239, 68, 68, 0.12) 0%, rgba(239, 68, 68, 0.02) 62%, rgba(0, 0, 0, 0) 100%);
+  animation: miss-feedback-pulse 220ms ease-out forwards;
 }
 
 .ui-secondary-button {
@@ -118,6 +118,18 @@ button,
 
 .ui-secondary-button:active {
   transform: scale(0.98);
+}
+
+.game-low-stimulus {
+  filter: brightness(0.82) saturate(0.72);
+}
+
+.game-low-stimulus *,
+.game-low-stimulus *::before,
+.game-low-stimulus *::after {
+  animation-duration: 1ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 80ms !important;
 }
 
 button:focus-visible,

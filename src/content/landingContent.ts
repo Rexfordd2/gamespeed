@@ -106,7 +106,7 @@ export const landingContent: LandingContent = {
     eyebrow: 'GameSpeed Performance Lab',
     title: 'Train Faster Reactions. Sharper Decisions. Better Game Speed.',
     subtitle:
-      'A sensory training platform for athletes and gamers to improve reaction time, peripheral awareness, and split-second decision-making under pressure.',
+      'A sport-readiness platform for athletes to improve cue pickup, reaction timing, and split-second decisions under pressure.',
     personas: {
       athlete: {
         label: 'Train for Sport',
@@ -119,13 +119,13 @@ export const landingContent: LandingContent = {
         ],
       },
       gamer: {
-        label: 'Train for FPS',
+        label: 'Train for Competition',
         supporting:
-          'Sharpen time-to-action, screen-wide awareness, and target-priority decisions for ranked consistency.',
+          'Sharpen pre-performance decision speed, visual control, and repeatable readiness before training or competition.',
         bullets: [
-          'Pre-queue reaction baseline in 60 seconds',
-          'Crosshair-to-peripheral response speed',
-          'Session-by-session percentile tracking',
+          'Replace pre-game scrolling with a focused reset',
+          'Cue pickup and anticipation under pace',
+          'Session-by-session readiness trend tracking',
         ],
       },
     },
@@ -239,9 +239,9 @@ export const landingContent: LandingContent = {
     heading: 'FAQ',
     items: [
       {
-        question: 'Is this only for athletes?',
+        question: 'Who is this built for?',
         answer:
-          'No. GameSpeed is built for both athletes and gamers. The drills train universal reaction and decision-speed skills.',
+          'GameSpeed is built for athletes preparing for training, practice, and competition. Drills focus on cue pickup, anticipation, and decision speed.',
       },
       {
         question: 'How long is one session?',

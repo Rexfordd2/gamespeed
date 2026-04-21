@@ -135,8 +135,9 @@ export const EndScreen = ({
 }: EndScreenProps) => {
   const { theme } = useTheme();
   const landingExperiment = useMemo(() => getLandingExperimentAssignment(), []);
-  const totalAttempts = result.score + result.misses;
+  const totalAttempts = result.totalAttempts ?? result.score + result.misses;
   const accuracy = totalAttempts > 0 ? Math.round((result.score / totalAttempts) * 100) : 0;
+  const readiness = result.readinessMetrics;
   const recommendedMode = getRecommendedMode(firstRunSelection, accuracy);
   const recommendedModeName = gameModes[recommendedMode].name;
   const [checklist, setChecklist] = useState<ChecklistState>(() => loadChecklistState(totalRoundsCompleted, isSignedIn));
@@ -241,27 +242,53 @@ export const EndScreen = ({
   };
 
   return (
-    <div className="relative w-full overflow-y-auto overflow-x-hidden" style={{ minHeight: '100dvh', backgroundColor: theme.backgroundColor, paddingTop: 'max(1.25rem, env(safe-area-inset-top, 0px))', paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom, 0px))' }}>
+    <div
+      className="relative w-full overflow-y-auto overflow-x-hidden"
+      style={{
+        minHeight: '100dvh',
+        backgroundColor: theme.backgroundColor,
+        paddingTop: 'max(1rem, env(safe-area-inset-top, 0px))',
+        paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom, 0px))',
+      }}
+    >
       <JungleBackground />
-      <div className="relative z-10 mx-auto flex min-h-[calc(100dvh-2.5rem)] w-full max-w-2xl flex-col items-center px-4 py-7 sm:px-6 sm:py-10">
-        <motion.div initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="w-full rounded-3xl p-5 sm:p-6 mb-4" style={{ background: 'linear-gradient(180deg, rgba(11,20,24,0.82), rgba(4,12,18,0.88))', border: `1px solid ${theme.targetColor}4c` }}>
+      <div className="relative z-10 mx-auto flex min-h-[calc(100dvh-2rem)] w-full max-w-2xl flex-col items-center px-4 py-4 sm:px-6 sm:py-8">
+        <motion.div
+          initial={{ y: 10, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          className="mb-3 w-full rounded-3xl p-4 sm:mb-4 sm:p-6"
+          style={{ background: 'linear-gradient(180deg, rgba(11,20,24,0.82), rgba(4,12,18,0.88))', border: `1px solid ${theme.targetColor}4c` }}
+        >
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-[11px] uppercase tracking-[0.18em] opacity-65" style={{ color: theme.textColor }}>Final Score</p>
-              <p className="text-6xl sm:text-7xl leading-none font-black tabular-nums mt-2" style={{ color: theme.targetColor }}>{result.score}</p>
+              <p className="text-[11px] uppercase tracking-[0.18em] opacity-65" style={{ color: theme.textColor }}>Readiness score</p>
+              <p className="mt-2 text-5xl leading-none font-black tabular-nums sm:text-7xl" style={{ color: theme.targetColor }}>{readiness?.readinessScore ?? accuracy}</p>
               <p className="mt-2 text-sm opacity-75" style={{ color: theme.textColor }}>{result.modeName}</p>
+              <p className="mt-2 text-xs opacity-70 tabular-nums" style={{ color: theme.textColor }}>
+                <span>Final Score</span>: {result.score}
+              </p>
             </div>
             <div className="rounded-2xl px-3.5 py-3 text-right" style={{ backgroundColor: `${percentileBadge.tone}18`, border: `1px solid ${percentileBadge.tone}66` }}>
               <p className="text-[10px] uppercase tracking-[0.16em] opacity-75" style={{ color: theme.textColor }}>Percentile</p>
-              <p className="text-3xl font-black tabular-nums" style={{ color: percentileBadge.tone }}>{percentileBadge.percentile}<span className="text-base font-semibold">th</span></p>
-              <p className="text-xs font-semibold mt-0.5" style={{ color: theme.textColor }}>{percentileBadge.label}</p>
+              <p className="text-3xl font-black tabular-nums" style={{ color: percentileBadge.tone }}>{readiness?.decisionAccuracyPct ?? accuracy}%</p>
+              <p className="text-xs font-semibold mt-0.5" style={{ color: theme.textColor }}>
+                Late {readiness?.lateDecisionRatePct ?? 0}% | Streak {readiness?.streakQualityPct ?? result.bestStreak}
+              </p>
             </div>
           </div>
         </motion.div>
 
-        <div className="w-full rounded-2xl px-5 py-4 mb-4" style={{ backgroundColor: 'rgba(56, 189, 248, 0.08)', border: '1px solid rgba(56, 189, 248, 0.28)' }}>
-          <p className="text-[10px] sm:text-xs uppercase tracking-widest opacity-60 text-center mb-2" style={{ color: theme.textColor }}>Results Dashboard</p>
-          <div className="grid grid-cols-3 gap-2 text-center">
+        <div className="mb-3 w-full rounded-2xl px-4 py-4 sm:mb-4 sm:px-5" style={{ backgroundColor: 'rgba(34, 197, 94, 0.09)', border: '1px solid rgba(34, 197, 94, 0.28)' }}>
+          <p className="mb-2 text-[10px] uppercase tracking-widest opacity-60 sm:text-xs" style={{ color: theme.textColor }}>Readiness scoring</p>
+          <p className="text-sm leading-relaxed" style={{ color: theme.textColor, opacity: 0.88 }}>
+            This round is scored by readiness signals, not just hit count. Track reaction time, decision accuracy, late decisions,
+            and streak consistency to see whether game-speed execution is rising or drifting.
+          </p>
+        </div>
+
+        <div className="mb-3 w-full rounded-2xl px-4 py-4 sm:mb-4 sm:px-5" style={{ backgroundColor: 'rgba(56, 189, 248, 0.08)', border: '1px solid rgba(56, 189, 248, 0.28)' }}>
+          <p className="mb-2 text-[10px] text-center uppercase tracking-widest opacity-60 sm:text-xs" style={{ color: theme.textColor }}>Results Dashboard</p>
+          <div className="grid grid-cols-1 gap-3 text-center sm:grid-cols-3 sm:gap-2">
             <div><p className="text-2xl font-black tabular-nums" style={{ color: '#7dd3fc' }}>{dailyStreak}</p><p className="text-[10px] uppercase tracking-[0.13em] opacity-60 mt-1" style={{ color: theme.textColor }}>Daily streak</p></div>
             <div><p className="text-lg font-bold" style={{ color: '#a5f3fc' }}>{recommendedModeName}</p><p className="text-[10px] uppercase tracking-[0.13em] opacity-60 mt-1" style={{ color: theme.textColor }}>Recommended Next Mode</p></div>
             <div><p className="text-2xl font-black tabular-nums" style={{ color: weeklyChallenge.completed ? '#4ade80' : '#facc15' }}>{weeklyChallenge.roundsDone}/{weeklyChallenge.roundsTarget}</p><p className="text-[10px] uppercase tracking-[0.13em] opacity-60 mt-1" style={{ color: theme.textColor }}>Weekly challenge</p></div>
@@ -270,33 +297,33 @@ export const EndScreen = ({
         </div>
 
         {roundProgressDelta && (
-          <div className="w-full rounded-2xl px-5 py-4 mb-4" style={{ backgroundColor: 'rgba(74, 222, 128, 0.07)', border: '1px solid rgba(74, 222, 128, 0.26)' }}>
+          <div className="mb-3 w-full rounded-2xl px-4 py-4 sm:mb-4 sm:px-5" style={{ backgroundColor: 'rgba(74, 222, 128, 0.07)', border: '1px solid rgba(74, 222, 128, 0.26)' }}>
             <p className="text-[10px] uppercase tracking-[0.16em] opacity-65 mb-2" style={{ color: theme.textColor }}>Personal Best Tracker</p>
             <p className="text-xs" style={{ color: theme.textColor }}>
               Score {roundProgressDelta.scoreDelta >= 0 ? '+' : ''}
-              {roundProgressDelta.scoreDelta} ? Accuracy{' '}
+              {roundProgressDelta.scoreDelta} | Accuracy{' '}
               {roundProgressDelta.accuracyDelta >= 0 ? '+' : ''}
-              {roundProgressDelta.accuracyDelta}% ? Streak{' '}
+              {roundProgressDelta.accuracyDelta}% | Streak{' '}
               {roundProgressDelta.streakDelta >= 0 ? '+' : ''}
               {roundProgressDelta.streakDelta}
             </p>
           </div>
         )}
 
-        <div className="w-full rounded-2xl px-5 py-4 mb-4" style={{ backgroundColor: 'rgba(2, 8, 12, 0.72)', border: `1px solid ${theme.textColor}2a` }}>
+        <div className="mb-3 w-full rounded-2xl px-4 py-4 sm:mb-4 sm:px-5" style={{ backgroundColor: 'rgba(2, 8, 12, 0.72)', border: `1px solid ${theme.textColor}2a` }}>
           <div className="flex items-center justify-between gap-3">
             <p className="text-[10px] uppercase tracking-[0.16em] opacity-65" style={{ color: theme.textColor }}>Shareable score card</p>
-            <button type="button" onClick={handleCopyScoreCard} className="ui-secondary-button px-3 py-1.5 text-xs" style={{ color: theme.textColor, borderColor: `${theme.textColor}48` }}>Copy Score Card</button>
+          <button type="button" onClick={handleCopyScoreCard} className="ui-secondary-button px-3 py-1.5 text-xs" style={{ color: theme.textColor, borderColor: `${theme.textColor}48` }}>Copy score card</button>
           </div>
           {shareStatus !== 'idle' && <p className="mt-2 text-xs font-semibold" style={{ color: shareStatus === 'copied' ? '#4ade80' : '#f87171' }}>{shareStatus === 'copied' ? 'Score card copied to clipboard.' : 'Unable to copy right now.'}</p>}
         </div>
 
-        <div className="w-full rounded-2xl px-5 py-4 mb-4" style={{ backgroundColor: 'rgba(2, 8, 12, 0.72)', border: `1px solid ${theme.textColor}24` }}>
+        <div className="mb-3 w-full rounded-2xl px-4 py-4 sm:mb-4 sm:px-5" style={{ backgroundColor: 'rgba(2, 8, 12, 0.72)', border: `1px solid ${theme.textColor}24` }}>
           <p className="text-[10px] uppercase tracking-[0.16em] opacity-65 mb-2" style={{ color: theme.textColor }}>Session history</p>
           <div className="space-y-2">
             {recentHistory.map(round => (
               <div key={`${round.ts}-${round.clientRoundId ?? 'local'}`} className="flex items-center justify-between text-xs">
-                <p style={{ color: theme.textColor, opacity: 0.85 }}>{getModeLabel(round.mode)} ? {new Date(round.ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</p>
+                <p style={{ color: theme.textColor, opacity: 0.85 }}>{getModeLabel(round.mode)} | {new Date(round.ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</p>
                 <p className="tabular-nums" style={{ color: theme.targetColor }}>{round.score} / {round.accuracy}%</p>
               </div>
             ))}
@@ -304,7 +331,7 @@ export const EndScreen = ({
         </div>
 
         {showOnboardingChecklist && (
-          <div className="w-full rounded-2xl px-5 py-4 mb-4" style={{ backgroundColor: 'rgba(74, 222, 128, 0.07)', border: '1px solid rgba(74, 222, 128, 0.3)' }}>
+          <div className="mb-3 w-full rounded-2xl px-4 py-4 sm:mb-4 sm:px-5" style={{ backgroundColor: 'rgba(74, 222, 128, 0.07)', border: '1px solid rgba(74, 222, 128, 0.3)' }}>
             <p className="text-[10px] sm:text-xs uppercase tracking-widest opacity-70 mb-3" style={{ color: theme.textColor }}>Onboarding Checklist</p>
             <div className="space-y-2.5">
               {checklistItems.map(item => (
@@ -322,13 +349,13 @@ export const EndScreen = ({
         )}
 
         {showDeferredAccountPrompt && (
-          <div className="w-full mb-4">
+          <div className="mb-3 w-full sm:mb-4">
             <p className="mb-2 text-xs uppercase tracking-[0.16em]" style={{ color: theme.targetColor }}>Save this progress</p>
             <AuthPanel />
           </div>
         )}
 
-        <motion.div className="flex flex-col gap-3 w-full">
+        <motion.div className="flex w-full flex-col gap-2.5 sm:gap-3">
           <JungleButton onClick={handleStartRecommended} className="w-full py-4 text-lg font-bold uppercase">Start Today's Session: {recommendedModeName}</JungleButton>
           <JungleButton onClick={onPlayAgain} className="w-full py-4 text-lg font-bold uppercase">Replay</JungleButton>
           <button type="button" onClick={onViewStats} className="ui-secondary-button w-full py-3" style={{ color: theme.targetColor, borderColor: `${theme.targetColor}55` }}>Compare My Score</button>

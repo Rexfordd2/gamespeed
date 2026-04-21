@@ -1,4 +1,6 @@
-export type GameState = 'start' | 'playing' | 'end' | 'stats';
+import type { SportType } from '../config/sports';
+
+export type GameState = 'start' | 'playing' | 'end' | 'stats' | 'coach';
 
 export type GameModeType =
   | 'reactionBenchmark'
@@ -34,6 +36,7 @@ export interface Target {
   x: number;
   y: number;
   type: 'monkey';
+  cueLabel?: string;
   createdAt: number;
   duration: number;
   lifespan: number;
@@ -81,12 +84,20 @@ export interface GameResult {
   bestStreak: number;
   mode: GameModeType;
   modeName: string;
+  sport?: SportType;
+  /** Total decision attempts counted in-round (defaults to score + misses for legacy). */
+  totalAttempts?: number;
+  /** Misses caused by late responses (e.g. expired target, late swipe). */
+  lateDecisions?: number;
+  /** Captured streak runs used to derive consistency metrics. */
+  streakRuns?: number[];
   /** Benchmark mode only: raw reaction times (ms) per successful hit. */
   reactionTimesMs?: number[];
   /** Benchmark mode only: median of reactionTimesMs, rounded to the nearest ms. */
   medianReactionTimeMs?: number;
   /** Benchmark mode only: composite 0–100 score combining accuracy (60%) and speed (40%). */
   benchmarkScore?: number;
+  readinessMetrics?: ReadinessMetrics;
 }
 
 // ---------- Persistent stats types ----------
@@ -95,6 +106,7 @@ export interface StoredRound {
   ts: number;
   /** Stable client-generated id for idempotent cloud insert (optional for legacy local data). */
   clientRoundId?: string;
+  sport?: SportType;
   mode: GameModeType;
   modeName: string;
   score: number;
@@ -104,6 +116,13 @@ export interface StoredRound {
   bestStreak: number;
   medianReactionTimeMs?: number;
   benchmarkScore?: number;
+  readinessMetrics?: ReadinessMetrics;
+  /** Extensible bag for future cloud sync metadata without schema churn. */
+  meta?: {
+    metricsVersion: number;
+    runwayCompletionsCount?: number;
+    sleepCorrelationState?: 'pending' | 'insufficient_data' | 'available';
+  };
 }
 
 export interface ModePersonalBests {
@@ -120,4 +139,19 @@ export interface GameStats {
   version: number;
   rounds: StoredRound[];
   pbs: Partial<Record<GameModeType, ModePersonalBests>>;
+}
+
+export interface ReadinessMetrics {
+  reactionTimeMs: {
+    average: number | null;
+    median: number | null;
+  };
+  decisionAccuracyPct: number;
+  missRatePct: number;
+  lateDecisionRatePct: number;
+  streakQualityPct: number;
+  consistencyPct: number;
+  readinessScore: number;
+  runwayCompletionsCount: number;
+  sleepCheckInCorrelation: 'pending' | 'insufficient_data' | 'available';
 }

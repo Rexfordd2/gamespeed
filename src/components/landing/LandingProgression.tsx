@@ -19,11 +19,11 @@ export const LandingProgression = ({ content, onRunStarter }: LandingProgression
         {content.body}
       </p>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+      <div className="mt-3 grid gap-2.5 sm:mt-4 sm:gap-3 sm:grid-cols-3">
         {content.hooks.map(hook => (
           <article
             key={hook.title}
-            className="rounded-2xl border p-4"
+            className="rounded-2xl border p-3.5 sm:p-4"
             style={{
               borderColor: `${theme.targetColor}3b`,
               backgroundColor: 'rgba(7, 16, 21, 0.74)',

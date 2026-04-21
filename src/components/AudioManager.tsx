@@ -62,6 +62,7 @@ export const AudioManager = ({ children }: AudioManagerProps) => {
   const hasInitializedRef = useRef(false);
   const initializePromiseRef = useRef<Promise<void> | null>(null);
   const shouldPlayBackgroundRef = useRef(false);
+  const cueCooldownUntilRef = useRef<Map<CueId, number>>(new Map());
   const isMutedRef = useRef(true);
   const unavailableCueIdsRef = useRef<Set<CueId>>(new Set());
   const warnedAssetsRef = useRef<Set<string>>(new Set());
@@ -95,11 +96,23 @@ export const AudioManager = ({ children }: AudioManagerProps) => {
       const cueConfig = cueConfigsRef.current.get(cueId);
       if (!cueConfig) return;
 
+      const now = Date.now();
+      const cooldownUntil = cueCooldownUntilRef.current.get(cueId) ?? 0;
+      if (now < cooldownUntil) return;
+
       if (unavailableCueIdsRef.current.has(cueId)) {
         if (cueConfig.fallbackEffect) {
           playFallbackEffect(cueConfig.fallbackEffect);
         }
         return;
+      }
+
+      if (cueId.startsWith('gameplay:hit')) {
+        cueCooldownUntilRef.current.set(cueId, now + 45);
+      } else if (cueId.startsWith('gameplay:miss')) {
+        cueCooldownUntilRef.current.set(cueId, now + 70);
+      } else if (cueId.startsWith('mode:')) {
+        cueCooldownUntilRef.current.set(cueId, now + 55);
       }
 
       cueAudio.currentTime = 0;

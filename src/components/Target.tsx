@@ -4,11 +4,23 @@ import { useTheme } from '../context/ThemeContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getSwipeDirection, isIntentionalSwipe } from '../utils/swipeDetection';
 import { HoldVisualPhase } from '../utils/holdTracking';
+import { SwipeTimingVerdict } from '../utils/modeMechanics';
 
 interface TargetProps {
   target: TargetType;
   interactionMode: 'tap' | 'swipe' | 'hold';
-  onActivate: () => void;
+  onActivate: (payload: {
+    interactionMode: 'tap' | 'swipe' | 'hold';
+    swipeDirection?: 'left' | 'right' | 'up' | 'down';
+    elapsedMs?: number;
+    swipeTimingVerdict?: SwipeTimingVerdict;
+  }) => void;
+  onSwipeAttemptFail?: (payload: {
+    reason: 'short' | 'direction' | 'timing';
+    elapsedMs: number;
+    swipeDirection?: 'left' | 'right' | 'up' | 'down';
+    swipeTimingVerdict?: SwipeTimingVerdict;
+  }) => void;
   holdVisualState?: {
     phase: HoldVisualPhase;
     progress: number;
@@ -27,6 +39,7 @@ export const Target = ({
   target,
   interactionMode,
   onActivate,
+  onSwipeAttemptFail,
   holdVisualState,
   onHoldPointerStart,
   onHoldPointerMove,
@@ -76,7 +89,11 @@ export const Target = ({
       };
     }, []);
 
-  const handleActivate = () => {
+  const handleActivate = (payload?: {
+    swipeDirection?: 'left' | 'right' | 'up' | 'down';
+    elapsedMs?: number;
+    swipeTimingVerdict?: SwipeTimingVerdict;
+  }) => {
     const isExpired = Date.now() - target.createdAt >= target.lifespan * 1000;
     if (isExpired || clickedRef.current) return;
     setIsPressed(false);
@@ -84,7 +101,12 @@ export const Target = ({
     setShowSuccess(true);
     setTimeout(() => {
       setShowSuccess(false);
-      onActivate();
+      onActivate({
+        interactionMode: interactionMode === 'swipe' ? 'swipe' : 'tap',
+        swipeDirection: payload?.swipeDirection,
+        elapsedMs: payload?.elapsedMs,
+        swipeTimingVerdict: payload?.swipeTimingVerdict,
+      });
     }, 120);
   };
 
@@ -171,16 +193,21 @@ export const Target = ({
     const elapsedMs = Date.now() - pointerStart.at;
     if (!isIntentionalSwipe({ dx, dy, elapsedMs, minDistancePx: swipeThresholdPx })) {
       triggerFailedSwipe();
+      onSwipeAttemptFail?.({ reason: 'short', elapsedMs });
       return;
     }
 
     const direction = getSwipeDirection(dx, dy);
     if (direction !== target.swipeDirection) {
       triggerFailedSwipe();
+      onSwipeAttemptFail?.({ reason: 'direction', elapsedMs, swipeDirection: direction });
       return;
     }
 
-    handleActivate();
+    handleActivate({
+      swipeDirection: direction,
+      elapsedMs,
+    });
   };
 
   const directionHint = target.swipeDirection

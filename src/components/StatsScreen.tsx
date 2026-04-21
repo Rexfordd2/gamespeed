@@ -4,6 +4,8 @@ import { JungleBackground } from './JungleBackground';
 import { JungleButton } from './JungleButton';
 import { GameStats } from '../types/game';
 import { MODE_ORDER, gameModes } from '../utils/gameModes';
+import { getSportConfig } from '../config/sports';
+import { getStatsGroupSummary, getSportTrendSummaries } from '../utils/readinessMetrics';
 import {
   getDailyStreak,
   getFriendLeaderboard,
@@ -38,6 +40,8 @@ export const StatsScreen = ({ onClose, stats, playerName }: StatsScreenProps) =>
   const unlockStatuses = getModeUnlockStatuses(stats);
   const recentRounds = getRecentHistory(stats, 16);
   const leaderboard = getFriendLeaderboard(stats, playerName).slice(0, 5);
+  const groupedSummary = getStatsGroupSummary(stats);
+  const sportTrends = getSportTrendSummaries(stats).slice(0, 4);
   const hasPbs = MODE_ORDER.some(mode => stats.pbs[mode] !== undefined);
   const unlockedCount = unlockStatuses.filter(status => status.unlocked).length;
 
@@ -59,11 +63,11 @@ export const StatsScreen = ({ onClose, stats, playerName }: StatsScreenProps) =>
     >
       <JungleBackground />
       <motion.div
-        className="relative z-10 mx-auto w-full max-w-4xl px-4 py-4 sm:px-6 sm:py-6"
+        className="relative z-10 mx-auto w-full max-w-4xl px-4 py-3 sm:px-6 sm:py-6"
         initial={{ opacity: 0, y: 14 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <div className="flex items-center justify-between mb-6">
+        <div className="mb-4 flex items-center justify-between sm:mb-6">
           <div>
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight" style={{ color: theme.textColor }}>
               Session Stats
@@ -72,29 +76,102 @@ export const StatsScreen = ({ onClose, stats, playerName }: StatsScreenProps) =>
               {todayRounds.length} round{todayRounds.length === 1 ? '' : 's'} today
             </p>
           </div>
-          <JungleButton onClick={onClose} className="px-4 py-2.5 text-sm font-semibold">
+          <JungleButton onClick={onClose} className="min-h-11 px-4 py-2.5 text-sm font-semibold">
             ← Menu
           </JungleButton>
         </div>
 
-        <section className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-7">
-          <div className="rounded-2xl p-4" style={cardStyle}>
+        <section className="mb-5 grid grid-cols-2 gap-2.5 sm:gap-3 md:mb-7 md:grid-cols-4">
+          <div className="rounded-2xl p-3.5 sm:p-4" style={cardStyle}>
             <p className="text-[10px] uppercase tracking-[0.16em] opacity-60" style={{ color: theme.textColor }}>Daily streak</p>
             <p className="text-3xl font-black tabular-nums mt-1" style={{ color: '#4ade80' }}>{streak}</p>
           </div>
-          <div className="rounded-2xl p-4" style={cardStyle}>
+          <div className="rounded-2xl p-3.5 sm:p-4" style={cardStyle}>
             <p className="text-[10px] uppercase tracking-[0.16em] opacity-60" style={{ color: theme.textColor }}>Weekly challenge</p>
             <p className="text-2xl font-black tabular-nums mt-1" style={{ color: weeklyChallenge.completed ? '#4ade80' : '#facc15' }}>
               {weeklyChallenge.roundsDone}/{weeklyChallenge.roundsTarget}
             </p>
           </div>
-          <div className="rounded-2xl p-4" style={cardStyle}>
+          <div className="rounded-2xl p-3.5 sm:p-4" style={cardStyle}>
             <p className="text-[10px] uppercase tracking-[0.16em] opacity-60" style={{ color: theme.textColor }}>Modes unlocked</p>
             <p className="text-3xl font-black tabular-nums mt-1" style={{ color: '#7dd3fc' }}>{unlockedCount}/{unlockStatuses.length}</p>
           </div>
-          <div className="rounded-2xl p-4" style={cardStyle}>
+          <div className="rounded-2xl p-3.5 sm:p-4" style={cardStyle}>
             <p className="text-[10px] uppercase tracking-[0.16em] opacity-60" style={{ color: theme.textColor }}>Total sessions</p>
             <p className="text-3xl font-black tabular-nums mt-1" style={{ color: theme.targetColor }}>{stats.rounds.length}</p>
+          </div>
+        </section>
+
+        <section className="mb-7">
+          <p className="text-[11px] uppercase tracking-[0.18em] font-semibold mb-3" style={{ color: theme.targetColor }}>
+            Gameplay
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="rounded-2xl p-4" style={cardStyle}>
+              <p className="text-[10px] uppercase tracking-[0.15em] opacity-60" style={{ color: theme.textColor }}>Average score</p>
+              <p className="mt-1 text-2xl font-black tabular-nums" style={{ color: theme.targetColor }}>{groupedSummary.gameplay.scoreAverage}</p>
+            </div>
+            <div className="rounded-2xl p-4" style={cardStyle}>
+              <p className="text-[10px] uppercase tracking-[0.15em] opacity-60" style={{ color: theme.textColor }}>Median reaction time</p>
+              <p className="mt-1 text-2xl font-black tabular-nums" style={{ color: '#7dd3fc' }}>
+                {groupedSummary.gameplay.reactionTimeMedianMs ?? '--'}{groupedSummary.gameplay.reactionTimeMedianMs !== null ? 'ms' : ''}
+              </p>
+            </div>
+            <div className="rounded-2xl p-4" style={cardStyle}>
+              <p className="text-[10px] uppercase tracking-[0.15em] opacity-60" style={{ color: theme.textColor }}>Rounds tracked</p>
+              <p className="mt-1 text-2xl font-black tabular-nums" style={{ color: '#a3e635' }}>{groupedSummary.gameplay.rounds}</p>
+            </div>
+          </div>
+        </section>
+
+        <section className="mb-7">
+          <p className="text-[11px] uppercase tracking-[0.18em] font-semibold mb-3" style={{ color: theme.targetColor }}>
+            Readiness
+          </p>
+          <div className="rounded-2xl p-4 space-y-2.5" style={cardStyle}>
+            <p className="text-sm tabular-nums" style={{ color: theme.textColor }}>
+              Readiness score {groupedSummary.readiness.readinessScore} · Accuracy {groupedSummary.readiness.decisionAccuracyPct}% · Late decisions {groupedSummary.readiness.lateDecisionRatePct}%
+            </p>
+            <p className="text-sm tabular-nums" style={{ color: theme.textColor }}>
+              Miss rate {groupedSummary.readiness.missRatePct}% · Streak quality {groupedSummary.readiness.streakQualityPct}% · Consistency {groupedSummary.readiness.consistencyPct}%
+            </p>
+          </div>
+        </section>
+
+        <section className="mb-7">
+          <p className="text-[11px] uppercase tracking-[0.18em] font-semibold mb-3" style={{ color: theme.targetColor }}>
+            Recovery / Sleep
+          </p>
+          <div className="rounded-2xl p-4 space-y-2.5" style={cardStyle}>
+            <p className="text-sm tabular-nums" style={{ color: theme.textColor }}>
+              Runway completions logged: {groupedSummary.recovery.runwayCompletionsCount}
+            </p>
+            <p className="text-sm" style={{ color: theme.textColor }}>
+              Sleep check-in correlation: {groupedSummary.recovery.sleepCorrelationState === 'available' ? 'available' : 'pending placeholder (collect more data)'}
+            </p>
+          </div>
+        </section>
+
+        <section className="mb-7">
+          <p className="text-[11px] uppercase tracking-[0.18em] font-semibold mb-3" style={{ color: theme.targetColor }}>
+            By-sport trends
+          </p>
+          <div className="rounded-2xl p-4 space-y-2.5" style={cardStyle}>
+            {sportTrends.length === 0 ? (
+              <p className="text-sm opacity-60" style={{ color: theme.textColor }}>No rounds recorded yet.</p>
+            ) : (
+              sportTrends.map(trend => (
+                <div key={trend.sport} className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold" style={{ color: theme.textColor }}>{getSportConfig(trend.sport).displayName}</p>
+                    <p className="text-xs opacity-70" style={{ color: theme.textColor }}>{trend.summary}</p>
+                  </div>
+                  <p className="text-sm font-bold tabular-nums" style={{ color: '#7dd3fc' }}>
+                    {trend.averageReadinessScore} ({trend.roundsTracked})
+                  </p>
+                </div>
+              ))
+            )}
           </div>
         </section>
 

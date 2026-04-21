@@ -11,7 +11,7 @@ export const LandingDemoShell = ({ content, onRunBenchmark }: LandingDemoShellPr
   const { theme } = useTheme();
 
   return (
-    <section className="grid gap-4 rounded-3xl border p-5 sm:p-6 lg:grid-cols-[1.2fr_1fr]" style={{
+    <section className="grid gap-3 rounded-3xl border p-4 sm:gap-4 sm:p-6 lg:grid-cols-[1.2fr_1fr]" style={{
       borderColor: `${theme.targetColor}44`,
       backgroundColor: 'rgba(6, 11, 17, 0.78)',
     }}>
@@ -23,7 +23,7 @@ export const LandingDemoShell = ({ content, onRunBenchmark }: LandingDemoShellPr
           {content.body}
         </p>
 
-        <div className="mt-4 grid gap-2 sm:grid-cols-3">
+        <div className="mt-3 grid gap-2 sm:mt-4 sm:grid-cols-3">
           {content.metrics.map(metric => (
             <div
               key={metric.label}
@@ -45,7 +45,7 @@ export const LandingDemoShell = ({ content, onRunBenchmark }: LandingDemoShellPr
       </div>
 
       <div
-        className="rounded-2xl border p-4"
+        className="rounded-2xl border p-3.5 sm:p-4"
         style={{
           borderColor: `${theme.targetColor}55`,
           background: 'linear-gradient(160deg, rgba(3,13,16,0.95), rgba(6,20,24,0.82))',

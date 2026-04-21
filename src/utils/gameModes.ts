@@ -53,7 +53,7 @@ export const gameModes: Record<GameModeType, GameMode> = {
   },
   swipeStrike: {
     name: 'Swipe Strike',
-    description: 'Swipe through moving cues before they escape the lane.',
+    description: 'Read directional cues and commit inside the active response window.',
     generateTargets: generateSwipeStrike,
     availability: 'playable',
     config: {
@@ -64,7 +64,7 @@ export const gameModes: Record<GameModeType, GameMode> = {
   },
   holdTrack: {
     name: 'Hold Track',
-    description: 'Lock onto a moving cue and hold contact until the tracking meter is full.',
+    description: 'Stabilize contact on a moving cue until the hold meter fully locks.',
     generateTargets: generateHoldTrack,
     availability: 'playable',
     config: {
@@ -75,7 +75,7 @@ export const gameModes: Record<GameModeType, GameMode> = {
   },
   sequenceMemory: {
     name: 'Sequence Memory',
-    description: 'Watch a sequence, then repeat every cue in the exact order.',
+    description: 'Preview a short cue pattern, then replay it in exact order under pace.',
     generateTargets: generateSequenceMemory,
     availability: 'playable',
     config: {
