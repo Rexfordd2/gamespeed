@@ -2,7 +2,7 @@
 
 A browser-based eye-training and reaction game with multiple game modes, built with React, TypeScript, Vite, and Tailwind CSS.
 
-Live: **https://rexfordd2.github.io/gamespeed/**
+Live: **Set after Vercel production domain is assigned**
 
 ---
 
@@ -55,10 +55,9 @@ Env vars are covered in the [Auth + Cloud Sync](#auth--cloud-sync-supabase) sect
 The CI pipeline runs typecheck → lint → test → build. A deploy is only triggered after all quality gates pass.
 
 Current base behavior in `vite.config.ts`:
-- `npm run dev` uses `/` for cleaner local development
-- `npm run build` uses `/gamespeed/` for GitHub Pages compatibility
+- `npm run dev` uses `/`
+- `npm run build` uses `/` (Vercel root-domain deployment)
 
-To deploy to a different host (e.g. Vercel, Netlify) at a root domain, set the build base to `/` in `vite.config.ts`.
 Asset URLs in `src/themes/jungle.ts` already use `import.meta.env.BASE_URL`, so they follow `base` automatically.
 
 ---

@@ -57,4 +57,4 @@ The current SVG files are intentional fallback visuals that keep the experience 
 All runtime paths are built from `import.meta.env.BASE_URL`, so the same assets work in:
 
 - local dev (`/`)
-- GitHub Pages (`/gamespeed/`)
+- Vercel production (`/`)
