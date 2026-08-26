@@ -155,6 +155,7 @@ export const StartScreen = ({
   const [readiness, setReadiness] = useState<1 | 2 | 3 | 4 | 5>(3);
   const [latestCheckInLabel, setLatestCheckInLabel] = useState<string | null>(null);
   const [savedCheckInNotice, setSavedCheckInNotice] = useState<string | null>(null);
+  const [showNightSettings, setShowNightSettings] = useState(false);
 
   useEffect(() => {
     const latest = getLatestSleepCheckIn();
@@ -380,33 +381,62 @@ export const StartScreen = ({
           </div>
         </section>
 
-        <section
-          className="rounded-3xl p-4 sm:p-6 md:p-7 backdrop-blur-md"
-          style={{
-            backgroundColor: 'rgba(5, 10, 16, 0.8)',
-            border: `1px solid ${theme.textColor}33`,
-          }}
-        >
-          <p
-            className="text-[11px] uppercase tracking-[0.18em] font-semibold"
-            style={{ color: theme.textColor, opacity: 0.75 }}
+        {isNightGuardrailActive && (
+          <section
+            className="rounded-2xl p-4"
+            style={{
+              backgroundColor: 'rgba(6, 12, 18, 0.9)',
+              border: '1px solid rgba(148, 163, 184, 0.45)',
+            }}
           >
-            Night-Before Guardrail
-          </p>
-          <h2 className="mt-2 text-xl font-bold sm:text-2xl" style={{ color: theme.textColor }}>
-            Protect your final 2 hours before bed
-          </h2>
-          <p className="mt-2 text-sm sm:text-base" style={{ color: theme.textColor, opacity: 0.8 }}>
-            Set your bedtime and reminder preference. On competition nights, the app offers a lower-stimulation session.
-          </p>
+            <p className="text-xs uppercase tracking-[0.15em]" style={{ color: theme.textColor, opacity: 0.68 }}>
+              Low-stimulation option
+            </p>
+            <p className="mt-2 text-sm leading-relaxed sm:text-base" style={{ color: theme.textColor, opacity: 0.86 }}>
+              Tonight is set as a competition eve. Use a calm readiness check with dimmed visuals and reduced motion.
+            </p>
+            <JungleButton onClick={handleStartLowStimulusSession} className="mt-4 w-full sm:w-auto px-6 py-3 text-base">
+              Start low-stimulation session
+            </JungleButton>
+          </section>
+        )}
 
-          <NightSettingsPanel
-            settings={nightGuardrailSettings}
-            onSettingsChange={onNightGuardrailSettingsChange}
-            isNightGuardrailActive={isNightGuardrailActive}
-            onStartLowStimulusSession={handleStartLowStimulusSession}
-          />
-        </section>
+        {showNightSettings && (
+          <section
+            className="rounded-3xl p-4 sm:p-6 md:p-7 backdrop-blur-md"
+            style={{
+              backgroundColor: 'rgba(5, 10, 16, 0.8)',
+              border: `1px solid ${theme.textColor}33`,
+            }}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p
+                  className="text-[11px] uppercase tracking-[0.18em] font-semibold"
+                  style={{ color: theme.textColor, opacity: 0.75 }}
+                >
+                  Night-Before Guardrail
+                </p>
+                <h2 className="mt-2 text-xl font-bold sm:text-2xl" style={{ color: theme.textColor }}>
+                  Night settings
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowNightSettings(false)}
+                className="ui-secondary-button min-h-10 px-4 text-sm"
+                style={{ color: theme.textColor, borderColor: `${theme.textColor}44` }}
+              >
+                Close
+              </button>
+            </div>
+            <NightSettingsPanel
+              settings={nightGuardrailSettings}
+              onSettingsChange={onNightGuardrailSettingsChange}
+              isNightGuardrailActive={false}
+            />
+          </section>
+        )}
 
         <section
           ref={onboardingSectionRef}
@@ -841,6 +871,14 @@ export const StartScreen = ({
         </section>
 
         <section className="flex flex-col gap-2 sm:flex-row sm:justify-center">
+          <button
+            type="button"
+            onClick={() => setShowNightSettings(true)}
+            className="ui-secondary-button min-h-12 px-6 text-sm sm:text-base"
+            style={{ color: theme.textColor, borderColor: `${theme.textColor}44` }}
+          >
+            Night settings
+          </button>
           <button
             type="button"
             onClick={onOpenCoachMode}

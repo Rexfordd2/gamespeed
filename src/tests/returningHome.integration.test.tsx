@@ -120,6 +120,9 @@ describe('first-time vs returning home', () => {
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Establish Baseline' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Prime Me' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Target bedtime')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Night settings' }));
+    expect(screen.getByText('Target bedtime')).toBeInTheDocument();
   });
 
   it('uses local round history, not authentication, to show returning home', () => {
