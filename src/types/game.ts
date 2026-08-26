@@ -4,11 +4,14 @@ export type GameState = 'start' | 'playing' | 'end' | 'stats' | 'coach';
 
 export type CueIntensity = 'minimal' | 'standard' | 'guided';
 
+export type TrainingContext = 'practice' | 'game' | 'lift' | 'skill' | 'recovery';
+
 export interface SessionOptions {
   lowStimulus?: boolean;
   includeRoutine?: boolean;
   cueIntensity?: CueIntensity;
   hapticsEnabled?: boolean;
+  trainingContext?: TrainingContext;
 }
 
 export type GameModeType =

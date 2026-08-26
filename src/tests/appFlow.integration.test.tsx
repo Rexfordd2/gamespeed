@@ -126,6 +126,10 @@ const getModeStartButton = (modeName: string) => {
 };
 
 const startMode = async (modeName: string) => {
+  const trainInstinct = screen.queryByRole('button', { name: /train an instinct/i });
+  if (trainInstinct) {
+    fireEvent.click(trainInstinct);
+  }
   fireEvent.click(getModeStartButton(modeName));
   await flushMicrotasks();
   expect(screen.getByRole('button', { name: /pause game/i })).toBeInTheDocument();
@@ -157,6 +161,7 @@ describe('App integration flow', () => {
         name: 'Replace the pre-game scroll in 60 seconds',
       }),
     ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Establish Baseline' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Soccer' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByText('1. Choose role')).toBeInTheDocument();
     expect(screen.queryByText('2. Choose one goal')).not.toBeInTheDocument();
@@ -309,7 +314,7 @@ describe('App integration flow', () => {
       expect(screen.getAllByText(modeName).length).toBeGreaterThan(0);
 
       fireEvent.click(screen.getByRole('button', { name: 'Main Menu' }));
-      expect(screen.getAllByRole('heading', { name: 'Soccer Readiness Drills' }).length).toBeGreaterThan(0);
+      expect(screen.getByRole('button', { name: 'Prime Me' })).toBeInTheDocument();
     }
   });
 
@@ -507,7 +512,8 @@ describe('App integration flow', () => {
     expect(screen.getByText('Final Score')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Main Menu' }));
-    expect(screen.getAllByRole('heading', { name: 'Soccer Readiness Drills' }).length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: 'Prime Me' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Soccer Readiness Drills' })).not.toBeInTheDocument();
   });
 
   it('toggles audio safely without crashing the UI', async () => {

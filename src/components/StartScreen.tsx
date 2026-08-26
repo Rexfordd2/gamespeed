@@ -5,6 +5,7 @@ import { CueIntensity, GameModeType, FirstRunSelection, GameStats, PlayerGoal, P
 import { JungleBackground } from './JungleBackground';
 import { GameModeSelector } from './GameModeSelector';
 import { JungleButton } from './JungleButton';
+import { NightSettingsPanel } from './NightSettingsPanel';
 import { LandingHero } from './landing/LandingHero';
 import { LandingDemoShell } from './landing/LandingDemoShell';
 import { LandingWhyItMatters } from './landing/LandingWhyItMatters';
@@ -399,115 +400,12 @@ export const StartScreen = ({
             Set your bedtime and reminder preference. On competition nights, the app offers a lower-stimulation session.
           </p>
 
-          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <label className="rounded-2xl p-3" style={{ backgroundColor: 'rgba(2, 8, 12, 0.72)', border: `1px solid ${theme.textColor}2d` }}>
-              <span className="text-xs uppercase tracking-[0.12em]" style={{ color: theme.textColor, opacity: 0.7 }}>
-                Target bedtime
-              </span>
-              <input
-                type="time"
-                value={nightGuardrailSettings.targetBedtime}
-                onChange={event =>
-                  onNightGuardrailSettingsChange({
-                    ...nightGuardrailSettings,
-                    targetBedtime: event.target.value,
-                  })
-                }
-                className="mt-2 w-full rounded-lg px-3 py-2 text-sm"
-                style={{
-                  backgroundColor: 'rgba(0,0,0,0.2)',
-                  color: theme.textColor,
-                  border: `1px solid ${theme.textColor}44`,
-                }}
-              />
-            </label>
-
-            <label className="rounded-2xl p-3" style={{ backgroundColor: 'rgba(2, 8, 12, 0.72)', border: `1px solid ${theme.textColor}2d` }}>
-              <span className="text-xs uppercase tracking-[0.12em]" style={{ color: theme.textColor, opacity: 0.7 }}>
-                Reminder preference
-              </span>
-              <select
-                value={nightGuardrailSettings.reminderPreference}
-                onChange={event =>
-                  onNightGuardrailSettingsChange({
-                    ...nightGuardrailSettings,
-                    reminderPreference: event.target.value === 'off' ? 'off' : 'inApp',
-                  })
-                }
-                className="mt-2 w-full rounded-lg px-3 py-2 text-sm"
-                style={{
-                  backgroundColor: 'rgba(0,0,0,0.2)',
-                  color: theme.textColor,
-                  border: `1px solid ${theme.textColor}44`,
-                }}
-              >
-                <option value="inApp">In-app reminder</option>
-                <option value="off">Off</option>
-              </select>
-            </label>
-          </div>
-
-          <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <button
-              type="button"
-              aria-pressed={nightGuardrailSettings.competitionTomorrow}
-              onClick={() =>
-                onNightGuardrailSettingsChange({
-                  ...nightGuardrailSettings,
-                  competitionTomorrow: !nightGuardrailSettings.competitionTomorrow,
-                })
-              }
-              className="rounded-xl px-4 py-3 text-sm text-left"
-              style={{
-                color: theme.textColor,
-                backgroundColor: nightGuardrailSettings.competitionTomorrow ? 'rgba(56, 189, 248, 0.18)' : 'rgba(2, 8, 12, 0.72)',
-                border: `1px solid ${nightGuardrailSettings.competitionTomorrow ? 'rgba(56, 189, 248, 0.8)' : `${theme.textColor}30`}`,
-              }}
-            >
-              Competition tomorrow: {nightGuardrailSettings.competitionTomorrow ? 'On' : 'Off'}
-            </button>
-            <button
-              type="button"
-              aria-pressed={nightGuardrailSettings.includeBreathingRoutine}
-              onClick={() =>
-                onNightGuardrailSettingsChange({
-                  ...nightGuardrailSettings,
-                  includeBreathingRoutine: !nightGuardrailSettings.includeBreathingRoutine,
-                })
-              }
-              className="rounded-xl px-4 py-3 text-sm text-left"
-              style={{
-                color: theme.textColor,
-                backgroundColor: nightGuardrailSettings.includeBreathingRoutine ? 'rgba(52, 211, 153, 0.16)' : 'rgba(2, 8, 12, 0.72)',
-                border: `1px solid ${nightGuardrailSettings.includeBreathingRoutine ? 'rgba(52, 211, 153, 0.72)' : `${theme.textColor}30`}`,
-              }}
-            >
-              Short breathing + gaze routine: {nightGuardrailSettings.includeBreathingRoutine ? 'On' : 'Off'}
-            </button>
-          </div>
-
-          {isNightGuardrailActive && (
-            <div
-              className="mt-4 rounded-2xl p-4"
-              style={{
-                backgroundColor: 'rgba(6, 12, 18, 0.9)',
-                border: '1px solid rgba(148, 163, 184, 0.45)',
-              }}
-            >
-              <p className="text-xs uppercase tracking-[0.15em]" style={{ color: theme.textColor, opacity: 0.68 }}>
-                Low-stimulation option
-              </p>
-              <p className="mt-2 text-sm leading-relaxed sm:text-base" style={{ color: theme.textColor, opacity: 0.86 }}>
-                Tonight is set as a competition eve. Use a calm readiness check with dimmed visuals and reduced motion.
-              </p>
-              <p className="mt-1 text-xs" style={{ color: theme.textColor, opacity: 0.68 }}>
-                Includes optional short breathing + gaze routine before the round.
-              </p>
-              <JungleButton onClick={handleStartLowStimulusSession} className="mt-4 w-full sm:w-auto px-6 py-3 text-base">
-                Start low-stimulation session
-              </JungleButton>
-            </div>
-          )}
+          <NightSettingsPanel
+            settings={nightGuardrailSettings}
+            onSettingsChange={onNightGuardrailSettingsChange}
+            isNightGuardrailActive={isNightGuardrailActive}
+            onStartLowStimulusSession={handleStartLowStimulusSession}
+          />
         </section>
 
         <section
@@ -656,7 +554,7 @@ export const StartScreen = ({
               className="w-full sm:w-auto px-6 py-3 text-base font-bold"
               disabled={isFirstRun && (!persona || !goal)}
             >
-              {isFirstRun ? 'Run the 60-Second Test' : 'Run Benchmark Session'}
+              {isFirstRun ? 'Establish Baseline' : 'Run Benchmark Session'}
             </JungleButton>
             <button
               onClick={onOpenRunway}

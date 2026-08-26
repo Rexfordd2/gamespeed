@@ -89,6 +89,10 @@ const getModeStartButton = (modeName: string) => {
 };
 
 const startMode = async (modeName: string) => {
+  const trainInstinct = screen.queryByRole('button', { name: /train an instinct/i });
+  if (trainInstinct) {
+    fireEvent.click(trainInstinct);
+  }
   fireEvent.click(getModeStartButton(modeName));
   await flushMicrotasks();
   expect(screen.getByRole('button', { name: /pause game/i })).toBeInTheDocument();

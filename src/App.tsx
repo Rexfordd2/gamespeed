@@ -3,6 +3,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import { jungleTheme } from './themes/jungle';
 import { AudioManager } from './components/AudioManager';
 import { StartScreen } from './components/StartScreen';
+import { ReturningHome } from './components/ReturningHome';
 import { Game } from './components/Game';
 import { EndScreen } from './components/EndScreen';
 import { StatsScreen } from './components/StatsScreen';
@@ -20,6 +21,7 @@ import {
   SessionOptions,
 } from './types/game';
 import { resolvePlayableMode } from './utils/gameModes';
+import { hasValidRoundHistory } from './utils/athleteHome';
 import { loadStats, recordRound } from './utils/sessionStats';
 import { createClientRoundId, syncRoundToCloud } from './utils/roundSync';
 import { useAuth } from './context/AuthContext';
@@ -165,6 +167,7 @@ export const App = () => {
   const hasTrackedReturnVisit = useRef(false);
   const hadAuthenticatedUser = useRef<boolean>(!!user);
   const isNightGuardrailActive = shouldUseLowStimulusMode(nightGuardrailSettings, new Date(clockMs));
+  const isReturningAthlete = hasValidRoundHistory(statsSnapshot);
 
   const handleGameStart = (
     mode: GameModeType,
@@ -198,6 +201,7 @@ export const App = () => {
       persona: nextFirstRunSelection?.persona ?? null,
       goal: nextFirstRunSelection?.goal ?? null,
       lowStimulus: nextSessionOptions.lowStimulus,
+      trainingContext: options?.trainingContext ?? null,
     });
 
     const startMode = shouldForceLowStimulus ? 'reactionBenchmark' : mode;
@@ -494,6 +498,27 @@ export const App = () => {
                 selectedSport={selectedSport}
                 onBackToHome={handleReturnHome}
               />
+            ) : isReturningAthlete ? (
+              <ReturningHome
+                onStart={handleGameStart}
+                selectedSport={selectedSport}
+                onSportChange={handleSportChange}
+                cueIntensity={cueIntensityPreference}
+                onCueIntensityChange={handleCueIntensityPreferenceChange}
+                hapticsEnabled={hapticsPreference}
+                onHapticsEnabledChange={handleHapticsPreferenceChange}
+                onViewStats={handleViewStats}
+                onOpenBenchmarkPage={handleOpenBenchmarkPage}
+                onOpenRunway={handleOpenRunway}
+                onOpenCoachMode={handleOpenCoachMode}
+                stats={statsSnapshot}
+                playerName={profile?.display_name || user?.email?.split('@')[0] || 'You'}
+                nightGuardrailSettings={nightGuardrailSettings}
+                onNightGuardrailSettingsChange={handleNightGuardrailSettingsChange}
+                showNightReminder={showNightReminder}
+                onDismissNightReminder={() => setShowNightReminder(false)}
+                isNightGuardrailActive={isNightGuardrailActive}
+              />
             ) : (
               <StartScreen
                 onStart={handleGameStart}
@@ -507,7 +532,7 @@ export const App = () => {
                 onOpenBenchmarkPage={handleOpenBenchmarkPage}
                 onOpenRunway={handleOpenRunway}
                 onOpenCoachMode={handleOpenCoachMode}
-                isFirstRun={!isFirstRunComplete}
+                isFirstRun={!isReturningAthlete}
                 stats={statsSnapshot}
                 playerName={profile?.display_name || user?.email?.split('@')[0] || 'You'}
                 nightGuardrailSettings={nightGuardrailSettings}
