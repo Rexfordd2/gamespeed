@@ -46,8 +46,34 @@ const BENCHMARK_ROUTE_PATH = '/benchmark';
 const RUNWAY_ROUTE_PATH = '/runway';
 type PublicRoute = 'home' | 'benchmark' | 'runway';
 
+const RAW_BASE_PATH = import.meta.env.BASE_URL || '/';
+const APP_BASE_PATH =
+  RAW_BASE_PATH === '/'
+    ? '/'
+    : `/${RAW_BASE_PATH.replace(/^\/+/, '').replace(/\/+$/, '')}/`;
+
+const stripAppBasePath = (pathname: string) => {
+  if (APP_BASE_PATH === '/') return pathname;
+  const baseWithoutTrailingSlash = APP_BASE_PATH.endsWith('/')
+    ? APP_BASE_PATH.slice(0, -1)
+    : APP_BASE_PATH;
+  if (!pathname.startsWith(baseWithoutTrailingSlash)) {
+    return pathname;
+  }
+  const stripped = pathname.slice(baseWithoutTrailingSlash.length);
+  return stripped.startsWith('/') ? stripped : `/${stripped}`;
+};
+
+const withAppBasePath = (pathname: string) => {
+  if (APP_BASE_PATH === '/') return pathname;
+  const baseWithoutTrailingSlash = APP_BASE_PATH.endsWith('/')
+    ? APP_BASE_PATH.slice(0, -1)
+    : APP_BASE_PATH;
+  return `${baseWithoutTrailingSlash}${pathname}`;
+};
+
 const getPublicRouteFromPath = (pathname: string): PublicRoute => {
-  const normalizedPath = pathname.toLowerCase();
+  const normalizedPath = stripAppBasePath(pathname).toLowerCase();
   if (normalizedPath === BENCHMARK_ROUTE_PATH) return 'benchmark';
   if (normalizedPath === RUNWAY_ROUTE_PATH) return 'runway';
   return 'home';
@@ -305,12 +331,13 @@ export const App = () => {
 
   const navigateToPublicRoute = (nextRoute: PublicRoute) => {
     if (typeof window === 'undefined') return;
-    const nextPathname =
+    const nextPathWithoutBase =
       nextRoute === 'benchmark'
         ? BENCHMARK_ROUTE_PATH
         : nextRoute === 'runway'
           ? RUNWAY_ROUTE_PATH
           : '/';
+    const nextPathname = withAppBasePath(nextPathWithoutBase);
     if (window.location.pathname !== nextPathname) {
       window.history.pushState({}, '', nextPathname);
     }
