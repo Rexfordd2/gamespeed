@@ -35,6 +35,7 @@ interface EndScreenProps {
   stats: GameStats;
   roundProgressDelta: RoundProgressDelta | null;
   playerName: string;
+  cloudSyncStatus?: 'idle' | 'synced' | 'failed';
 }
 
 type ChecklistState = {
@@ -133,6 +134,7 @@ export const EndScreen = ({
   stats,
   roundProgressDelta,
   playerName,
+  cloudSyncStatus = 'idle',
 }: EndScreenProps) => {
   const { theme } = useTheme();
   const landingExperiment = useMemo(() => getLandingExperimentAssignment(), []);
@@ -323,6 +325,24 @@ export const EndScreen = ({
             )}
           </div>
         </motion.div>
+
+        {cloudSyncStatus === 'failed' && (
+          <div
+            className="mb-3 w-full rounded-2xl px-4 py-3 sm:mb-4"
+            role="status"
+            style={{
+              backgroundColor: 'rgba(232, 164, 58, 0.12)',
+              border: '1px solid rgba(232, 164, 58, 0.45)',
+            }}
+          >
+            <p className="font-display text-sm font-bold uppercase tracking-[0.12em]" style={{ color: '#E8A43A' }}>
+              Trail lost
+            </p>
+            <p className="mt-1 text-sm leading-relaxed" style={{ color: theme.textColor, opacity: 0.86 }}>
+              Cloud sync failed. Your local result is still safe on this device.
+            </p>
+          </div>
+        )}
 
         <div className="mb-3 w-full rounded-2xl px-4 py-4 sm:mb-4 sm:px-5" style={{ backgroundColor: 'rgba(82, 242, 140, 0.09)', border: '1px solid rgba(82, 242, 140, 0.28)' }}>
           <p className="mb-2 text-[10px] uppercase tracking-widest opacity-60 sm:text-xs" style={{ color: theme.textColor }}>What this trains</p>
