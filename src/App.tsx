@@ -44,6 +44,7 @@ const CUE_INTENSITY_STORAGE_KEY = 'gamespeed_cue_intensity_v1';
 const HAPTICS_ENABLED_STORAGE_KEY = 'gamespeed_haptics_enabled_v1';
 const BENCHMARK_ROUTE_PATH = '/benchmark';
 const RUNWAY_ROUTE_PATH = '/runway';
+const ROUTE_QUERY_KEY = 'view';
 type PublicRoute = 'home' | 'benchmark' | 'runway';
 
 const RAW_BASE_PATH = import.meta.env.BASE_URL || '/';
@@ -72,7 +73,12 @@ const withAppBasePath = (pathname: string) => {
   return `${baseWithoutTrailingSlash}${pathname}`;
 };
 
-const getPublicRouteFromPath = (pathname: string): PublicRoute => {
+const getPublicRouteFromLocation = (pathname: string, search: string): PublicRoute => {
+  const params = new URLSearchParams(search);
+  const queryRoute = params.get(ROUTE_QUERY_KEY);
+  if (queryRoute === 'benchmark' || queryRoute === 'runway' || queryRoute === 'home') {
+    return queryRoute;
+  }
   const normalizedPath = stripAppBasePath(pathname).toLowerCase();
   if (normalizedPath === BENCHMARK_ROUTE_PATH) return 'benchmark';
   if (normalizedPath === RUNWAY_ROUTE_PATH) return 'runway';
@@ -117,7 +123,9 @@ export const App = () => {
   const { user, profile } = useAuth();
   const landingExperiment = useMemo(() => getLandingExperimentAssignment(), []);
   const [publicRoute, setPublicRoute] = useState<PublicRoute>(() =>
-    typeof window === 'undefined' ? 'home' : getPublicRouteFromPath(window.location.pathname),
+    typeof window === 'undefined'
+      ? 'home'
+      : getPublicRouteFromLocation(window.location.pathname, window.location.search),
   );
   const [gameState, setGameState] = useState<GameState>('start');
   const [selectedMode, setSelectedMode] = useState<GameModeType>('quickTap');
@@ -331,15 +339,14 @@ export const App = () => {
 
   const navigateToPublicRoute = (nextRoute: PublicRoute) => {
     if (typeof window === 'undefined') return;
-    const nextPathWithoutBase =
-      nextRoute === 'benchmark'
-        ? BENCHMARK_ROUTE_PATH
-        : nextRoute === 'runway'
-          ? RUNWAY_ROUTE_PATH
-          : '/';
-    const nextPathname = withAppBasePath(nextPathWithoutBase);
-    if (window.location.pathname !== nextPathname) {
-      window.history.pushState({}, '', nextPathname);
+    const basePathname = withAppBasePath('/');
+    const nextUrl =
+      nextRoute === 'home'
+        ? basePathname
+        : `${basePathname}?${ROUTE_QUERY_KEY}=${encodeURIComponent(nextRoute)}`;
+    const currentUrl = `${window.location.pathname}${window.location.search}`;
+    if (currentUrl !== nextUrl) {
+      window.history.pushState({}, '', nextUrl);
     }
     setPublicRoute(nextRoute);
   };
@@ -369,7 +376,7 @@ export const App = () => {
     });
     setGameState('start');
     if (typeof window !== 'undefined') {
-      setPublicRoute(getPublicRouteFromPath(window.location.pathname));
+      setPublicRoute(getPublicRouteFromLocation(window.location.pathname, window.location.search));
     }
   }, [cueIntensityPreference, hapticsPreference]);
 
@@ -383,7 +390,7 @@ export const App = () => {
 
   useEffect(() => {
     const onPopState = () => {
-      setPublicRoute(getPublicRouteFromPath(window.location.pathname));
+      setPublicRoute(getPublicRouteFromLocation(window.location.pathname, window.location.search));
     };
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
