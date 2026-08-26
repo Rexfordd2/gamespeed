@@ -65,6 +65,10 @@ const DEFAULT_SPORT_COPY: Record<GameModeType, ModeSportCopyOverride> = {
     sportLabel: 'Strike or hold the cue',
     sportDescription: 'Fire on the live cue and withhold on the fake. Fast is not enough if the read is wrong.',
   },
+  choiceReaction: {
+    sportLabel: 'Read then respond',
+    sportDescription: 'Classify the cue and pick the matching action. Speed only counts when the decision is right.',
+  },
 };
 
 const modeSportOverrides: Partial<Record<SportType, Partial<Record<GameModeType, ModeSportCopyOverride>>>> = {
@@ -413,6 +417,27 @@ export const modeDescriptions: Record<GameModeType, ModeDescription> = {
       'Do not tap the still interval. Wait for the live cue.',
       'A red HOLD is a success if you never move.',
       'False starts are counted separately from missed live cues.',
+    ],
+  },
+  choiceReaction: {
+    title: 'Mongoose Read',
+    description:
+      'Choice-reaction drill. Read the cue, then select the matching response — tap, swipe, or withhold. Rules are shown before the round, then taken away unless the difficulty keeps them visible.',
+    trainingFocus: 'Stimulus discrimination and motor selection',
+    intensity: 'High',
+    rhythm: 'Read first. Move second.',
+    whyThisMatters:
+      'Fast is only useful when the decision is right. This mode separates choice reaction time from decision accuracy so a lucky mash is not a win.',
+    evidenceStyle: {
+      cuePickup: 'Requires classifying the live cue against a rule map before moving.',
+      anticipation: 'Punishes false starts during the wait interval.',
+      decisionSpeed: 'Measures choice reaction time only on correct motor responses.',
+      gazeStability: 'Rewards staying quiet until the mapping is read.',
+    },
+    tips: [
+      'Study the rules during the briefing. They may disappear once the drill starts.',
+      'A wrong swipe is not the same miss as a late tap or a false start.',
+      'Red means no response. Moving on a no-go is a wrong decision, not a fast one.',
     ],
   },
 };

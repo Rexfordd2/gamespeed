@@ -90,6 +90,14 @@ const instincts: AnimalInstinct[] = [
     ability: 'Valid-cue strike + invalid-cue withhold',
     tagline: 'Still until the moment is real.',
   },
+  {
+    modeId: 'choiceReaction',
+    experienceName: 'Mongoose Read',
+    animal: 'Mongoose',
+    instinct: 'Stimulus discrimination + motor selection',
+    ability: 'Read the cue, then pick the correct response',
+    tagline: 'Read first. Move second.',
+  },
 ];
 
 export const animalInstincts: Record<GameModeType, AnimalInstinct> = instincts.reduce(

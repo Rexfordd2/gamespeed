@@ -82,6 +82,11 @@ const UNLOCK_RULES: UnlockRule[] = [
     requiredRounds: 3,
     description: 'Unlock at 3 total sessions',
   },
+  {
+    mode: 'choiceReaction',
+    requiredRounds: 3,
+    description: 'Unlock at 3 total sessions',
+  },
 ];
 
 const startOfDay = (ts: number) => {

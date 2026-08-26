@@ -7,6 +7,7 @@ import { generateTargets as peripheralPulse } from '../modes/peripheralPulse';
 import { generateTargets as calmFocus } from '../modes/calmFocus';
 import { generateTargets as schulteScan } from '../modes/schulteScan';
 import { generateTargets as goNoGo } from '../modes/goNoGo';
+import { generateTargets as choiceReaction } from '../modes/choiceReaction';
 import {
   generateSequenceTargets,
   getSequenceLengthForSuccesses,
@@ -142,6 +143,7 @@ describe('gameModes registry', () => {
     expect(gameModes.calmFocus).toBeDefined();
     expect(gameModes.schulteScan).toBeDefined();
     expect(gameModes.goNoGo).toBeDefined();
+    expect(gameModes.choiceReaction).toBeDefined();
     expect(gameModes.quickTap.availability).toBe('playable');
     expect(gameModes.multiTarget.availability).toBe('playable');
     expect(gameModes.swipeStrike.availability).toBe('playable');
@@ -151,8 +153,10 @@ describe('gameModes registry', () => {
     expect(gameModes.calmFocus.availability).toBe('playable');
     expect(gameModes.schulteScan.availability).toBe('playable');
     expect(gameModes.goNoGo.availability).toBe('playable');
+    expect(gameModes.choiceReaction.availability).toBe('playable');
     expect(gameModes.schulteScan.name).toBe('Macaw Scan');
     expect(gameModes.goNoGo.name).toBe('Caiman Control');
+    expect(gameModes.choiceReaction.name).toBe('Mongoose Read');
   });
 
   it('every mode has a generateTargets function', () => {
@@ -347,6 +351,12 @@ describe('schulteScan.generateTargets', () => {
 describe('goNoGo.generateTargets', () => {
   it('does not spawn floating targets — the trial engine owns timing', () => {
     expect(goNoGo({ ...base, existingTargets: [] })).toEqual([]);
+  });
+});
+
+describe('choiceReaction.generateTargets', () => {
+  it('does not spawn floating targets — the trial engine owns timing', () => {
+    expect(choiceReaction({ ...base, existingTargets: [] })).toEqual([]);
   });
 });
 

@@ -190,4 +190,48 @@ describe('session stats backward compatibility', () => {
     expect(caiman?.meta?.goNoGoMetrics?.prematureResponses).toBe(2);
     expect(tap?.meta?.goNoGoMetrics).toBeUndefined();
   });
+
+  it('persists Mongoose Read choice-reaction metrics without rewriting other mode history', () => {
+    recordRound({
+      score: 12,
+      misses: 2,
+      bestStreak: 6,
+      mode: 'quickTap',
+      modeName: 'Quick Tap',
+    });
+    recordRound({
+      score: 9,
+      misses: 4,
+      bestStreak: 3,
+      mode: 'choiceReaction',
+      modeName: 'Mongoose Read',
+      choiceReactionMetrics: {
+        decisionAccuracyPct: 69,
+        meanChoiceReactionMs: 312,
+        wrongResponseCount: 2,
+        omissions: 2,
+        falseStarts: 1,
+        prematureResponses: 1,
+        correct: 9,
+        trialsResolved: 13,
+        bestStreak: 3,
+        consistencyPct: 74,
+        ruleSwitchCostMs: 40,
+        byResponse: {
+          tap: { attempts: 5, correct: 4, meanRtMs: 280 },
+          swipeLeft: { attempts: 4, correct: 3, meanRtMs: 340 },
+          nogo: { attempts: 4, correct: 2, meanRtMs: null },
+        },
+      },
+    });
+
+    const reloaded = loadStats();
+    const mongoose = reloaded.rounds.find(round => round.mode === 'choiceReaction');
+    const tap = reloaded.rounds.find(round => round.mode === 'quickTap');
+    expect(mongoose?.meta?.choiceReactionMetrics?.decisionAccuracyPct).toBe(69);
+    expect(mongoose?.meta?.choiceReactionMetrics?.meanChoiceReactionMs).toBe(312);
+    expect(mongoose?.meta?.choiceReactionMetrics?.wrongResponseCount).toBe(2);
+    expect(mongoose?.meta?.choiceReactionMetrics?.falseStarts).toBe(1);
+    expect(tap?.meta?.choiceReactionMetrics).toBeUndefined();
+  });
 });

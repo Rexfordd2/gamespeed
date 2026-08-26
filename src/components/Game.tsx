@@ -24,6 +24,7 @@ import { GameHeader } from './GameHeader';
 import { Target } from './Target';
 import { SchulteGridBoard } from './SchulteGridBoard';
 import { CaimanControlBoard } from './CaimanControlBoard';
+import { MongooseReadBoard } from './MongooseReadBoard';
 import { JungleButton } from './JungleButton';
 import { SportModeCueKey, getSportPackAssets } from '../config/sportPacks';
 import { GameplayCueOverlay } from './GameplayCueOverlay';
@@ -50,6 +51,15 @@ import {
   tickGoNoGo,
 } from '../utils/goNoGoEngine';
 import { getGoNoGoConfigForLadder } from '../modes/goNoGo';
+import { ChoiceOutcome, ChoiceResponseKind, ChoiceRoundState } from '../types/choiceReaction';
+import {
+  createChoiceRound,
+  deriveChoiceReactionMetrics,
+  respondChoice,
+  shiftChoicePhase,
+  tickChoice,
+} from '../utils/choiceReactionEngine';
+import { getChoiceConfigForLadder } from '../modes/choiceReaction';
 
 interface GameProps {
   mode?: GameModeType;
@@ -125,6 +135,7 @@ export const Game = ({
   const isSequenceMode = modeManifest.targetRendererKey === 'sequenceTargets';
   const isSchulteMode = modeManifest.targetRendererKey === 'schulteGrid';
   const isGoNoGoMode = modeManifest.targetRendererKey === 'goNoGoStimulus';
+  const isChoiceMode = modeManifest.targetRendererKey === 'choiceStimulus';
   const modeAudioHooks = modeManifest.audioCueHooks;
   const sequencePhaseCues = modeAudioHooks.sequencePhase;
   const holdStartCue = modeAudioHooks.onHoldStart ?? 'hold-lock';
@@ -173,6 +184,7 @@ export const Game = ({
   const [routineSecondsLeft, setRoutineSecondsLeft] = useState(LOW_STIM_ROUTINE_PHASE_SECONDS);
   const [schulteBoard, setSchulteBoard] = useState<SchulteBoard | null>(null);
   const [goNoGoRound, setGoNoGoRound] = useState<GoNoGoRoundState | null>(null);
+  const [choiceRound, setChoiceRound] = useState<ChoiceRoundState | null>(null);
   const [, setBestStreak] = useState(0);
   const screenSizeRef = useRef({
     width: window.innerWidth,
@@ -228,6 +240,8 @@ export const Game = ({
   const schulteRoundRef = useRef<SchulteRoundAccumulator | null>(null);
   const goNoGoRoundRef = useRef<GoNoGoRoundState | null>(null);
   const goNoGoPhaseRemainingMsRef = useRef(0);
+  const choiceRoundRef = useRef<ChoiceRoundState | null>(null);
+  const choicePhaseRemainingMsRef = useRef(0);
   const fireHaptic = useCallback(
     (cue: 'hit' | 'miss' | 'streak' | 'start' | 'complete') => {
       triggerHapticCue(cue, { enabled: hapticsEnabled, lowStimulus: lowStimulusMode });
@@ -266,6 +280,17 @@ export const Game = ({
       goNoGoRoundRef.current = round;
       goNoGoPhaseRemainingMsRef.current = Math.max(0, round.phaseEndsAtMs - now);
       setGoNoGoRound(round);
+    },
+    [primeSession],
+  );
+
+  const beginChoiceRound = useCallback(
+    (now: number) => {
+      const config = getChoiceConfigForLadder(0, { prime: primeSession });
+      const round = createChoiceRound(config, now);
+      choiceRoundRef.current = round;
+      choicePhaseRemainingMsRef.current = Math.max(0, round.phaseEndsAtMs - now);
+      setChoiceRound(round);
     },
     [primeSession],
   );
@@ -321,6 +346,63 @@ export const Game = ({
         lateDecisionsRef.current += 1;
       }
       if (outcome === 'falsePositive') {
+        falseStartsRef.current += 1;
+      }
+    },
+    [fireHaptic, playEffect, triggerMissFeedback],
+  );
+
+  const applyChoiceOutcome = useCallback(
+    (outcome: ChoiceOutcome) => {
+      if (outcome === 'ignoredSpam') {
+        return;
+      }
+      if (outcome === 'premature' || outcome === 'falseStart') {
+        falseStartsRef.current += 1;
+        if (streakRef.current !== 0) {
+          streakRunsRef.current.push(streakRef.current);
+          streakRef.current = 0;
+          setStreak(0);
+        }
+        playEffect('miss');
+        fireHaptic('miss');
+        return;
+      }
+
+      attemptsRef.current += 1;
+      if (outcome === 'correct') {
+        playEffect('hit');
+        fireHaptic('hit');
+        scoreRef.current += 1;
+        setScore(prev => prev + 1);
+        const nextStreak = streakRef.current + 1;
+        streakRef.current = nextStreak;
+        setStreak(nextStreak);
+        if (nextStreak > bestStreakRef.current) {
+          bestStreakRef.current = nextStreak;
+          setBestStreak(nextStreak);
+        }
+        const latestRt = choiceRoundRef.current?.accumulator.choiceReactionTimesMs.slice(-1)[0];
+        if (choiceRoundRef.current?.trial?.expected !== 'nogo' && latestRt !== undefined) {
+          reactionTimesRef.current.push(latestRt);
+        }
+        return;
+      }
+
+      playEffect('miss');
+      fireHaptic('miss');
+      triggerMissFeedback();
+      missesRef.current += 1;
+      setMisses(prev => prev + 1);
+      if (streakRef.current !== 0) {
+        streakRunsRef.current.push(streakRef.current);
+        streakRef.current = 0;
+        setStreak(0);
+      }
+      if (outcome === 'omission') {
+        lateDecisionsRef.current += 1;
+      }
+      if (outcome === 'wrongResponse' && choiceRoundRef.current?.trial?.expected === 'nogo') {
         falseStartsRef.current += 1;
       }
     },
@@ -593,6 +675,14 @@ export const Game = ({
         }
       }
 
+      let choiceReactionMetrics;
+      if (activeMode === 'choiceReaction' && choiceRoundRef.current) {
+        choiceReactionMetrics = deriveChoiceReactionMetrics(choiceRoundRef.current.accumulator);
+        if (choiceReactionMetrics.meanChoiceReactionMs) {
+          medianReactionTimeMs = choiceReactionMetrics.meanChoiceReactionMs;
+        }
+      }
+
       onGameOver({
         score: scoreRef.current,
         misses: missesRef.current,
@@ -610,6 +700,7 @@ export const Game = ({
         readinessMetrics,
         schulteMetrics,
         goNoGoMetrics,
+        choiceReactionMetrics,
       });
     },
     [activeMode, fireHaptic, onGameOver, playEffect, selectedSport],
@@ -655,6 +746,9 @@ export const Game = ({
     goNoGoRoundRef.current = null;
     goNoGoPhaseRemainingMsRef.current = 0;
     setGoNoGoRound(null);
+    choiceRoundRef.current = null;
+    choicePhaseRemainingMsRef.current = 0;
+    setChoiceRound(null);
     if (swipeFeedbackTimeoutRef.current !== null) {
       window.clearTimeout(swipeFeedbackTimeoutRef.current);
       swipeFeedbackTimeoutRef.current = null;
@@ -694,7 +788,10 @@ export const Game = ({
     if (isGoNoGoMode) {
       beginGoNoGoRound(Date.now());
     }
-  }, [ROUND_SECONDS, activeMode, beginGoNoGoRound, beginSchulteBoard, clearHoldTrackingState, fireHaptic, includeBreathingRoutine, isGoNoGoMode, isSchulteMode, lowStimulusMode]);
+    if (isChoiceMode) {
+      beginChoiceRound(Date.now());
+    }
+  }, [ROUND_SECONDS, activeMode, beginChoiceRound, beginGoNoGoRound, beginSchulteBoard, clearHoldTrackingState, fireHaptic, includeBreathingRoutine, isChoiceMode, isGoNoGoMode, isSchulteMode, lowStimulusMode]);
 
   useEffect(() => {
     if (!isRoutineActive) {
@@ -774,6 +871,39 @@ export const Game = ({
           }
           if (ticked.outcome) {
             applyGoNoGoOutcome(ticked.outcome);
+          }
+        }
+        if (remainingMs <= 0) {
+          setTimeLeft(0);
+          finishGame('timeout');
+        }
+        return;
+      }
+
+      if (isChoiceMode) {
+        const currentRound = choiceRoundRef.current;
+        if (currentRound) {
+          const ticked = tickChoice(currentRound, now);
+          let nextState = ticked.state;
+          if (nextState.phase === 'isi' && currentRound.phase === 'feedback') {
+            const nextConfig = getChoiceConfigForLadder(nextState.accumulator.trialsResolved, {
+              prime: primeSession,
+            });
+            const keepSwitched = nextState.accumulator.switched && nextConfig.alternateRuleSet;
+            nextState = {
+              ...nextState,
+              config: nextConfig,
+              activeRuleSet: keepSwitched ? nextConfig.alternateRuleSet! : nextConfig.ruleSet,
+              accumulator: { ...nextState.accumulator, lastConfig: nextConfig },
+            };
+          }
+          choiceRoundRef.current = nextState;
+          choicePhaseRemainingMsRef.current = Math.max(0, nextState.phaseEndsAtMs - now);
+          if (nextState !== currentRound) {
+            setChoiceRound(nextState);
+          }
+          if (ticked.outcome) {
+            applyChoiceOutcome(ticked.outcome);
           }
         }
         if (remainingMs <= 0) {
@@ -1000,9 +1130,11 @@ export const Game = ({
     clearHoldVisual,
     finishGame,
     applyGoNoGoOutcome,
+    applyChoiceOutcome,
     primeSession,
     isHoldMode,
     isGoNoGoMode,
+    isChoiceMode,
     isSchulteMode,
     isSequenceMode,
     isSwipeMode,
@@ -1355,6 +1487,18 @@ export const Game = ({
     applyGoNoGoOutcome(outcome);
   }, [applyGoNoGoOutcome]);
 
+  const handleChoiceRespond = useCallback((response: ChoiceResponseKind) => {
+    if (isPausedRef.current || gameOverFiredRef.current) return;
+    const current = choiceRoundRef.current;
+    if (!current) return;
+    const now = Date.now();
+    const { state, outcome } = respondChoice(current, now, response);
+    choiceRoundRef.current = state;
+    choicePhaseRemainingMsRef.current = Math.max(0, state.phaseEndsAtMs - now);
+    setChoiceRound(state);
+    applyChoiceOutcome(outcome);
+  }, [applyChoiceOutcome]);
+
   const togglePause = useCallback(() => {
     if (gameOverFiredRef.current) return;
 
@@ -1378,6 +1522,12 @@ export const Game = ({
             goNoGoRoundRef.current.phaseEndsAtMs - Date.now(),
           );
         }
+        if (isChoiceMode && choiceRoundRef.current) {
+          choicePhaseRemainingMsRef.current = Math.max(
+            0,
+            choiceRoundRef.current.phaseEndsAtMs - Date.now(),
+          );
+        }
         setTimeLeft(Math.ceil(remainingMsRef.current / 1000));
       } else {
         roundEndsAtRef.current = Date.now() + remainingMsRef.current;
@@ -1393,11 +1543,20 @@ export const Game = ({
           goNoGoRoundRef.current = shifted;
           setGoNoGoRound(shifted);
         }
+        if (isChoiceMode && choiceRoundRef.current) {
+          const shifted = shiftChoicePhase(
+            choiceRoundRef.current,
+            choicePhaseRemainingMsRef.current,
+            Date.now(),
+          );
+          choiceRoundRef.current = shifted;
+          setChoiceRound(shifted);
+        }
       }
 
       return nextPaused;
     });
-  }, [clearHoldTrackingState, clearHoldVisual, isGoNoGoMode, isSequenceMode]);
+  }, [clearHoldTrackingState, clearHoldVisual, isChoiceMode, isGoNoGoMode, isSequenceMode]);
 
   const handleQuit = useCallback(() => {
     if (window.confirm('Quit this round and return to main menu?')) {
@@ -1749,7 +1908,17 @@ export const Game = ({
             </div>
           </div>
         )}
-        {isGoNoGoMode && goNoGoRound ? (
+        {isChoiceMode && choiceRound ? (
+          <MongooseReadBoard
+            round={choiceRound}
+            disabled={isPaused}
+            reducedMotion={lowStimulusMode}
+            lowStimulus={lowStimulusMode}
+            accentColor={theme.targetColor}
+            textColor={theme.textColor}
+            onRespond={handleChoiceRespond}
+          />
+        ) : isGoNoGoMode && goNoGoRound ? (
           <CaimanControlBoard
             round={goNoGoRound}
             disabled={isPaused}

@@ -68,7 +68,7 @@ describe('prime protocol config', () => {
       'schulteScan',
       'quickTap',
       'goNoGo',
-      'multiTarget',
+      'choiceReaction',
       'holdTrack',
       undefined,
       undefined,
@@ -117,7 +117,7 @@ describe('prime engine', () => {
       { id: 'scan', mode: 'schulteScan' },
       { id: 'react', mode: 'quickTap' },
       { id: 'control', mode: 'goNoGo' },
-      { id: 'decide', mode: 'multiTarget' },
+      { id: 'decide', mode: 'choiceReaction' },
       { id: 'track', mode: 'holdTrack' },
     ];
 

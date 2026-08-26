@@ -9,6 +9,7 @@ import { generateTargets as generatePeripheralPulse } from '../modes/peripheralP
 import { generateTargets as generateCalmFocus } from '../modes/calmFocus';
 import { generateTargets as generateSchulteScan } from '../modes/schulteScan';
 import { generateTargets as generateGoNoGo } from '../modes/goNoGo';
+import { generateTargets as generateChoiceReaction } from '../modes/choiceReaction';
 import { modeManifestOrder, modeManifestRegistry } from '../config/modeManifest';
 
 export const MODE_ORDER: GameModeType[] = modeManifestOrder;
@@ -24,6 +25,7 @@ const targetGeneratorByMode: Record<GameModeType, GameMode['generateTargets']> =
   calmFocus: generateCalmFocus,
   schulteScan: generateSchulteScan,
   goNoGo: generateGoNoGo,
+  choiceReaction: generateChoiceReaction,
 };
 
 export const gameModes: Record<GameModeType, GameMode> = MODE_ORDER.reduce(

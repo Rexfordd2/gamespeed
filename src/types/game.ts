@@ -1,6 +1,7 @@
 import type { SportType } from '../config/sports';
 import type { SchulteScanMetrics } from './schulte';
 import type { GoNoGoMetrics } from './goNoGo';
+import type { ChoiceReactionMetrics } from './choiceReaction';
 
 export type GameState = 'start' | 'playing' | 'prime' | 'end' | 'stats' | 'coach';
 
@@ -27,7 +28,8 @@ export type GameModeType =
   | 'peripheralPulse'
   | 'calmFocus'
   | 'schulteScan'
-  | 'goNoGo';
+  | 'goNoGo'
+  | 'choiceReaction';
 
 export type ModeAvailability = 'playable' | 'comingSoon';
 
@@ -122,6 +124,8 @@ export interface GameResult {
   schulteMetrics?: SchulteScanMetrics;
   /** Caiman Control / GO-NO-GO metrics. Omitted for other modes. */
   goNoGoMetrics?: GoNoGoMetrics;
+  /** Mongoose Read / choice-reaction metrics. Omitted for other modes. */
+  choiceReactionMetrics?: ChoiceReactionMetrics;
 }
 
 // ---------- Persistent stats types ----------
@@ -151,6 +155,7 @@ export interface StoredRound {
     primeStepId?: string;
     schulteMetrics?: SchulteScanMetrics;
     goNoGoMetrics?: GoNoGoMetrics;
+    choiceReactionMetrics?: ChoiceReactionMetrics;
   };
 }
 

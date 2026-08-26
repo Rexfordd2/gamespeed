@@ -41,4 +41,13 @@ describe('mode presentation copy', () => {
     expect(caiman.whyThisMatters).toContain('react correctly');
     expect(caiman.tips.some(tip => /false start/i.test(tip))).toBe(true);
   });
+
+  it('returns Mongoose Read presentation as choice reaction, not simple reaction', () => {
+    const mongoose = getModePresentation('choiceReaction', 'soccer');
+    expect(mongoose.title).toBe('Mongoose Read');
+    expect(mongoose.sportLabel).toBe('Read then respond');
+    expect(mongoose.description).toMatch(/choice-reaction/i);
+    expect(mongoose.whyThisMatters).toContain('decision accuracy');
+    expect(mongoose.whyThisMatters).not.toMatch(/diagnos/i);
+  });
 });

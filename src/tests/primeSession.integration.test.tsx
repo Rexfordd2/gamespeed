@@ -151,6 +151,7 @@ describe('prime session orchestration', () => {
     await completeCurrentDrill();
 
     expect(screen.getByRole('heading', { name: 'Decide' })).toBeInTheDocument();
+    expect(screen.getByText('Mongoose Read')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Begin' }));
     await completeCurrentDrill();
 

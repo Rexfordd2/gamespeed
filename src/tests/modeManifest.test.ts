@@ -31,6 +31,7 @@ describe('mode manifest registration', () => {
     expect(modeManifestRegistry.orderedIds).toContain('calmFocus');
     expect(modeManifestRegistry.orderedIds).toContain('schulteScan');
     expect(modeManifestRegistry.orderedIds).toContain('goNoGo');
+    expect(modeManifestRegistry.orderedIds).toContain('choiceReaction');
   });
 
   it('fails safely by skipping invalid manifests', () => {

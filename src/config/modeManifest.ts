@@ -3,7 +3,7 @@ import { SportType } from './sports';
 import { GameModeType, ModeAvailability } from '../types/game';
 import { resolveModeIconAsset } from './assetRegistry';
 
-export type ModeGameplayMechanicType = 'tap' | 'swipe' | 'hold' | 'sequence' | 'scan' | 'inhibit';
+export type ModeGameplayMechanicType = 'tap' | 'swipe' | 'hold' | 'sequence' | 'scan' | 'inhibit' | 'choice';
 export type ModeScoringModel =
   | 'standardAccuracy'
   | 'benchmarkComposite'
@@ -11,8 +11,14 @@ export type ModeScoringModel =
   | 'stabilityLock'
   | 'sequenceRecall'
   | 'scanSequence'
-  | 'inhibitionControl';
-export type ModeTargetRendererKey = 'standardTarget' | 'sequenceTargets' | 'schulteGrid' | 'goNoGoStimulus';
+  | 'inhibitionControl'
+  | 'choiceReaction';
+export type ModeTargetRendererKey =
+  | 'standardTarget'
+  | 'sequenceTargets'
+  | 'schulteGrid'
+  | 'goNoGoStimulus'
+  | 'choiceStimulus';
 export type ModeIconRef =
   | 'benchmarkStopwatch'
   | 'quickTapBolt'
@@ -24,6 +30,7 @@ export type ModeIconRef =
   | 'calmLotus'
   | 'macawGrid'
   | 'caimanHold'
+  | 'mongooseRead'
   | 'defaultMode';
 export type ModeCueTemplateRef =
   | 'sequenceVocabularyFocus'
@@ -101,7 +108,15 @@ export interface RegisteredModeManifest {
 
 export const DEFAULT_MODE_MANIFEST_ID: GameModeType = 'quickTap';
 
-const gameplayMechanicTypes: ModeGameplayMechanicType[] = ['tap', 'swipe', 'hold', 'sequence', 'scan', 'inhibit'];
+const gameplayMechanicTypes: ModeGameplayMechanicType[] = [
+  'tap',
+  'swipe',
+  'hold',
+  'sequence',
+  'scan',
+  'inhibit',
+  'choice',
+];
 const scoringModels: ModeScoringModel[] = [
   'standardAccuracy',
   'benchmarkComposite',
@@ -110,8 +125,15 @@ const scoringModels: ModeScoringModel[] = [
   'sequenceRecall',
   'scanSequence',
   'inhibitionControl',
+  'choiceReaction',
 ];
-const targetRendererKeys: ModeTargetRendererKey[] = ['standardTarget', 'sequenceTargets', 'schulteGrid', 'goNoGoStimulus'];
+const targetRendererKeys: ModeTargetRendererKey[] = [
+  'standardTarget',
+  'sequenceTargets',
+  'schulteGrid',
+  'goNoGoStimulus',
+  'choiceStimulus',
+];
 const cueTemplateRefs: ModeCueTemplateRef[] = [
   'sequenceVocabularyFocus',
   'sequenceVocabularyTactical',
@@ -130,6 +152,7 @@ const iconRefs: ModeIconRef[] = [
   'calmLotus',
   'macawGrid',
   'caimanHold',
+  'mongooseRead',
   'defaultMode',
 ];
 const modeDifficultyPresets: ModeDefaults['difficultyPreset'][] = [
@@ -173,6 +196,7 @@ const modeIconGlyphRegistry: Record<ModeIconRef, string> = {
   calmLotus: '☯',
   macawGrid: '▦',
   caimanHold: '▬',
+  mongooseRead: '◈',
   defaultMode: '•',
 };
 
@@ -550,6 +574,26 @@ const modeManifestSeeds: ModeManifestSeed[] = [
     gameplayMechanicType: 'inhibit',
     scoringModel: 'inhibitionControl',
     targetRendererKey: 'goNoGoStimulus',
+    defaults: {
+      maxTargets: 1,
+      targetIntervalMs: 800,
+      targetLifespanSeconds: 0.9,
+      roundSeconds: 60,
+      difficultyPreset: 'speed',
+    },
+  },
+  {
+    id: 'choiceReaction',
+    displayName: 'Mongoose Read',
+    description:
+      'Choice-reaction drill. Read the cue, then select the matching response. Fast is only useful when the decision is right.',
+    availability: 'playable',
+    category: 'drill',
+    supportedSports: 'all',
+    iconRef: 'mongooseRead',
+    gameplayMechanicType: 'choice',
+    scoringModel: 'choiceReaction',
+    targetRendererKey: 'choiceStimulus',
     defaults: {
       maxTargets: 1,
       targetIntervalMs: 800,

@@ -396,6 +396,51 @@ export const EndScreen = ({
           </div>
         )}
 
+        {result.choiceReactionMetrics && (
+          <div className="mb-3 w-full rounded-2xl px-4 py-4 sm:mb-4 sm:px-5" style={{ backgroundColor: 'rgba(96, 165, 250, 0.08)', border: '1px solid rgba(96, 165, 250, 0.28)' }}>
+            <p className="mb-2 text-[10px] uppercase tracking-[0.16em] opacity-65" style={{ color: theme.textColor }}>
+              Mongoose Read
+            </p>
+            <p className="mb-3 text-xs" style={{ color: theme.textColor, opacity: 0.78 }}>
+              Read first. Move second. Fast is only useful when the decision is right.
+            </p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.14em] opacity-60" style={{ color: theme.textColor }}>Speed</p>
+                <p className="mt-1 text-xl font-black tabular-nums" style={{ color: theme.targetColor }}>
+                  {result.choiceReactionMetrics.meanChoiceReactionMs ?? '—'}
+                  {result.choiceReactionMetrics.meanChoiceReactionMs !== null ? 'ms' : ''}
+                </p>
+                <p className="text-[11px] opacity-70" style={{ color: theme.textColor }}>
+                  Mean choice RT · {result.choiceReactionMetrics.correct} clean
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.14em] opacity-60" style={{ color: theme.textColor }}>Decision</p>
+                <p className="mt-1 text-xl font-black tabular-nums" style={{ color: theme.textColor }}>
+                  {result.choiceReactionMetrics.decisionAccuracyPct}%
+                </p>
+                <p className="text-[11px] opacity-70" style={{ color: theme.textColor }}>
+                  Wrong {result.choiceReactionMetrics.wrongResponseCount} · Missed {result.choiceReactionMetrics.omissions}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.14em] opacity-60" style={{ color: theme.textColor }}>False starts</p>
+                <p className="mt-1 text-xl font-black tabular-nums" style={{ color: '#fca5a5' }}>
+                  {result.choiceReactionMetrics.falseStarts}
+                </p>
+                <p className="text-[11px] opacity-70" style={{ color: theme.textColor }}>
+                  Consistency {result.choiceReactionMetrics.consistencyPct ?? '—'}
+                  {result.choiceReactionMetrics.consistencyPct !== null ? '%' : ''}
+                  {result.choiceReactionMetrics.ruleSwitchCostMs !== null
+                    ? ` · Switch ${result.choiceReactionMetrics.ruleSwitchCostMs > 0 ? '+' : ''}${result.choiceReactionMetrics.ruleSwitchCostMs}ms`
+                    : ''}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {roundProgressDelta && (
           <div className="mb-3 w-full rounded-2xl px-4 py-4 sm:mb-4 sm:px-5" style={{ backgroundColor: 'rgba(74, 222, 128, 0.07)', border: '1px solid rgba(74, 222, 128, 0.26)' }}>
             <p className="text-[10px] uppercase tracking-[0.16em] opacity-65 mb-2" style={{ color: theme.textColor }}>Personal Best Tracker</p>
