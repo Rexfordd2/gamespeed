@@ -64,7 +64,7 @@ const seedUnlockHistory = () => {
   }
 };
 
-describe('Macaw Scan integration', () => {
+describe('Caiman Control integration', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.stubGlobal('Audio', MockAudio as unknown as typeof Audio);
@@ -78,7 +78,7 @@ describe('Macaw Scan integration', () => {
     vi.unstubAllGlobals();
   });
 
-  it('completes a static 3x3, scales to 4x4, and saves scan metrics', async () => {
+  it('runs GO and NO-GO outcomes, blocks ISI spam, and saves distinct metrics', async () => {
     render(
       <AuthProvider>
         <App />
@@ -86,7 +86,7 @@ describe('Macaw Scan integration', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Train an Instinct' }));
-    const modeHeading = screen.getByRole('heading', { name: 'Macaw Scan' });
+    const modeHeading = screen.getByRole('heading', { name: 'Caiman Control' });
     let cursor: HTMLElement | null = modeHeading.parentElement;
     while (cursor && !cursor.querySelector('button')) {
       cursor = cursor.parentElement;
@@ -95,51 +95,53 @@ describe('Macaw Scan integration', () => {
       ? within(cursor).getByRole('button', { name: /start (today'?s session|readiness drill)/i })
       : null;
     if (!startButton) {
-      throw new Error('Could not find Macaw Scan start button');
+      throw new Error('Could not find Caiman Control start button');
     }
     fireEvent.click(startButton);
     await flushMicrotasks();
 
-    expect(screen.getByRole('grid', { name: /Macaw Scan 3 by 3 grid/i })).toBeInTheDocument();
-    expect(screen.getByText(/Find the signal inside the noise/i)).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('gridcell', { name: 'Macaw Scan cell 9' }));
+    const stillCue = screen.getByRole('button', { name: /Caiman Control still/i });
+    fireEvent.click(stillCue);
     await flushMicrotasks();
-    expect(screen.getByLabelText('Current streak 0')).toBeInTheDocument();
 
-    await advance(220);
-    for (let value = 1; value <= 9; value += 1) {
-      fireEvent.click(screen.getByRole('gridcell', { name: `Macaw Scan cell ${value}` }));
-      await flushMicrotasks();
+    await advance(1_100);
+
+    for (let i = 0; i < 4; i += 1) {
+      const goCue = screen.queryByRole('button', { name: /Caiman Control go cue/i });
+      const noGoCue = screen.queryByRole('button', { name: /Caiman Control no-go cue/i });
+      if (goCue) {
+        fireEvent.click(goCue);
+        await flushMicrotasks();
+      } else if (noGoCue) {
+        await advance(950);
+      } else {
+        await advance(200);
+      }
+      await advance(280);
     }
 
-    expect(screen.getByRole('grid', { name: /Macaw Scan 4 by 4 grid/i })).toBeInTheDocument();
-    expect(screen.getByLabelText('Current streak 9')).toBeInTheDocument();
-
     await advance(60_500);
-    expect(screen.getByText(/Search timing from this round only/i)).toBeInTheDocument();
-    expect(screen.getByText('Boards')).toBeInTheDocument();
-    expect(screen.getByText('Hits')).toBeInTheDocument();
-    expect(screen.getByText('Errors')).toBeInTheDocument();
-    const macawRound = loadStats().rounds.find(round => round.mode === 'schulteScan');
-    expect(macawRound?.meta?.schulteMetrics?.boardsCompleted).toBe(1);
-    expect(macawRound?.meta?.schulteMetrics?.correctSelections).toBe(9);
-    expect(macawRound?.meta?.schulteMetrics?.errors).toBe(1);
-    expect(macawRound?.score).toBe(9);
+    expect(screen.getByText('Reaction')).toBeInTheDocument();
+    expect(screen.getByText('Control')).toBeInTheDocument();
+    expect(screen.getByText('False starts')).toBeInTheDocument();
+    expect(screen.getByText(/Speed only counts when the cue is real/i)).toBeInTheDocument();
+
+    const caimanRound = loadStats().rounds.find(round => round.mode === 'goNoGo');
+    expect(caimanRound?.meta?.goNoGoMetrics).toBeDefined();
+    expect(caimanRound?.meta?.goNoGoMetrics?.prematureResponses).toBeGreaterThan(0);
   });
 
-  it('lists Macaw Scan in the Prime preview and keeps existing drills available', () => {
+  it('lists Caiman Control in the Prime CONTROL step and keeps existing drills available', () => {
     render(
       <AuthProvider>
         <App />
       </AuthProvider>,
     );
     expect(screen.getByRole('button', { name: 'Prime Me' })).toBeInTheDocument();
-    expect(screen.getByText('Scan')).toBeInTheDocument();
-    expect(screen.getByText('Macaw Scan')).toBeInTheDocument();
-    expect(screen.getByText(/sequence: settle, see, scan, react, control, decide, track/i)).toBeInTheDocument();
+    expect(screen.getByText('Control')).toBeInTheDocument();
+    expect(screen.getByText('Caiman Control')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Train an Instinct' }));
-    expect(screen.getByRole('heading', { name: 'Multi Target' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Macaw Scan' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Quick Tap' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Caiman Control' })).toBeInTheDocument();
   });
 });

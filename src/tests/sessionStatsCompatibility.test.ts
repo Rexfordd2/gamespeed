@@ -149,4 +149,45 @@ describe('session stats backward compatibility', () => {
     expect(macaw?.meta?.schulteMetrics?.averageTransitionMs).toBe(180);
     expect(tap?.meta?.schulteMetrics).toBeUndefined();
   });
+
+  it('persists Caiman Control GO/NO-GO metrics without rewriting other mode history', () => {
+    recordRound({
+      score: 12,
+      misses: 2,
+      bestStreak: 6,
+      mode: 'quickTap',
+      modeName: 'Quick Tap',
+    });
+    recordRound({
+      score: 8,
+      misses: 3,
+      bestStreak: 4,
+      mode: 'goNoGo',
+      modeName: 'Caiman Control',
+      goNoGoMetrics: {
+        goCount: 7,
+        nogoCount: 4,
+        correctGo: 6,
+        missedGo: 1,
+        correctInhibitions: 3,
+        falsePositives: 1,
+        prematureResponses: 2,
+        goReactionTimeMs: 240,
+        averageGoReactionMs: 240,
+        inhibitionAccuracyPct: 75,
+        overallAccuracyPct: 82,
+        bestStreak: 4,
+        performanceDecayMs: 30,
+      },
+    });
+
+    const reloaded = loadStats();
+    const caiman = reloaded.rounds.find(round => round.mode === 'goNoGo');
+    const tap = reloaded.rounds.find(round => round.mode === 'quickTap');
+    expect(caiman?.meta?.goNoGoMetrics?.correctGo).toBe(6);
+    expect(caiman?.meta?.goNoGoMetrics?.falsePositives).toBe(1);
+    expect(caiman?.meta?.goNoGoMetrics?.missedGo).toBe(1);
+    expect(caiman?.meta?.goNoGoMetrics?.prematureResponses).toBe(2);
+    expect(tap?.meta?.goNoGoMetrics).toBeUndefined();
+  });
 });

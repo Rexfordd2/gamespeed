@@ -19,8 +19,8 @@ export const GAMESPEED_PRIME_PROTOCOL_ID = 'gamespeed-prime-v1';
 export const gamespeedPrimeProtocol: PrimeProtocol = {
   id: GAMESPEED_PRIME_PROTOCOL_ID,
   name: 'GameSpeed Prime',
-  description: 'A short pre-performance sequence: settle, see, scan, react, decide, track, then a physical ready cue.',
-  estimatedSeconds: 400,
+  description: 'A short pre-performance sequence: settle, see, scan, react, control, decide, track, then a physical ready cue.',
+  estimatedSeconds: 460,
   contexts: ['practice', 'game', 'lift', 'skill', 'recovery'],
   steps: [
     drillStep({
@@ -62,6 +62,16 @@ export const gamespeedPrimeProtocol: PrimeProtocol = {
       durationSeconds: 60,
       intensity: 'high',
       instruction: 'Answer the first clean cue. Fast, then reset.',
+    }),
+    drillStep({
+      id: 'control',
+      category: 'control',
+      title: 'Control',
+      experienceName: 'Caiman Control',
+      modeId: 'goNoGo',
+      durationSeconds: 60,
+      intensity: 'high',
+      instruction: 'Still until the moment is real. Strike the live cue. Hold the fake. Speed is useless if the response is wrong.',
     }),
     drillStep({
       id: 'decide',

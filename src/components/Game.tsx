@@ -23,6 +23,7 @@ import { deriveReadinessMetrics } from '../utils/readinessMetrics';
 import { GameHeader } from './GameHeader';
 import { Target } from './Target';
 import { SchulteGridBoard } from './SchulteGridBoard';
+import { CaimanControlBoard } from './CaimanControlBoard';
 import { JungleButton } from './JungleButton';
 import { SportModeCueKey, getSportPackAssets } from '../config/sportPacks';
 import { GameplayCueOverlay } from './GameplayCueOverlay';
@@ -40,6 +41,15 @@ import {
   tickSchulteBoard,
 } from '../utils/schulteGrid';
 import { getSchulteConfigForBoard } from '../modes/schulteScan';
+import { GoNoGoOutcome, GoNoGoRoundState } from '../types/goNoGo';
+import {
+  createGoNoGoRound,
+  deriveGoNoGoMetrics,
+  respondGoNoGo,
+  shiftGoNoGoPhase,
+  tickGoNoGo,
+} from '../utils/goNoGoEngine';
+import { getGoNoGoConfigForLadder } from '../modes/goNoGo';
 
 interface GameProps {
   mode?: GameModeType;
@@ -114,6 +124,7 @@ export const Game = ({
   const isHoldMode = modeManifest.gameplayMechanicType === 'hold';
   const isSequenceMode = modeManifest.targetRendererKey === 'sequenceTargets';
   const isSchulteMode = modeManifest.targetRendererKey === 'schulteGrid';
+  const isGoNoGoMode = modeManifest.targetRendererKey === 'goNoGoStimulus';
   const modeAudioHooks = modeManifest.audioCueHooks;
   const sequencePhaseCues = modeAudioHooks.sequencePhase;
   const holdStartCue = modeAudioHooks.onHoldStart ?? 'hold-lock';
@@ -161,6 +172,7 @@ export const Game = ({
   );
   const [routineSecondsLeft, setRoutineSecondsLeft] = useState(LOW_STIM_ROUTINE_PHASE_SECONDS);
   const [schulteBoard, setSchulteBoard] = useState<SchulteBoard | null>(null);
+  const [goNoGoRound, setGoNoGoRound] = useState<GoNoGoRoundState | null>(null);
   const [, setBestStreak] = useState(0);
   const screenSizeRef = useRef({
     width: window.innerWidth,
@@ -214,6 +226,8 @@ export const Game = ({
   const prevPhaseCueKeyRef = useRef('');
   const schulteBoardRef = useRef<SchulteBoard | null>(null);
   const schulteRoundRef = useRef<SchulteRoundAccumulator | null>(null);
+  const goNoGoRoundRef = useRef<GoNoGoRoundState | null>(null);
+  const goNoGoPhaseRemainingMsRef = useRef(0);
   const fireHaptic = useCallback(
     (cue: 'hit' | 'miss' | 'streak' | 'start' | 'complete') => {
       triggerHapticCue(cue, { enabled: hapticsEnabled, lowStimulus: lowStimulusMode });
@@ -243,6 +257,74 @@ export const Game = ({
       }
     },
     [primeSession],
+  );
+
+  const beginGoNoGoRound = useCallback(
+    (now: number) => {
+      const config = getGoNoGoConfigForLadder(0, { prime: primeSession });
+      const round = createGoNoGoRound(config, now);
+      goNoGoRoundRef.current = round;
+      goNoGoPhaseRemainingMsRef.current = Math.max(0, round.phaseEndsAtMs - now);
+      setGoNoGoRound(round);
+    },
+    [primeSession],
+  );
+
+  const applyGoNoGoOutcome = useCallback(
+    (outcome: GoNoGoOutcome) => {
+      if (outcome === 'ignoredSpam') {
+        return;
+      }
+      if (outcome === 'premature') {
+        falseStartsRef.current += 1;
+        if (streakRef.current !== 0) {
+          streakRunsRef.current.push(streakRef.current);
+          streakRef.current = 0;
+          setStreak(0);
+        }
+        playEffect('miss');
+        fireHaptic('miss');
+        return;
+      }
+
+      attemptsRef.current += 1;
+      if (outcome === 'correctGo' || outcome === 'correctInhibition') {
+        playEffect('hit');
+        fireHaptic('hit');
+        scoreRef.current += 1;
+        setScore(prev => prev + 1);
+        const nextStreak = streakRef.current + 1;
+        streakRef.current = nextStreak;
+        setStreak(nextStreak);
+        if (nextStreak > bestStreakRef.current) {
+          bestStreakRef.current = nextStreak;
+          setBestStreak(nextStreak);
+        }
+        const latestRt = goNoGoRoundRef.current?.accumulator.goReactionTimesMs.slice(-1)[0];
+        if (outcome === 'correctGo' && latestRt !== undefined) {
+          reactionTimesRef.current.push(latestRt);
+        }
+        return;
+      }
+
+      playEffect('miss');
+      fireHaptic('miss');
+      triggerMissFeedback();
+      missesRef.current += 1;
+      setMisses(prev => prev + 1);
+      if (streakRef.current !== 0) {
+        streakRunsRef.current.push(streakRef.current);
+        streakRef.current = 0;
+        setStreak(0);
+      }
+      if (outcome === 'missedGo') {
+        lateDecisionsRef.current += 1;
+      }
+      if (outcome === 'falsePositive') {
+        falseStartsRef.current += 1;
+      }
+    },
+    [fireHaptic, playEffect, triggerMissFeedback],
   );
 
   const keepTargetsInPlayfield = useCallback((targetsToAdjust: TargetType[]) => {
@@ -503,6 +585,14 @@ export const Game = ({
         }
       }
 
+      let goNoGoMetrics;
+      if (activeMode === 'goNoGo' && goNoGoRoundRef.current) {
+        goNoGoMetrics = deriveGoNoGoMetrics(goNoGoRoundRef.current.accumulator);
+        if (goNoGoMetrics.averageGoReactionMs) {
+          medianReactionTimeMs = goNoGoMetrics.averageGoReactionMs;
+        }
+      }
+
       onGameOver({
         score: scoreRef.current,
         misses: missesRef.current,
@@ -519,6 +609,7 @@ export const Game = ({
         benchmarkScore,
         readinessMetrics,
         schulteMetrics,
+        goNoGoMetrics,
       });
     },
     [activeMode, fireHaptic, onGameOver, playEffect, selectedSport],
@@ -561,6 +652,9 @@ export const Game = ({
     schulteBoardRef.current = null;
     schulteRoundRef.current = null;
     setSchulteBoard(null);
+    goNoGoRoundRef.current = null;
+    goNoGoPhaseRemainingMsRef.current = 0;
+    setGoNoGoRound(null);
     if (swipeFeedbackTimeoutRef.current !== null) {
       window.clearTimeout(swipeFeedbackTimeoutRef.current);
       swipeFeedbackTimeoutRef.current = null;
@@ -597,7 +691,10 @@ export const Game = ({
     if (isSchulteMode) {
       beginSchulteBoard(Date.now(), 0);
     }
-  }, [ROUND_SECONDS, activeMode, beginSchulteBoard, clearHoldTrackingState, fireHaptic, includeBreathingRoutine, isSchulteMode, lowStimulusMode]);
+    if (isGoNoGoMode) {
+      beginGoNoGoRound(Date.now());
+    }
+  }, [ROUND_SECONDS, activeMode, beginGoNoGoRound, beginSchulteBoard, clearHoldTrackingState, fireHaptic, includeBreathingRoutine, isGoNoGoMode, isSchulteMode, lowStimulusMode]);
 
   useEffect(() => {
     if (!isRoutineActive) {
@@ -646,6 +743,37 @@ export const Game = ({
           if (ticked !== currentBoard) {
             schulteBoardRef.current = ticked;
             setSchulteBoard(ticked);
+          }
+        }
+        if (remainingMs <= 0) {
+          setTimeLeft(0);
+          finishGame('timeout');
+        }
+        return;
+      }
+
+      if (isGoNoGoMode) {
+        const currentRound = goNoGoRoundRef.current;
+        if (currentRound) {
+          const ticked = tickGoNoGo(currentRound, now);
+          let nextState = ticked.state;
+          if (nextState.phase === 'isi' && currentRound.phase === 'feedback') {
+            const nextConfig = getGoNoGoConfigForLadder(nextState.accumulator.trialsResolved, {
+              prime: primeSession,
+            });
+            nextState = {
+              ...nextState,
+              config: nextConfig,
+              accumulator: { ...nextState.accumulator, lastConfig: nextConfig },
+            };
+          }
+          goNoGoRoundRef.current = nextState;
+          goNoGoPhaseRemainingMsRef.current = Math.max(0, nextState.phaseEndsAtMs - now);
+          if (nextState !== currentRound) {
+            setGoNoGoRound(nextState);
+          }
+          if (ticked.outcome) {
+            applyGoNoGoOutcome(ticked.outcome);
           }
         }
         if (remainingMs <= 0) {
@@ -871,7 +999,10 @@ export const Game = ({
     clearHoldTrackingState,
     clearHoldVisual,
     finishGame,
+    applyGoNoGoOutcome,
+    primeSession,
     isHoldMode,
+    isGoNoGoMode,
     isSchulteMode,
     isSequenceMode,
     isSwipeMode,
@@ -1212,6 +1343,18 @@ export const Game = ({
     [beginSchulteBoard, fireHaptic, playEffect, triggerMissFeedback],
   );
 
+  const handleGoNoGoRespond = useCallback(() => {
+    if (isPausedRef.current || gameOverFiredRef.current) return;
+    const current = goNoGoRoundRef.current;
+    if (!current) return;
+    const now = Date.now();
+    const { state, outcome } = respondGoNoGo(current, now);
+    goNoGoRoundRef.current = state;
+    goNoGoPhaseRemainingMsRef.current = Math.max(0, state.phaseEndsAtMs - now);
+    setGoNoGoRound(state);
+    applyGoNoGoOutcome(outcome);
+  }, [applyGoNoGoOutcome]);
+
   const togglePause = useCallback(() => {
     if (gameOverFiredRef.current) return;
 
@@ -1229,17 +1372,32 @@ export const Game = ({
         if (isSequenceMode && sequencePhaseEndsAtRef.current > 0) {
           sequencePhaseRemainingMsRef.current = Math.max(0, sequencePhaseEndsAtRef.current - Date.now());
         }
+        if (isGoNoGoMode && goNoGoRoundRef.current) {
+          goNoGoPhaseRemainingMsRef.current = Math.max(
+            0,
+            goNoGoRoundRef.current.phaseEndsAtMs - Date.now(),
+          );
+        }
         setTimeLeft(Math.ceil(remainingMsRef.current / 1000));
       } else {
         roundEndsAtRef.current = Date.now() + remainingMsRef.current;
         if (isSequenceMode && sequencePhaseRef.current !== 'input') {
           sequencePhaseEndsAtRef.current = Date.now() + sequencePhaseRemainingMsRef.current;
         }
+        if (isGoNoGoMode && goNoGoRoundRef.current) {
+          const shifted = shiftGoNoGoPhase(
+            goNoGoRoundRef.current,
+            goNoGoPhaseRemainingMsRef.current,
+            Date.now(),
+          );
+          goNoGoRoundRef.current = shifted;
+          setGoNoGoRound(shifted);
+        }
       }
 
       return nextPaused;
     });
-  }, [clearHoldTrackingState, clearHoldVisual, isSequenceMode]);
+  }, [clearHoldTrackingState, clearHoldVisual, isGoNoGoMode, isSequenceMode]);
 
   const handleQuit = useCallback(() => {
     if (window.confirm('Quit this round and return to main menu?')) {
@@ -1591,7 +1749,17 @@ export const Game = ({
             </div>
           </div>
         )}
-        {isSchulteMode && schulteBoard ? (
+        {isGoNoGoMode && goNoGoRound ? (
+          <CaimanControlBoard
+            round={goNoGoRound}
+            disabled={isPaused}
+            reducedMotion={lowStimulusMode}
+            lowStimulus={lowStimulusMode}
+            accentColor={theme.targetColor}
+            textColor={theme.textColor}
+            onRespond={handleGoNoGoRespond}
+          />
+        ) : isSchulteMode && schulteBoard ? (
           <SchulteGridBoard
             board={schulteBoard}
             disabled={isPaused}

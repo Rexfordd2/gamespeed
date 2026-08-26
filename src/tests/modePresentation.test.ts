@@ -33,4 +33,12 @@ describe('mode presentation copy', () => {
     expect(macaw.description).toContain('signal inside the noise');
     expect(macaw.whyThisMatters).not.toMatch(/diagnos/i);
   });
+
+  it('returns Caiman Control presentation without treating it as a Quick Tap clone', () => {
+    const caiman = getModePresentation('goNoGo', 'soccer');
+    expect(caiman.title).toBe('Caiman Control');
+    expect(caiman.description).toMatch(/hold/i);
+    expect(caiman.whyThisMatters).toContain('react correctly');
+    expect(caiman.tips.some(tip => /false start/i.test(tip))).toBe(true);
+  });
 });

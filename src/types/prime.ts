@@ -10,6 +10,7 @@ export type PrimeStepCategory =
   | 'see'
   | 'scan'
   | 'react'
+  | 'control'
   | 'decide'
   | 'track'
   | 'move'

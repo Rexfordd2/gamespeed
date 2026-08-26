@@ -6,6 +6,7 @@ import { generateTargets as holdTrack } from '../modes/holdTrack';
 import { generateTargets as peripheralPulse } from '../modes/peripheralPulse';
 import { generateTargets as calmFocus } from '../modes/calmFocus';
 import { generateTargets as schulteScan } from '../modes/schulteScan';
+import { generateTargets as goNoGo } from '../modes/goNoGo';
 import {
   generateSequenceTargets,
   getSequenceLengthForSuccesses,
@@ -140,6 +141,7 @@ describe('gameModes registry', () => {
     expect(gameModes.peripheralPulse).toBeDefined();
     expect(gameModes.calmFocus).toBeDefined();
     expect(gameModes.schulteScan).toBeDefined();
+    expect(gameModes.goNoGo).toBeDefined();
     expect(gameModes.quickTap.availability).toBe('playable');
     expect(gameModes.multiTarget.availability).toBe('playable');
     expect(gameModes.swipeStrike.availability).toBe('playable');
@@ -148,7 +150,9 @@ describe('gameModes registry', () => {
     expect(gameModes.peripheralPulse.availability).toBe('playable');
     expect(gameModes.calmFocus.availability).toBe('playable');
     expect(gameModes.schulteScan.availability).toBe('playable');
+    expect(gameModes.goNoGo.availability).toBe('playable');
     expect(gameModes.schulteScan.name).toBe('Macaw Scan');
+    expect(gameModes.goNoGo.name).toBe('Caiman Control');
   });
 
   it('every mode has a generateTargets function', () => {
@@ -337,6 +341,12 @@ describe('calmFocus.generateTargets', () => {
 describe('schulteScan.generateTargets', () => {
   it('does not spawn floating targets — the grid engine owns layout', () => {
     expect(schulteScan({ ...base, existingTargets: [] })).toEqual([]);
+  });
+});
+
+describe('goNoGo.generateTargets', () => {
+  it('does not spawn floating targets — the trial engine owns timing', () => {
+    expect(goNoGo({ ...base, existingTargets: [] })).toEqual([]);
   });
 });
 

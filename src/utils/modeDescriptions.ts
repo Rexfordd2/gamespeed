@@ -61,6 +61,10 @@ const DEFAULT_SPORT_COPY: Record<GameModeType, ModeSportCopyOverride> = {
     sportLabel: 'Visual search scan',
     sportDescription: 'Find the next live signal in the grid without letting noise pull your eyes around.',
   },
+  goNoGo: {
+    sportLabel: 'Strike or hold the cue',
+    sportDescription: 'Fire on the live cue and withhold on the fake. Fast is not enough if the read is wrong.',
+  },
 };
 
 const modeSportOverrides: Partial<Record<SportType, Partial<Record<GameModeType, ModeSportCopyOverride>>>> = {
@@ -390,6 +394,25 @@ export const modeDescriptions: Record<GameModeType, ModeDescription> = {
       'Start at the last hit and search nearby before jumping the whole grid.',
       'Wrong taps lock the grid briefly — reset instead of mashing.',
       'When cells reshuffle, re-acquire the next signal. Do not chase old positions.',
+    ],
+  },
+  goNoGo: {
+    title: 'Caiman Control',
+    description: 'Inhibitory-control drill. Green is a strike. Red is a hold. Later boards tighten the ratio, timing, and visual similarity — never by making the window impossible.',
+    trainingFocus: 'Valid-cue response and invalid-cue suppression',
+    intensity: 'Medium-High',
+    rhythm: 'Still, then one clean commit',
+    whyThisMatters: 'Elite athletes do not simply react quickly. They react correctly. A false start is a different miss than a late live cue.',
+    evidenceStyle: {
+      cuePickup: 'Requires classifying GO vs NO-GO before the hand moves.',
+      anticipation: 'Punishes premature taps during the still interval.',
+      decisionSpeed: 'Measures GO reaction time only on valid strikes.',
+      gazeStability: 'Rewards staying quiet until the real cue appears.',
+    },
+    tips: [
+      'Do not tap the still interval. Wait for the live cue.',
+      'A red HOLD is a success if you never move.',
+      'False starts are counted separately from missed live cues.',
     ],
   },
 };

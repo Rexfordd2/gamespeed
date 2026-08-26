@@ -1,5 +1,6 @@
 import type { SportType } from '../config/sports';
 import type { SchulteScanMetrics } from './schulte';
+import type { GoNoGoMetrics } from './goNoGo';
 
 export type GameState = 'start' | 'playing' | 'prime' | 'end' | 'stats' | 'coach';
 
@@ -25,7 +26,8 @@ export type GameModeType =
   | 'sequenceMemory'
   | 'peripheralPulse'
   | 'calmFocus'
-  | 'schulteScan';
+  | 'schulteScan'
+  | 'goNoGo';
 
 export type ModeAvailability = 'playable' | 'comingSoon';
 
@@ -118,6 +120,8 @@ export interface GameResult {
   readinessMetrics?: ReadinessMetrics;
   /** Macaw Scan / Schulte grid metrics. Omitted for other modes. */
   schulteMetrics?: SchulteScanMetrics;
+  /** Caiman Control / GO-NO-GO metrics. Omitted for other modes. */
+  goNoGoMetrics?: GoNoGoMetrics;
 }
 
 // ---------- Persistent stats types ----------
@@ -146,6 +150,7 @@ export interface StoredRound {
     protocolId?: string;
     primeStepId?: string;
     schulteMetrics?: SchulteScanMetrics;
+    goNoGoMetrics?: GoNoGoMetrics;
   };
 }
 

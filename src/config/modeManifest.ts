@@ -3,15 +3,16 @@ import { SportType } from './sports';
 import { GameModeType, ModeAvailability } from '../types/game';
 import { resolveModeIconAsset } from './assetRegistry';
 
-export type ModeGameplayMechanicType = 'tap' | 'swipe' | 'hold' | 'sequence' | 'scan';
+export type ModeGameplayMechanicType = 'tap' | 'swipe' | 'hold' | 'sequence' | 'scan' | 'inhibit';
 export type ModeScoringModel =
   | 'standardAccuracy'
   | 'benchmarkComposite'
   | 'directionalTiming'
   | 'stabilityLock'
   | 'sequenceRecall'
-  | 'scanSequence';
-export type ModeTargetRendererKey = 'standardTarget' | 'sequenceTargets' | 'schulteGrid';
+  | 'scanSequence'
+  | 'inhibitionControl';
+export type ModeTargetRendererKey = 'standardTarget' | 'sequenceTargets' | 'schulteGrid' | 'goNoGoStimulus';
 export type ModeIconRef =
   | 'benchmarkStopwatch'
   | 'quickTapBolt'
@@ -22,6 +23,7 @@ export type ModeIconRef =
   | 'peripheralRadar'
   | 'calmLotus'
   | 'macawGrid'
+  | 'caimanHold'
   | 'defaultMode';
 export type ModeCueTemplateRef =
   | 'sequenceVocabularyFocus'
@@ -99,7 +101,7 @@ export interface RegisteredModeManifest {
 
 export const DEFAULT_MODE_MANIFEST_ID: GameModeType = 'quickTap';
 
-const gameplayMechanicTypes: ModeGameplayMechanicType[] = ['tap', 'swipe', 'hold', 'sequence', 'scan'];
+const gameplayMechanicTypes: ModeGameplayMechanicType[] = ['tap', 'swipe', 'hold', 'sequence', 'scan', 'inhibit'];
 const scoringModels: ModeScoringModel[] = [
   'standardAccuracy',
   'benchmarkComposite',
@@ -107,8 +109,9 @@ const scoringModels: ModeScoringModel[] = [
   'stabilityLock',
   'sequenceRecall',
   'scanSequence',
+  'inhibitionControl',
 ];
-const targetRendererKeys: ModeTargetRendererKey[] = ['standardTarget', 'sequenceTargets', 'schulteGrid'];
+const targetRendererKeys: ModeTargetRendererKey[] = ['standardTarget', 'sequenceTargets', 'schulteGrid', 'goNoGoStimulus'];
 const cueTemplateRefs: ModeCueTemplateRef[] = [
   'sequenceVocabularyFocus',
   'sequenceVocabularyTactical',
@@ -126,6 +129,7 @@ const iconRefs: ModeIconRef[] = [
   'peripheralRadar',
   'calmLotus',
   'macawGrid',
+  'caimanHold',
   'defaultMode',
 ];
 const modeDifficultyPresets: ModeDefaults['difficultyPreset'][] = [
@@ -168,6 +172,7 @@ const modeIconGlyphRegistry: Record<ModeIconRef, string> = {
   peripheralRadar: '◌',
   calmLotus: '☯',
   macawGrid: '▦',
+  caimanHold: '▬',
   defaultMode: '•',
 };
 
@@ -532,6 +537,25 @@ const modeManifestSeeds: ModeManifestSeed[] = [
       targetLifespanSeconds: 60,
       roundSeconds: 60,
       difficultyPreset: 'tracking',
+    },
+  },
+  {
+    id: 'goNoGo',
+    displayName: 'Caiman Control',
+    description: 'Inhibitory-control drill. Strike the live cue. Hold the fake. Speed only counts when the moment is real.',
+    availability: 'playable',
+    category: 'drill',
+    supportedSports: 'all',
+    iconRef: 'caimanHold',
+    gameplayMechanicType: 'inhibit',
+    scoringModel: 'inhibitionControl',
+    targetRendererKey: 'goNoGoStimulus',
+    defaults: {
+      maxTargets: 1,
+      targetIntervalMs: 800,
+      targetLifespanSeconds: 0.9,
+      roundSeconds: 60,
+      difficultyPreset: 'speed',
     },
   },
 ];

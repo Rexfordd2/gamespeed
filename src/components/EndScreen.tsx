@@ -355,6 +355,47 @@ export const EndScreen = ({
           </div>
         )}
 
+        {result.goNoGoMetrics && (
+          <div className="mb-3 w-full rounded-2xl px-4 py-4 sm:mb-4 sm:px-5" style={{ backgroundColor: 'rgba(74, 222, 128, 0.08)', border: '1px solid rgba(74, 222, 128, 0.28)' }}>
+            <p className="mb-2 text-[10px] uppercase tracking-[0.16em] opacity-65" style={{ color: theme.textColor }}>
+              Caiman Control
+            </p>
+            <p className="mb-3 text-xs" style={{ color: theme.textColor, opacity: 0.78 }}>
+              Still until the moment is real. Speed only counts when the cue is real.
+            </p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.14em] opacity-60" style={{ color: theme.textColor }}>Reaction</p>
+                <p className="mt-1 text-xl font-black tabular-nums" style={{ color: theme.targetColor }}>
+                  {result.goNoGoMetrics.correctGo}
+                </p>
+                <p className="text-[11px] opacity-70" style={{ color: theme.textColor }}>
+                  Hits · {result.goNoGoMetrics.averageGoReactionMs ?? '—'}
+                  {result.goNoGoMetrics.averageGoReactionMs !== null ? 'ms' : ''} · Missed {result.goNoGoMetrics.missedGo}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.14em] opacity-60" style={{ color: theme.textColor }}>Control</p>
+                <p className="mt-1 text-xl font-black tabular-nums" style={{ color: theme.textColor }}>
+                  {result.goNoGoMetrics.inhibitionAccuracyPct}%
+                </p>
+                <p className="text-[11px] opacity-70" style={{ color: theme.textColor }}>
+                  Holds {result.goNoGoMetrics.correctInhibitions} · Accuracy on no-go
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.14em] opacity-60" style={{ color: theme.textColor }}>False starts</p>
+                <p className="mt-1 text-xl font-black tabular-nums" style={{ color: '#fca5a5' }}>
+                  {result.goNoGoMetrics.falsePositives + result.goNoGoMetrics.prematureResponses}
+                </p>
+                <p className="text-[11px] opacity-70" style={{ color: theme.textColor }}>
+                  No-go taps {result.goNoGoMetrics.falsePositives} · Early {result.goNoGoMetrics.prematureResponses}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {roundProgressDelta && (
           <div className="mb-3 w-full rounded-2xl px-4 py-4 sm:mb-4 sm:px-5" style={{ backgroundColor: 'rgba(74, 222, 128, 0.07)', border: '1px solid rgba(74, 222, 128, 0.26)' }}>
             <p className="text-[10px] uppercase tracking-[0.16em] opacity-65 mb-2" style={{ color: theme.textColor }}>Personal Best Tracker</p>

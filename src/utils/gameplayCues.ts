@@ -48,6 +48,7 @@ const resolveMicroHudLabel = (mode: GameModeType) => {
   if (mechanic === 'hold') return 'Stability lane';
   if (mechanic === 'sequence') return 'Sequence lane';
   if (mechanic === 'scan') return 'Search lane';
+  if (mechanic === 'inhibit') return 'Control lane';
   if (mode === 'peripheralPulse') return 'Peripheral lane';
   if (mode === 'calmFocus') return 'Calm lane';
   if (mode === 'multiTarget') return 'Decision lane';

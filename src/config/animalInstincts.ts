@@ -82,6 +82,14 @@ const instincts: AnimalInstinct[] = [
     ability: 'Scanning speed + attentional control',
     tagline: 'Find the signal inside the noise.',
   },
+  {
+    modeId: 'goNoGo',
+    experienceName: 'Caiman Control',
+    animal: 'Caiman',
+    instinct: 'Inhibition',
+    ability: 'Valid-cue strike + invalid-cue withhold',
+    tagline: 'Still until the moment is real.',
+  },
 ];
 
 export const animalInstincts: Record<GameModeType, AnimalInstinct> = instincts.reduce(
