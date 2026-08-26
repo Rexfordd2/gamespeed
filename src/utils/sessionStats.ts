@@ -105,6 +105,10 @@ const normalizeRound = (rawRound: unknown): StoredRound | null => {
         typeof value.meta?.primeSessionId === 'string' ? value.meta.primeSessionId : undefined,
       protocolId: typeof value.meta?.protocolId === 'string' ? value.meta.protocolId : undefined,
       primeStepId: typeof value.meta?.primeStepId === 'string' ? value.meta.primeStepId : undefined,
+      schulteMetrics:
+        value.meta?.schulteMetrics && typeof value.meta.schulteMetrics === 'object'
+          ? value.meta.schulteMetrics
+          : undefined,
     },
   };
 };
@@ -167,6 +171,7 @@ export const recordRound = (result: GameResult, options?: RecordRoundOptions): S
       primeSessionId: options?.prime?.sessionId,
       protocolId: options?.prime?.protocolId,
       primeStepId: options?.prime?.stepId,
+      schulteMetrics: result.schulteMetrics,
     },
   };
 

@@ -136,6 +136,11 @@ describe('prime session orchestration', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Begin' }));
     await completeCurrentDrill();
 
+    expect(screen.getByRole('heading', { name: 'Scan' })).toBeInTheDocument();
+    expect(screen.getByText('Macaw Scan')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Begin' }));
+    await completeCurrentDrill();
+
     expect(screen.getByRole('heading', { name: 'React' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Begin' }));
     await completeCurrentDrill();
@@ -154,13 +159,14 @@ describe('prime session orchestration', () => {
 
     expect(screen.getByRole('heading', { name: "YOU'RE PRIMED" })).toBeInTheDocument();
     expect(screen.getByText(/Accuracy/i)).toBeInTheDocument();
-    expect(onPersistStep).toHaveBeenCalledTimes(5);
+    expect(onPersistStep).toHaveBeenCalledTimes(6);
     expect(onComplete).toHaveBeenCalledTimes(1);
     expect(onCancel).not.toHaveBeenCalled();
     expect(loadPrimeSessions()[0]?.status).toBe('completed');
     expect(loadPrimeSessions()[0]?.stepResults.map(result => result.stepId)).toEqual([
       'settle',
       'see',
+      'scan',
       'react',
       'decide',
       'track',

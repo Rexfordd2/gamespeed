@@ -22,6 +22,7 @@ import { getSwipeTimingVerdict, getSwipeTimingWindow } from '../utils/modeMechan
 import { deriveReadinessMetrics } from '../utils/readinessMetrics';
 import { GameHeader } from './GameHeader';
 import { Target } from './Target';
+import { SchulteGridBoard } from './SchulteGridBoard';
 import { JungleButton } from './JungleButton';
 import { SportModeCueKey, getSportPackAssets } from '../config/sportPacks';
 import { GameplayCueOverlay } from './GameplayCueOverlay';
@@ -29,6 +30,16 @@ import { GameplayCueType, getGameplayCueSet, isCueTimingVisible } from '../utils
 import { getModeManifest, resolveModeRoundSeconds } from '../config/modeManifest';
 import { triggerHapticCue } from '../utils/haptics';
 import { resolveSharedVisualPath } from '../config/assetRegistry';
+import { SchulteBoard, SchulteRoundAccumulator } from '../types/schulte';
+import {
+  absorbSchulteBoard,
+  createSchulteAccumulator,
+  deriveSchulteMetrics,
+  generateSchulteBoard,
+  selectSchulteCell,
+  tickSchulteBoard,
+} from '../utils/schulteGrid';
+import { getSchulteConfigForBoard } from '../modes/schulteScan';
 
 interface GameProps {
   mode?: GameModeType;
@@ -40,6 +51,7 @@ interface GameProps {
   cueIntensity?: CueIntensity;
   hapticsEnabled?: boolean;
   roundSecondsOverride?: number;
+  primeSession?: boolean;
 }
 
 const DEFAULT_ROUND_SECONDS = 60;
@@ -94,12 +106,14 @@ export const Game = ({
   cueIntensity = 'standard',
   hapticsEnabled = false,
   roundSecondsOverride,
+  primeSession = false,
 }: GameProps) => {
   const activeMode = resolvePlayableMode(mode);
   const modeManifest = getModeManifest(activeMode);
   const isSwipeMode = modeManifest.gameplayMechanicType === 'swipe';
   const isHoldMode = modeManifest.gameplayMechanicType === 'hold';
   const isSequenceMode = modeManifest.targetRendererKey === 'sequenceTargets';
+  const isSchulteMode = modeManifest.targetRendererKey === 'schulteGrid';
   const modeAudioHooks = modeManifest.audioCueHooks;
   const sequencePhaseCues = modeAudioHooks.sequencePhase;
   const holdStartCue = modeAudioHooks.onHoldStart ?? 'hold-lock';
@@ -146,6 +160,7 @@ export const Game = ({
     lowStimulusMode && includeBreathingRoutine ? 'breathing' : null,
   );
   const [routineSecondsLeft, setRoutineSecondsLeft] = useState(LOW_STIM_ROUTINE_PHASE_SECONDS);
+  const [schulteBoard, setSchulteBoard] = useState<SchulteBoard | null>(null);
   const [, setBestStreak] = useState(0);
   const screenSizeRef = useRef({
     width: window.innerWidth,
@@ -197,6 +212,8 @@ export const Game = ({
   const prevStreakRef = useRef(0);
   const prevMissesRef = useRef(0);
   const prevPhaseCueKeyRef = useRef('');
+  const schulteBoardRef = useRef<SchulteBoard | null>(null);
+  const schulteRoundRef = useRef<SchulteRoundAccumulator | null>(null);
   const fireHaptic = useCallback(
     (cue: 'hit' | 'miss' | 'streak' | 'start' | 'complete') => {
       triggerHapticCue(cue, { enabled: hapticsEnabled, lowStimulus: lowStimulusMode });
@@ -212,6 +229,21 @@ export const Game = ({
     lastMissFeedbackAtRef.current = now;
     setMissFeedbackId(prev => prev + 1);
   }, []);
+
+  const beginSchulteBoard = useCallback(
+    (now: number, boardsCompleted: number) => {
+      const config = getSchulteConfigForBoard(boardsCompleted, { prime: primeSession });
+      const board = generateSchulteBoard(config, now);
+      schulteBoardRef.current = board;
+      setSchulteBoard(board);
+      if (!schulteRoundRef.current) {
+        schulteRoundRef.current = createSchulteAccumulator(config, now);
+      } else {
+        schulteRoundRef.current.lastConfig = config;
+      }
+    },
+    [primeSession],
+  );
 
   const keepTargetsInPlayfield = useCallback((targetsToAdjust: TargetType[]) => {
     return targetsToAdjust.map(target => ({
@@ -455,6 +487,22 @@ export const Game = ({
         streakRuns: streakRunsRef.current.length > 0 ? streakRunsRef.current : [bestStreakRef.current],
       });
 
+      let schulteMetrics;
+      if (activeMode === 'schulteScan' && schulteRoundRef.current) {
+        const currentBoard = schulteBoardRef.current;
+        const absorbed =
+          currentBoard && currentBoard.correct + currentBoard.errors > 0
+            ? absorbSchulteBoard(schulteRoundRef.current, currentBoard, currentBoard.phase === 'complete')
+            : schulteRoundRef.current;
+        schulteMetrics = deriveSchulteMetrics({
+          accumulator: absorbed,
+          endedAtMs: Date.now(),
+        });
+        if (schulteMetrics.averageTransitionMs) {
+          medianReactionTimeMs = schulteMetrics.averageTransitionMs;
+        }
+      }
+
       onGameOver({
         score: scoreRef.current,
         misses: missesRef.current,
@@ -470,6 +518,7 @@ export const Game = ({
         medianReactionTimeMs,
         benchmarkScore,
         readinessMetrics,
+        schulteMetrics,
       });
     },
     [activeMode, fireHaptic, onGameOver, playEffect, selectedSport],
@@ -509,6 +558,9 @@ export const Game = ({
     prevStreakRef.current = 0;
     prevMissesRef.current = 0;
     prevPhaseCueKeyRef.current = '';
+    schulteBoardRef.current = null;
+    schulteRoundRef.current = null;
+    setSchulteBoard(null);
     if (swipeFeedbackTimeoutRef.current !== null) {
       window.clearTimeout(swipeFeedbackTimeoutRef.current);
       swipeFeedbackTimeoutRef.current = null;
@@ -542,7 +594,10 @@ export const Game = ({
     setRoutineStep(lowStimulusMode && includeBreathingRoutine ? 'breathing' : null);
     setRoutineSecondsLeft(LOW_STIM_ROUTINE_PHASE_SECONDS);
     fireHaptic('start');
-  }, [ROUND_SECONDS, activeMode, clearHoldTrackingState, fireHaptic, includeBreathingRoutine, lowStimulusMode]);
+    if (isSchulteMode) {
+      beginSchulteBoard(Date.now(), 0);
+    }
+  }, [ROUND_SECONDS, activeMode, beginSchulteBoard, clearHoldTrackingState, fireHaptic, includeBreathingRoutine, isSchulteMode, lowStimulusMode]);
 
   useEffect(() => {
     if (!isRoutineActive) {
@@ -583,6 +638,22 @@ export const Game = ({
 
       const nextTimeLeft = Math.ceil(remainingMs / 1000);
       setTimeLeft(prev => (prev === nextTimeLeft ? prev : nextTimeLeft));
+
+      if (isSchulteMode) {
+        const currentBoard = schulteBoardRef.current;
+        if (currentBoard) {
+          const ticked = tickSchulteBoard(currentBoard, now);
+          if (ticked !== currentBoard) {
+            schulteBoardRef.current = ticked;
+            setSchulteBoard(ticked);
+          }
+        }
+        if (remainingMs <= 0) {
+          setTimeLeft(0);
+          finishGame('timeout');
+        }
+        return;
+      }
 
       const currentTargets = targetsRef.current;
       let nextTargets = currentTargets;
@@ -801,6 +872,7 @@ export const Game = ({
     clearHoldVisual,
     finishGame,
     isHoldMode,
+    isSchulteMode,
     isSequenceMode,
     isSwipeMode,
     modeAudioHooks.onSwipeSpawnByDirection,
@@ -1085,6 +1157,59 @@ export const Game = ({
       });
     },
     [activeMode, fireHaptic, playEffect, triggerMissFeedback],
+  );
+
+  const handleSchulteSelect = useCallback(
+    (cellId: string) => {
+      if (isPausedRef.current || gameOverFiredRef.current) return;
+      const current = schulteBoardRef.current;
+      if (!current) return;
+      const now = Date.now();
+      const { board, outcome } = selectSchulteCell(current, cellId, now);
+      schulteBoardRef.current = board;
+      setSchulteBoard(board);
+
+      if (outcome === 'locked' || outcome === 'ignored') {
+        return;
+      }
+
+      attemptsRef.current += 1;
+      if (outcome === 'error') {
+        playEffect('miss');
+        fireHaptic('miss');
+        triggerMissFeedback();
+        missesRef.current += 1;
+        setMisses(prev => prev + 1);
+        if (streakRef.current !== 0) {
+          streakRunsRef.current.push(streakRef.current);
+          streakRef.current = 0;
+          setStreak(0);
+        }
+        return;
+      }
+
+      playEffect('hit');
+      fireHaptic('hit');
+      scoreRef.current += 1;
+      setScore(prev => prev + 1);
+      const nextStreak = streakRef.current + 1;
+      streakRef.current = nextStreak;
+      setStreak(nextStreak);
+      if (nextStreak > bestStreakRef.current) {
+        bestStreakRef.current = nextStreak;
+        setBestStreak(nextStreak);
+      }
+      if (board.lastCorrectAtMs !== null) {
+        reactionTimesRef.current.push(board.transitionsMs[board.transitionsMs.length - 1] ?? 0);
+      }
+
+      if (outcome === 'complete' && schulteRoundRef.current) {
+        schulteRoundRef.current = absorbSchulteBoard(schulteRoundRef.current, board, true);
+        fireHaptic('streak');
+        beginSchulteBoard(now, schulteRoundRef.current.boardsCompleted);
+      }
+    },
+    [beginSchulteBoard, fireHaptic, playEffect, triggerMissFeedback],
   );
 
   const togglePause = useCallback(() => {
@@ -1466,7 +1591,17 @@ export const Game = ({
             </div>
           </div>
         )}
-        {isSequenceMode
+        {isSchulteMode && schulteBoard ? (
+          <SchulteGridBoard
+            board={schulteBoard}
+            disabled={isPaused}
+            reducedMotion={lowStimulusMode}
+            lowStimulus={lowStimulusMode}
+            accentColor={theme.targetColor}
+            textColor={theme.textColor}
+            onSelectCell={handleSchulteSelect}
+          />
+        ) : isSequenceMode
           ? targets.map(target => {
               const orderIndex = sequenceOrderRef.current.findIndex(id => id === target.id);
               const isPreviewFocus =

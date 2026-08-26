@@ -19,8 +19,8 @@ export const GAMESPEED_PRIME_PROTOCOL_ID = 'gamespeed-prime-v1';
 export const gamespeedPrimeProtocol: PrimeProtocol = {
   id: GAMESPEED_PRIME_PROTOCOL_ID,
   name: 'GameSpeed Prime',
-  description: 'A short pre-performance sequence: settle, see, react, decide, track, then a physical ready cue.',
-  estimatedSeconds: 340,
+  description: 'A short pre-performance sequence: settle, see, scan, react, decide, track, then a physical ready cue.',
+  estimatedSeconds: 400,
   contexts: ['practice', 'game', 'lift', 'skill', 'recovery'],
   steps: [
     drillStep({
@@ -42,6 +42,16 @@ export const gamespeedPrimeProtocol: PrimeProtocol = {
       durationSeconds: 60,
       intensity: 'standard',
       instruction: 'Keep the head quiet and pick up edge cues without chasing them.',
+    }),
+    drillStep({
+      id: 'scan',
+      category: 'scan',
+      title: 'Scan',
+      experienceName: 'Macaw Scan',
+      modeId: 'schulteScan',
+      durationSeconds: 60,
+      intensity: 'standard',
+      instruction: 'Find the signal inside the noise. Tap the next live cell in order — do not chase the whole grid.',
     }),
     drillStep({
       id: 'react',

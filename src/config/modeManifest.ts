@@ -3,14 +3,15 @@ import { SportType } from './sports';
 import { GameModeType, ModeAvailability } from '../types/game';
 import { resolveModeIconAsset } from './assetRegistry';
 
-export type ModeGameplayMechanicType = 'tap' | 'swipe' | 'hold' | 'sequence';
+export type ModeGameplayMechanicType = 'tap' | 'swipe' | 'hold' | 'sequence' | 'scan';
 export type ModeScoringModel =
   | 'standardAccuracy'
   | 'benchmarkComposite'
   | 'directionalTiming'
   | 'stabilityLock'
-  | 'sequenceRecall';
-export type ModeTargetRendererKey = 'standardTarget' | 'sequenceTargets';
+  | 'sequenceRecall'
+  | 'scanSequence';
+export type ModeTargetRendererKey = 'standardTarget' | 'sequenceTargets' | 'schulteGrid';
 export type ModeIconRef =
   | 'benchmarkStopwatch'
   | 'quickTapBolt'
@@ -20,6 +21,7 @@ export type ModeIconRef =
   | 'sequenceNodes'
   | 'peripheralRadar'
   | 'calmLotus'
+  | 'macawGrid'
   | 'defaultMode';
 export type ModeCueTemplateRef =
   | 'sequenceVocabularyFocus'
@@ -97,15 +99,16 @@ export interface RegisteredModeManifest {
 
 export const DEFAULT_MODE_MANIFEST_ID: GameModeType = 'quickTap';
 
-const gameplayMechanicTypes: ModeGameplayMechanicType[] = ['tap', 'swipe', 'hold', 'sequence'];
+const gameplayMechanicTypes: ModeGameplayMechanicType[] = ['tap', 'swipe', 'hold', 'sequence', 'scan'];
 const scoringModels: ModeScoringModel[] = [
   'standardAccuracy',
   'benchmarkComposite',
   'directionalTiming',
   'stabilityLock',
   'sequenceRecall',
+  'scanSequence',
 ];
-const targetRendererKeys: ModeTargetRendererKey[] = ['standardTarget', 'sequenceTargets'];
+const targetRendererKeys: ModeTargetRendererKey[] = ['standardTarget', 'sequenceTargets', 'schulteGrid'];
 const cueTemplateRefs: ModeCueTemplateRef[] = [
   'sequenceVocabularyFocus',
   'sequenceVocabularyTactical',
@@ -122,6 +125,7 @@ const iconRefs: ModeIconRef[] = [
   'sequenceNodes',
   'peripheralRadar',
   'calmLotus',
+  'macawGrid',
   'defaultMode',
 ];
 const modeDifficultyPresets: ModeDefaults['difficultyPreset'][] = [
@@ -163,6 +167,7 @@ const modeIconGlyphRegistry: Record<ModeIconRef, string> = {
   sequenceNodes: '⋯',
   peripheralRadar: '◌',
   calmLotus: '☯',
+  macawGrid: '▦',
   defaultMode: '•',
 };
 
@@ -508,6 +513,25 @@ const modeManifestSeeds: ModeManifestSeed[] = [
       targetIntervalMs: 1150,
       targetLifespanSeconds: 2.6,
       difficultyPreset: 'baseline',
+    },
+  },
+  {
+    id: 'schulteScan',
+    displayName: 'Macaw Scan',
+    description: 'Dynamic visual-search grid. Find the next signal inside the noise without chasing the whole field.',
+    availability: 'playable',
+    category: 'drill',
+    supportedSports: 'all',
+    iconRef: 'macawGrid',
+    gameplayMechanicType: 'scan',
+    scoringModel: 'scanSequence',
+    targetRendererKey: 'schulteGrid',
+    defaults: {
+      maxTargets: 25,
+      targetIntervalMs: 1000,
+      targetLifespanSeconds: 60,
+      roundSeconds: 60,
+      difficultyPreset: 'tracking',
     },
   },
 ];

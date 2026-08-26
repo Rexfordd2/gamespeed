@@ -303,6 +303,58 @@ export const EndScreen = ({
           {firstRunSelection && <p className="mt-3 text-xs text-center" style={{ color: theme.textColor, opacity: 0.72 }}>Built for {firstRunSelection.persona} focus: {GOAL_LABELS[firstRunSelection.goal]}.</p>}
         </div>
 
+        {result.schulteMetrics && (
+          <div className="mb-3 w-full rounded-2xl px-4 py-4 sm:mb-4 sm:px-5" style={{ backgroundColor: 'rgba(52, 211, 153, 0.08)', border: '1px solid rgba(52, 211, 153, 0.28)' }}>
+            <p className="mb-2 text-[10px] uppercase tracking-[0.16em] opacity-65" style={{ color: theme.textColor }}>
+              Macaw Scan
+            </p>
+            <p className="mb-3 text-xs" style={{ color: theme.textColor, opacity: 0.78 }}>
+              Search timing from this round only. Not a visual-processing diagnosis.
+            </p>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <div>
+                <p className="text-xl font-black tabular-nums" style={{ color: theme.targetColor }}>{result.schulteMetrics.boardsCompleted}</p>
+                <p className="text-[10px] uppercase tracking-[0.12em] opacity-60" style={{ color: theme.textColor }}>Boards</p>
+              </div>
+              <div>
+                <p className="text-xl font-black tabular-nums" style={{ color: theme.textColor }}>{result.schulteMetrics.correctSelections}</p>
+                <p className="text-[10px] uppercase tracking-[0.12em] opacity-60" style={{ color: theme.textColor }}>Hits</p>
+              </div>
+              <div>
+                <p className="text-xl font-black tabular-nums" style={{ color: theme.textColor }}>{result.schulteMetrics.errors}</p>
+                <p className="text-[10px] uppercase tracking-[0.12em] opacity-60" style={{ color: theme.textColor }}>Errors</p>
+              </div>
+              <div>
+                <p className="text-xl font-black tabular-nums" style={{ color: theme.textColor }}>{result.schulteMetrics.accuracyPct}%</p>
+                <p className="text-[10px] uppercase tracking-[0.12em] opacity-60" style={{ color: theme.textColor }}>Accuracy</p>
+              </div>
+              <div>
+                <p className="text-xl font-black tabular-nums" style={{ color: theme.textColor }}>
+                  {result.schulteMetrics.averageTransitionMs ?? '—'}
+                  {result.schulteMetrics.averageTransitionMs !== null ? 'ms' : ''}
+                </p>
+                <p className="text-[10px] uppercase tracking-[0.12em] opacity-60" style={{ color: theme.textColor }}>Avg cell time</p>
+              </div>
+              <div>
+                <p className="text-xl font-black tabular-nums" style={{ color: theme.textColor }}>
+                  {Math.round(result.schulteMetrics.completionTimeMs / 1000)}s
+                </p>
+                <p className="text-[10px] uppercase tracking-[0.12em] opacity-60" style={{ color: theme.textColor }}>Search time</p>
+              </div>
+              <div>
+                <p className="text-xl font-black tabular-nums" style={{ color: theme.textColor }}>{result.schulteMetrics.completionStatus}</p>
+                <p className="text-[10px] uppercase tracking-[0.12em] opacity-60" style={{ color: theme.textColor }}>Status</p>
+              </div>
+            </div>
+            <p className="mt-3 text-xs tabular-nums" style={{ color: theme.textColor, opacity: 0.75 }}>
+              Fastest {result.schulteMetrics.fastestTransitionMs ?? '—'}ms · Slowest {result.schulteMetrics.slowestTransitionMs ?? '—'}ms
+              {result.schulteMetrics.lateRoundSlowdownMs !== null
+                ? ` · Late-round ${result.schulteMetrics.lateRoundSlowdownMs > 0 ? '+' : ''}${result.schulteMetrics.lateRoundSlowdownMs}ms`
+                : ''}
+            </p>
+          </div>
+        )}
+
         {roundProgressDelta && (
           <div className="mb-3 w-full rounded-2xl px-4 py-4 sm:mb-4 sm:px-5" style={{ backgroundColor: 'rgba(74, 222, 128, 0.07)', border: '1px solid rgba(74, 222, 128, 0.26)' }}>
             <p className="text-[10px] uppercase tracking-[0.16em] opacity-65 mb-2" style={{ color: theme.textColor }}>Personal Best Tracker</p>

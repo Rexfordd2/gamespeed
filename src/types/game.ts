@@ -1,4 +1,5 @@
 import type { SportType } from '../config/sports';
+import type { SchulteScanMetrics } from './schulte';
 
 export type GameState = 'start' | 'playing' | 'prime' | 'end' | 'stats' | 'coach';
 
@@ -23,7 +24,8 @@ export type GameModeType =
   | 'holdTrack'
   | 'sequenceMemory'
   | 'peripheralPulse'
-  | 'calmFocus';
+  | 'calmFocus'
+  | 'schulteScan';
 
 export type ModeAvailability = 'playable' | 'comingSoon';
 
@@ -114,6 +116,8 @@ export interface GameResult {
   /** Benchmark mode only: composite 0–100 score combining accuracy (60%) and speed (40%). */
   benchmarkScore?: number;
   readinessMetrics?: ReadinessMetrics;
+  /** Macaw Scan / Schulte grid metrics. Omitted for other modes. */
+  schulteMetrics?: SchulteScanMetrics;
 }
 
 // ---------- Persistent stats types ----------
@@ -141,6 +145,7 @@ export interface StoredRound {
     primeSessionId?: string;
     protocolId?: string;
     primeStepId?: string;
+    schulteMetrics?: SchulteScanMetrics;
   };
 }
 

@@ -25,4 +25,12 @@ describe('mode presentation copy', () => {
     expect(calmFocus.sportLabel).toBe('Calm precision cadence');
     expect(calmFocus.trainingFocus).toContain('Mental solitude');
   });
+
+  it('returns Macaw Scan presentation without clinical claims', () => {
+    const macaw = getModePresentation('schulteScan', 'soccer');
+    expect(macaw.title).toBe('Macaw Scan');
+    expect(macaw.sportLabel).toBe('Visual search scan');
+    expect(macaw.description).toContain('signal inside the noise');
+    expect(macaw.whyThisMatters).not.toMatch(/diagnos/i);
+  });
 });

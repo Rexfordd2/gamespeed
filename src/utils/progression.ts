@@ -72,6 +72,11 @@ const UNLOCK_RULES: UnlockRule[] = [
     requiredAccuracy: 74,
     description: 'Unlock at 18 sessions + 74% best accuracy',
   },
+  {
+    mode: 'schulteScan',
+    requiredRounds: 3,
+    description: 'Unlock at 3 total sessions',
+  },
 ];
 
 const startOfDay = (ts: number) => {

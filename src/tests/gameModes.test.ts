@@ -5,6 +5,7 @@ import { generateTargets as swipeStrike } from '../modes/swipeStrike';
 import { generateTargets as holdTrack } from '../modes/holdTrack';
 import { generateTargets as peripheralPulse } from '../modes/peripheralPulse';
 import { generateTargets as calmFocus } from '../modes/calmFocus';
+import { generateTargets as schulteScan } from '../modes/schulteScan';
 import {
   generateSequenceTargets,
   getSequenceLengthForSuccesses,
@@ -138,6 +139,7 @@ describe('gameModes registry', () => {
     expect(gameModes.sequenceMemory).toBeDefined();
     expect(gameModes.peripheralPulse).toBeDefined();
     expect(gameModes.calmFocus).toBeDefined();
+    expect(gameModes.schulteScan).toBeDefined();
     expect(gameModes.quickTap.availability).toBe('playable');
     expect(gameModes.multiTarget.availability).toBe('playable');
     expect(gameModes.swipeStrike.availability).toBe('playable');
@@ -145,6 +147,8 @@ describe('gameModes registry', () => {
     expect(gameModes.sequenceMemory.availability).toBe('playable');
     expect(gameModes.peripheralPulse.availability).toBe('playable');
     expect(gameModes.calmFocus.availability).toBe('playable');
+    expect(gameModes.schulteScan.availability).toBe('playable');
+    expect(gameModes.schulteScan.name).toBe('Macaw Scan');
   });
 
   it('every mode has a generateTargets function', () => {
@@ -327,6 +331,12 @@ describe('calmFocus.generateTargets', () => {
     const result = calmFocus({ ...base, existingTargets: [] });
     expect(result).toHaveLength(1);
     expect(result[0].stimulusVariant).toBe('calm');
+  });
+});
+
+describe('schulteScan.generateTargets', () => {
+  it('does not spawn floating targets — the grid engine owns layout', () => {
+    expect(schulteScan({ ...base, existingTargets: [] })).toEqual([]);
   });
 });
 

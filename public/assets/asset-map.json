@@ -21,7 +21,8 @@
     "holdTrack",
     "sequenceMemory",
     "peripheralPulse",
-    "calmFocus"
+    "calmFocus",
+    "schulteScan"
   ],
   "groups": {
     "sportIcons": [
@@ -129,6 +130,13 @@
         "id": "calm-focus",
         "file": "mode-icons/calm-focus.svg",
         "fallbackGlyph": "☯",
+        "required": false,
+        "dimensions": "256x256"
+      },
+      {
+        "id": "schulte-scan",
+        "file": "mode-icons/schulte-scan.svg",
+        "fallbackGlyph": "▦",
         "required": false,
         "dimensions": "256x256"
       }
@@ -404,7 +412,8 @@
       "holdTrack": "hold-track",
       "sequenceMemory": "sequence-memory",
       "peripheralPulse": "peripheral-pulse",
-      "calmFocus": "calm-focus"
+      "calmFocus": "calm-focus",
+      "schulteScan": "schulte-scan"
     },
     "modeToAudioCues": {
       "reactionBenchmark": [],
@@ -426,7 +435,8 @@
         "mode:sequence-fail"
       ],
       "peripheralPulse": [],
-      "calmFocus": []
+      "calmFocus": [],
+      "schulteScan": []
     }
   },
   "supportedFormats": {

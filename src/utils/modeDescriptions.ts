@@ -57,6 +57,10 @@ const DEFAULT_SPORT_COPY: Record<GameModeType, ModeSportCopyOverride> = {
     sportLabel: 'Calm precision cadence',
     sportDescription: 'Train steady, low-stimulation response quality and visual composure.',
   },
+  schulteScan: {
+    sportLabel: 'Visual search scan',
+    sportDescription: 'Find the next live signal in the grid without letting noise pull your eyes around.',
+  },
 };
 
 const modeSportOverrides: Partial<Record<SportType, Partial<Record<GameModeType, ModeSportCopyOverride>>>> = {
@@ -367,6 +371,25 @@ export const modeDescriptions: Record<GameModeType, ModeDescription> = {
       'Breathe out slowly before each response to reduce noise.',
       'Tap with smooth intent, not urgency.',
       'Use this mode on heavy stress days or pre-sleep sessions.',
+    ],
+  },
+  schulteScan: {
+    title: 'Macaw Scan',
+    description: 'Dynamic visual-search grid. Find the next signal inside the noise. Boards can stay still or reshuffle after clean hits.',
+    trainingFocus: 'Scanning speed and attentional control',
+    intensity: 'Medium',
+    rhythm: 'Ordered search under clock pressure',
+    whyThisMatters: 'Games hide the next cue in clutter. This mode trains finding the live signal without chasing every cell.',
+    evidenceStyle: {
+      cuePickup: 'Requires locating the next valid cell among competing labels.',
+      anticipation: 'Rewards knowing the sequence instead of hunting at random.',
+      decisionSpeed: 'Measures cell-to-cell transition time on every correct tap.',
+      gazeStability: 'Encourages a scan pattern instead of frantic eye jumps.',
+    },
+    tips: [
+      'Start at the last hit and search nearby before jumping the whole grid.',
+      'Wrong taps lock the grid briefly — reset instead of mashing.',
+      'When cells reshuffle, re-acquire the next signal. Do not chase old positions.',
     ],
   },
 };

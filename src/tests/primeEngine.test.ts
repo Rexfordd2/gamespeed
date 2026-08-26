@@ -55,6 +55,7 @@ describe('prime protocol config', () => {
     expect(getPrimeExecutableSteps(gamespeedPrimeProtocol).map(step => step.id)).toEqual([
       'settle',
       'see',
+      'scan',
       'react',
       'decide',
       'track',
@@ -63,6 +64,7 @@ describe('prime protocol config', () => {
     expect(gamespeedPrimeProtocol.steps.map(step => step.modeId)).toEqual([
       'calmFocus',
       'peripheralPulse',
+      'schulteScan',
       'quickTap',
       'multiTarget',
       'holdTrack',
@@ -110,6 +112,7 @@ describe('prime engine', () => {
     const sequence: Array<{ id: string; mode?: GameModeType }> = [
       { id: 'settle', mode: 'calmFocus' },
       { id: 'see', mode: 'peripheralPulse' },
+      { id: 'scan', mode: 'schulteScan' },
       { id: 'react', mode: 'quickTap' },
       { id: 'decide', mode: 'multiTarget' },
       { id: 'track', mode: 'holdTrack' },
@@ -131,9 +134,9 @@ describe('prime engine', () => {
     now += 200;
     state = skipCurrentPrimeStep(state, now);
     expect(state.phase).toBe('summary');
-    expect(state.results).toHaveLength(6);
-    expect(state.results.filter(result => result.status === 'completed')).toHaveLength(5);
-    expect(state.results[5]).toMatchObject({ stepId: 'move', status: 'skipped' });
+    expect(state.results).toHaveLength(7);
+    expect(state.results.filter(result => result.status === 'completed')).toHaveLength(6);
+    expect(state.results[6]).toMatchObject({ stepId: 'move', status: 'skipped' });
     expect(getPrimeProgress(state, now).percent).toBe(100);
   });
 
@@ -162,8 +165,8 @@ describe('prime engine', () => {
     now += 1_000;
     state = startAndComplete(state, now, drillResult('calmFocus'));
     const progress = getPrimeProgress(state, now + 1_000);
-    expect(progress.executableStepCount).toBe(6);
-    expect(progress.percent).toBe(17);
+    expect(progress.executableStepCount).toBe(7);
+    expect(progress.percent).toBe(14);
     expect(progress.elapsedMs).toBe(2_000);
     expect(progress.phase).toBe('transition');
   });

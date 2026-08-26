@@ -225,6 +225,7 @@ export const PrimeSession = ({
         cueIntensity={cueIntensity}
         hapticsEnabled={hapticsEnabled}
         roundSecondsOverride={step.durationSeconds}
+        primeSession
       />
     );
   }

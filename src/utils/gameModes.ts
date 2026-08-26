@@ -7,6 +7,7 @@ import { generateTargets as generateHoldTrack } from '../modes/holdTrack';
 import { generateTargets as generateSequenceMemory } from '../modes/sequenceMemory';
 import { generateTargets as generatePeripheralPulse } from '../modes/peripheralPulse';
 import { generateTargets as generateCalmFocus } from '../modes/calmFocus';
+import { generateTargets as generateSchulteScan } from '../modes/schulteScan';
 import { modeManifestOrder, modeManifestRegistry } from '../config/modeManifest';
 
 export const MODE_ORDER: GameModeType[] = modeManifestOrder;
@@ -20,6 +21,7 @@ const targetGeneratorByMode: Record<GameModeType, GameMode['generateTargets']> =
   sequenceMemory: generateSequenceMemory,
   peripheralPulse: generatePeripheralPulse,
   calmFocus: generateCalmFocus,
+  schulteScan: generateSchulteScan,
 };
 
 export const gameModes: Record<GameModeType, GameMode> = MODE_ORDER.reduce(

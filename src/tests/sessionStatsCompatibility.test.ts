@@ -108,4 +108,45 @@ describe('session stats backward compatibility', () => {
     expect(calmRound?.meta?.primeStepId).toBe('settle');
     expect(quickRound?.meta?.primeSessionId).toBeUndefined();
   });
+
+  it('persists Macaw Scan metrics without rewriting other mode history', () => {
+    recordRound({
+      score: 9,
+      misses: 1,
+      bestStreak: 9,
+      mode: 'quickTap',
+      modeName: 'Quick Tap',
+    });
+    recordRound({
+      score: 9,
+      misses: 1,
+      bestStreak: 9,
+      mode: 'schulteScan',
+      modeName: 'Macaw Scan',
+      schulteMetrics: {
+        gridSize: 3,
+        variant: 'static',
+        stimulusSet: 'numbers',
+        sequenceRule: 'ascending',
+        boardsCompleted: 1,
+        completionTimeMs: 12_400,
+        correctSelections: 9,
+        errors: 1,
+        accuracyPct: 90,
+        averageTransitionMs: 180,
+        fastestTransitionMs: 90,
+        slowestTransitionMs: 310,
+        lateRoundSlowdownMs: 40,
+        completionStatus: 'partial',
+      },
+    });
+
+    const reloaded = loadStats();
+    const macaw = reloaded.rounds.find(round => round.mode === 'schulteScan');
+    const tap = reloaded.rounds.find(round => round.mode === 'quickTap');
+    expect(macaw?.meta?.schulteMetrics?.correctSelections).toBe(9);
+    expect(macaw?.meta?.schulteMetrics?.errors).toBe(1);
+    expect(macaw?.meta?.schulteMetrics?.averageTransitionMs).toBe(180);
+    expect(tap?.meta?.schulteMetrics).toBeUndefined();
+  });
 });
