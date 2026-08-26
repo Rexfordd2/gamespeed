@@ -6,16 +6,16 @@ import { jungleAssetManifest, jungleVisualFallbacks } from './assetManifest';
 // Using it here keeps asset URLs consistent with the configured build base.
 export const jungleTheme: JungleThemeConfig = {
   name: 'jungle',
-  backgroundColor: '#06120f',
-  targetColor: '#4ade80',
-  textColor: '#ffffff',
+  backgroundColor: '#06120F',
+  targetColor: '#52F28C',
+  textColor: '#EAE9DF',
   icon: {
     type: 'image',
     path: jungleAssetManifest.icons.target,
     fallbackPath: jungleAssetManifest.icons.targetFallback ?? jungleVisualFallbacks.icon.target,
   },
   background: {
-    gradient: 'bg-gradient-to-b from-[#06120f] via-[#0b2d1f] to-[#03100c]',
+    gradient: 'bg-gradient-to-b from-[#020806] via-[#06120F] to-[#0B2118]',
     overlay: {
       top: jungleAssetManifest.backgrounds.overlays.top,
       left: jungleAssetManifest.backgrounds.overlays.left,

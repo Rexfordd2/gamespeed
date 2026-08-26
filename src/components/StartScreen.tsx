@@ -150,6 +150,7 @@ export const StartScreen = ({
   const cueVocabulary = sportConfig.cueVocabulary.join(' | ');
   const demoSectionRef = useRef<HTMLElement | null>(null);
   const onboardingSectionRef = useRef<HTMLElement | null>(null);
+  const instinctsSectionRef = useRef<HTMLElement | null>(null);
   const [wentToBedOnTime, setWentToBedOnTime] = useState<SleepOnTimeAnswer>('yes');
   const [readiness, setReadiness] = useState<1 | 2 | 3 | 4 | 5>(3);
   const [latestCheckInLabel, setLatestCheckInLabel] = useState<string | null>(null);
@@ -205,6 +206,10 @@ export const StartScreen = ({
   };
 
   const handlePrimaryCta = () => {
+    instinctsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const handleSecondaryCta = () => {
     if (!isFirstRun) {
       onStart('reactionBenchmark', undefined, { cueIntensity, hapticsEnabled });
       return;
@@ -270,7 +275,7 @@ export const StartScreen = ({
           persona={activePersona}
           onPersonaChange={handlePersonaSelect}
           onPrimaryCta={handlePrimaryCta}
-          onSecondaryCta={handleWatchDemo}
+          onSecondaryCta={handleSecondaryCta}
         />
 
         <section ref={demoSectionRef} aria-label="Demo section">
@@ -519,13 +524,19 @@ export const StartScreen = ({
             boxShadow: '0 20px 52px rgba(0, 0, 0, 0.4)',
           }}
         >
-          <h2 className="text-2xl font-extrabold tracking-tight sm:text-3xl" style={{ color: theme.textColor }}>
-            {isFirstRun ? 'Replace the pre-game scroll in 60 seconds' : `Welcome back, ${sportConfig.displayName} focus`}
+          <h2 className="font-display text-2xl font-extrabold uppercase tracking-[0.04em] sm:text-3xl" style={{ color: theme.textColor }}>
+            {isFirstRun
+              ? 'Train the part of your game that moves before your muscles.'
+              : stats.rounds.length === 0
+                ? 'Your instinct profile is empty'
+                : `Welcome back, ${playerName}`}
           </h2>
           <p className="mt-2 text-sm leading-relaxed sm:text-base" style={{ color: theme.textColor, opacity: 0.82 }}>
             {isFirstRun
-              ? `${sportConfig.readinessCopy.onboardingIntro} Use this to sharpen decision-making and cue pickup before you play.`
-              : `Run a quick ${sportConfig.displayName} readiness benchmark or jump straight into a drill.`}
+              ? 'GameSpeed develops the visual and cognitive abilities athletes use to recognize, decide, and react.'
+              : stats.rounds.length === 0
+                ? 'Complete your first Panther Readiness benchmark to establish a baseline.'
+                : `GameSpeed Score trajectory ready. Run ${sportConfig.displayName} readiness or jump into an instinct.`}
           </p>
 
           <div className="mt-5">
@@ -656,7 +667,7 @@ export const StartScreen = ({
               className="w-full sm:w-auto px-6 py-3 text-base font-bold"
               disabled={isFirstRun && (!persona || !goal)}
             >
-              {isFirstRun ? 'Run the 60-Second Test' : 'Run Benchmark Session'}
+              {isFirstRun ? 'TEST MY REACTION' : 'BEGIN BENCHMARK'}
             </JungleButton>
             <button
               onClick={onOpenRunway}
@@ -671,12 +682,12 @@ export const StartScreen = ({
             <button
               onClick={() => {
                 trackConversionEvent('hero_cta_click', {
-                  cta: 'watch_demo',
+                  cta: 'explore_instincts',
                   source: 'start_screen_secondary_demo_jump',
                   isFirstRun,
                   experimentVariant: landingExperiment.id,
                 });
-                handleWatchDemo();
+                handlePrimaryCta();
               }}
               className="ui-secondary-button w-full sm:w-auto px-5 py-3 text-sm"
               style={{
@@ -684,25 +695,26 @@ export const StartScreen = ({
                 borderColor: `${theme.textColor}44`,
               }}
             >
-              Watch Demo
+              EXPLORE INSTINCTS
             </button>
           </div>
         </section>
 
         <section
+          ref={instinctsSectionRef}
           className="rounded-3xl p-4 sm:p-6 backdrop-blur-md"
           style={{
             backgroundColor: 'rgba(6, 12, 18, 0.7)',
             border: `1px solid ${theme.targetColor}30`,
           }}
         >
-          <h2 className="text-xl font-bold sm:text-2xl" style={{ color: theme.textColor }}>
-            {isNightGuardrailActive ? 'Low-Stimulation Night Option' : `${sportConfig.displayName} Readiness Drills`}
+          <h2 className="font-display text-xl font-bold uppercase tracking-[0.05em] sm:text-2xl" style={{ color: theme.textColor }}>
+            {isNightGuardrailActive ? 'Low-Stimulation Night Option' : 'Choose Your Instinct'}
           </h2>
           <p className="mt-2 text-sm sm:text-base" style={{ color: theme.textColor, opacity: 0.76 }}>
             {isNightGuardrailActive
               ? 'High-arousal drill cards are paused in this bedtime window. Choose the calm session above.'
-              : sportConfig.readinessCopy.modeSelectorSubtitle}
+              : 'Every athlete reacts. Elite athletes perceive sooner.'}
           </p>
           {!isNightGuardrailActive && (
             <div className="mt-4">
@@ -715,20 +727,8 @@ export const StartScreen = ({
                 }
                 selectedSport={selectedSport}
                 unlocks={unlockMap}
-                copy={{
-                  title: `${sportConfig.displayName} mode selector`,
-                  subtitle:
-                    'Benchmark mode is your fixed readiness baseline. Drill modes are variable load reps for sport-specific cue training.',
-                  availableLabel: 'Playable protocols',
-                  nextReleaseLabel: 'Sport pack roadmap',
-                  benchmarkCta: 'Run the 60-Second Readiness Test',
-                  drillCta: 'Start Readiness Drill',
-                  benchmarkPillLabel: 'Benchmark',
-                  drillPillLabel: 'Drill',
-                  focusLabel: 'Skill focus',
-                  intensityLabel: 'Session load',
-                  comingSoonLabel: 'Coming Soon',
-                }}
+                stats={stats}
+                copy={landingContent.trainingModes.selector}
               />
               <div
                 className="mt-4 rounded-2xl p-3"

@@ -79,42 +79,42 @@
       {
         "id": "reaction-benchmark",
         "file": "mode-icons/reaction-benchmark.svg",
-        "fallbackGlyph": "⏱",
+        "fallbackGlyph": "◎",
         "required": false,
         "dimensions": "256x256"
       },
       {
         "id": "quick-tap",
         "file": "mode-icons/quick-tap.svg",
-        "fallbackGlyph": "⚡",
+        "fallbackGlyph": "▲",
         "required": false,
         "dimensions": "256x256"
       },
       {
         "id": "multi-target",
         "file": "mode-icons/multi-target.svg",
-        "fallbackGlyph": "◎",
+        "fallbackGlyph": "◉",
         "required": false,
         "dimensions": "256x256"
       },
       {
         "id": "swipe-strike",
         "file": "mode-icons/swipe-strike.svg",
-        "fallbackGlyph": "↔",
+        "fallbackGlyph": "≡",
         "required": false,
         "dimensions": "256x256"
       },
       {
         "id": "hold-track",
         "file": "mode-icons/hold-track.svg",
-        "fallbackGlyph": "◉",
+        "fallbackGlyph": "◍",
         "required": false,
         "dimensions": "256x256"
       },
       {
         "id": "sequence-memory",
         "file": "mode-icons/sequence-memory.svg",
-        "fallbackGlyph": "⋯",
+        "fallbackGlyph": "▣",
         "required": false,
         "dimensions": "256x256"
       },
@@ -128,7 +128,7 @@
       {
         "id": "calm-focus",
         "file": "mode-icons/calm-focus.svg",
-        "fallbackGlyph": "☯",
+        "fallbackGlyph": "◑",
         "required": false,
         "dimensions": "256x256"
       }
@@ -179,6 +179,62 @@
       {
         "id": "basketball-default",
         "file": "target-skins/basketball-default.svg",
+        "fallbackFile": "icons/target-primate.svg",
+        "required": false,
+        "dimensions": "256x256"
+      },
+      {
+        "id": "instinct-panther-eye",
+        "file": "instinct-targets/panther-eye.svg",
+        "fallbackFile": "icons/target-primate.svg",
+        "required": false,
+        "dimensions": "256x256"
+      },
+      {
+        "id": "instinct-cobra-eye",
+        "file": "instinct-targets/cobra-eye.svg",
+        "fallbackFile": "icons/target-primate.svg",
+        "required": false,
+        "dimensions": "256x256"
+      },
+      {
+        "id": "instinct-jaguar-spot",
+        "file": "instinct-targets/jaguar-spot.svg",
+        "fallbackFile": "icons/target-primate.svg",
+        "required": false,
+        "dimensions": "256x256"
+      },
+      {
+        "id": "instinct-claw-slash",
+        "file": "instinct-targets/claw-slash.svg",
+        "fallbackFile": "icons/target-primate.svg",
+        "required": false,
+        "dimensions": "256x256"
+      },
+      {
+        "id": "instinct-coil-ring",
+        "file": "instinct-targets/coil-ring.svg",
+        "fallbackFile": "icons/target-primate.svg",
+        "required": false,
+        "dimensions": "256x256"
+      },
+      {
+        "id": "instinct-glyph-stone",
+        "file": "instinct-targets/glyph-stone.svg",
+        "fallbackFile": "icons/target-primate.svg",
+        "required": false,
+        "dimensions": "256x256"
+      },
+      {
+        "id": "instinct-owl-iris",
+        "file": "instinct-targets/owl-iris.svg",
+        "fallbackFile": "icons/target-primate.svg",
+        "required": false,
+        "dimensions": "256x256"
+      },
+      {
+        "id": "instinct-water-eye",
+        "file": "instinct-targets/water-eye.svg",
         "fallbackFile": "icons/target-primate.svg",
         "required": false,
         "dimensions": "256x256"
@@ -427,6 +483,16 @@
       ],
       "peripheralPulse": [],
       "calmFocus": []
+    },
+    "modeToInstinctTarget": {
+      "reactionBenchmark": "instinct-panther-eye",
+      "quickTap": "instinct-cobra-eye",
+      "multiTarget": "instinct-jaguar-spot",
+      "swipeStrike": "instinct-claw-slash",
+      "holdTrack": "instinct-coil-ring",
+      "sequenceMemory": "instinct-glyph-stone",
+      "peripheralPulse": "instinct-owl-iris",
+      "calmFocus": "instinct-water-eye"
     }
   },
   "supportedFormats": {

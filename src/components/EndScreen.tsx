@@ -4,7 +4,6 @@ import { JungleBackground } from './JungleBackground';
 import { AuthPanel } from './AuthPanel';
 import { FirstRunSelection, GameModeType, GameResult, GameStats } from '../types/game';
 import { motion } from 'framer-motion';
-import { gameModes } from '../utils/gameModes';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   PercentileBadge,
@@ -19,6 +18,8 @@ import {
 } from '../utils/progression';
 import { trackConversionEvent } from '../lib/analytics';
 import { getLandingExperimentAssignment } from '../config/landingExperiment';
+import { getAnimalInstinct, getExperienceName } from '../config/animalInstincts';
+import { buildPerformanceRead, getSubScoreVisibility } from '../utils/performanceRead';
 
 interface EndScreenProps {
   result: GameResult;
@@ -139,7 +140,13 @@ export const EndScreen = ({
   const accuracy = totalAttempts > 0 ? Math.round((result.score / totalAttempts) * 100) : 0;
   const readiness = result.readinessMetrics;
   const recommendedMode = getRecommendedMode(firstRunSelection, accuracy);
-  const recommendedModeName = gameModes[recommendedMode].name;
+  const recommendedModeName = getExperienceName(recommendedMode);
+  const performanceRead = useMemo(
+    () => buildPerformanceRead({ result, stats, roundProgressDelta }),
+    [result, roundProgressDelta, stats],
+  );
+  const subScores = getSubScoreVisibility(result.mode);
+  const instinct = getAnimalInstinct(result.mode);
   const [checklist, setChecklist] = useState<ChecklistState>(() => loadChecklistState(totalRoundsCompleted, isSignedIn));
   const [shareStatus, setShareStatus] = useState<'idle' | 'copied' | 'error'>('idle');
   const hasTrackedSignupPrompt = useRef(false);
@@ -261,44 +268,85 @@ export const EndScreen = ({
         >
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-[11px] uppercase tracking-[0.18em] opacity-65" style={{ color: theme.textColor }}>Readiness score</p>
-              <p className="mt-2 text-5xl leading-none font-black tabular-nums sm:text-7xl" style={{ color: theme.targetColor }}>{readiness?.readinessScore ?? accuracy}</p>
-              <p className="mt-2 text-sm opacity-75" style={{ color: theme.textColor }}>{result.modeName}</p>
+              <p className="text-[11px] uppercase tracking-[0.18em] opacity-65" style={{ color: theme.textColor }}>GameSpeed Score</p>
+              <p className="font-display mt-2 text-5xl leading-none font-black tabular-nums sm:text-7xl" style={{ color: theme.targetColor }}>{readiness?.readinessScore ?? accuracy}</p>
+              <p className="mt-2 text-sm font-semibold opacity-85" style={{ color: theme.textColor }}>{instinct.experienceName}</p>
+              <p className="mt-1 text-xs opacity-65" style={{ color: theme.textColor }}>{instinct.mechanicName}</p>
+              <p className="mt-2 text-sm font-semibold" style={{ color: theme.targetColor }}>{performanceRead.headline}</p>
               <p className="mt-2 text-xs opacity-70 tabular-nums" style={{ color: theme.textColor }}>
                 <span>Final Score</span>: {result.score}
               </p>
             </div>
             <div className="rounded-2xl px-3.5 py-3 text-right" style={{ backgroundColor: `${percentileBadge.tone}18`, border: `1px solid ${percentileBadge.tone}66` }}>
-              <p className="text-[10px] uppercase tracking-[0.16em] opacity-75" style={{ color: theme.textColor }}>Percentile</p>
-              <p className="text-3xl font-black tabular-nums" style={{ color: percentileBadge.tone }}>{readiness?.decisionAccuracyPct ?? accuracy}%</p>
+              <p className="text-[10px] uppercase tracking-[0.16em] opacity-75" style={{ color: theme.textColor }}>Instinct tier</p>
+              <p className="font-display text-2xl font-black" style={{ color: percentileBadge.tone }}>{percentileBadge.label}</p>
               <p className="text-xs font-semibold mt-0.5" style={{ color: theme.textColor }}>
-                Late {readiness?.lateDecisionRatePct ?? 0}% | Streak {readiness?.streakQualityPct ?? result.bestStreak}
+                Accuracy {readiness?.decisionAccuracyPct ?? accuracy}%
               </p>
               <p className="text-xs mt-1" style={{ color: theme.textColor, opacity: 0.78 }}>
-                Band: {readiness?.neuralReadinessBand ?? 'build'}
+                Late {readiness?.lateDecisionRatePct ?? 0}% | Streak {readiness?.streakQualityPct ?? result.bestStreak}
               </p>
             </div>
           </div>
+
+          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-5">
+            <div className="rounded-xl border px-2 py-2 text-center" style={{ borderColor: `${theme.targetColor}33` }}>
+              <p className="text-[9px] uppercase tracking-[0.12em] opacity-60" style={{ color: theme.textColor }}>Reaction</p>
+              <p className="text-sm font-bold tabular-nums" style={{ color: theme.textColor }}>
+                {readiness?.reactionTimeMs.median ?? result.medianReactionTimeMs ?? '—'}
+                {(readiness?.reactionTimeMs.median ?? result.medianReactionTimeMs) ? 'ms' : ''}
+              </p>
+            </div>
+            {subScores.vision && (
+              <div className="rounded-xl border px-2 py-2 text-center" style={{ borderColor: `${theme.targetColor}33` }}>
+                <p className="text-[9px] uppercase tracking-[0.12em] opacity-60" style={{ color: theme.textColor }}>Vision</p>
+                <p className="text-sm font-bold tabular-nums" style={{ color: theme.textColor }}>{readiness?.visualFocusPct ?? '—'}%</p>
+              </div>
+            )}
+            {subScores.control && (
+              <div className="rounded-xl border px-2 py-2 text-center" style={{ borderColor: `${theme.targetColor}33` }}>
+                <p className="text-[9px] uppercase tracking-[0.12em] opacity-60" style={{ color: theme.textColor }}>Control</p>
+                <p className="text-sm font-bold tabular-nums" style={{ color: theme.textColor }}>{readiness?.consistencyPct ?? '—'}%</p>
+              </div>
+            )}
+            {subScores.memory && (
+              <div className="rounded-xl border px-2 py-2 text-center" style={{ borderColor: `${theme.targetColor}33` }}>
+                <p className="text-[9px] uppercase tracking-[0.12em] opacity-60" style={{ color: theme.textColor }}>Memory</p>
+                <p className="text-sm font-bold tabular-nums" style={{ color: theme.textColor }}>{accuracy}%</p>
+              </div>
+            )}
+            {subScores.awareness && (
+              <div className="rounded-xl border px-2 py-2 text-center" style={{ borderColor: `${theme.targetColor}33` }}>
+                <p className="text-[9px] uppercase tracking-[0.12em] opacity-60" style={{ color: theme.textColor }}>Awareness</p>
+                <p className="text-sm font-bold tabular-nums" style={{ color: theme.textColor }}>{readiness?.visualFocusPct ?? '—'}%</p>
+              </div>
+            )}
+          </div>
         </motion.div>
 
-        <div className="mb-3 w-full rounded-2xl px-4 py-4 sm:mb-4 sm:px-5" style={{ backgroundColor: 'rgba(34, 197, 94, 0.09)', border: '1px solid rgba(34, 197, 94, 0.28)' }}>
-          <p className="mb-2 text-[10px] uppercase tracking-widest opacity-60 sm:text-xs" style={{ color: theme.textColor }}>Readiness scoring</p>
-          <p className="text-sm leading-relaxed" style={{ color: theme.textColor, opacity: 0.88 }}>
-            This round is scored by readiness signals, not just hit count. Track reaction time, decision accuracy, late decisions,
-            and streak consistency to see whether game-speed execution is rising or drifting.
+        <div className="mb-3 w-full rounded-2xl px-4 py-4 sm:mb-4 sm:px-5" style={{ backgroundColor: 'rgba(82, 242, 140, 0.09)', border: '1px solid rgba(82, 242, 140, 0.28)' }}>
+          <p className="mb-2 text-[10px] uppercase tracking-widest opacity-60 sm:text-xs" style={{ color: theme.textColor }}>What this trains</p>
+          <p className="text-sm leading-relaxed" style={{ color: theme.textColor, opacity: 0.9 }}>
+            {performanceRead.whatThisTrains}
           </p>
-          <p className="mt-2 text-xs leading-relaxed" style={{ color: theme.textColor, opacity: 0.75 }}>
-            Hand-eye index {readiness?.handEyeCoordinationPct ?? '--'}% · Visual focus {readiness?.visualFocusPct ?? '--'}% ·
-            Reaction variability {readiness?.reactionVariabilityMs ?? '--'}ms.
+        </div>
+
+        <div className="mb-3 w-full rounded-2xl px-4 py-4 sm:mb-4 sm:px-5" style={{ backgroundColor: 'rgba(76, 201, 240, 0.08)', border: '1px solid rgba(76, 201, 240, 0.28)' }}>
+          <p className="mb-2 text-[10px] uppercase tracking-widest opacity-60 sm:text-xs" style={{ color: theme.textColor }}>Coach&apos;s read</p>
+          <p className="text-sm leading-relaxed" style={{ color: theme.textColor, opacity: 0.9 }}>
+            {performanceRead.coachRead}
+          </p>
+          <p className="mt-2 text-xs opacity-65" style={{ color: theme.textColor }}>
+            {performanceRead.disclaimer}
           </p>
         </div>
 
         <div className="mb-3 w-full rounded-2xl px-4 py-4 sm:mb-4 sm:px-5" style={{ backgroundColor: 'rgba(56, 189, 248, 0.08)', border: '1px solid rgba(56, 189, 248, 0.28)' }}>
           <p className="mb-2 text-[10px] text-center uppercase tracking-widest opacity-60 sm:text-xs" style={{ color: theme.textColor }}>Results Dashboard</p>
           <div className="grid grid-cols-1 gap-3 text-center sm:grid-cols-3 sm:gap-2">
-            <div><p className="text-2xl font-black tabular-nums" style={{ color: '#7dd3fc' }}>{dailyStreak}</p><p className="text-[10px] uppercase tracking-[0.13em] opacity-60 mt-1" style={{ color: theme.textColor }}>Daily streak</p></div>
-            <div><p className="text-lg font-bold" style={{ color: '#a5f3fc' }}>{recommendedModeName}</p><p className="text-[10px] uppercase tracking-[0.13em] opacity-60 mt-1" style={{ color: theme.textColor }}>Recommended Next Mode</p></div>
-            <div><p className="text-2xl font-black tabular-nums" style={{ color: weeklyChallenge.completed ? '#4ade80' : '#facc15' }}>{weeklyChallenge.roundsDone}/{weeklyChallenge.roundsTarget}</p><p className="text-[10px] uppercase tracking-[0.13em] opacity-60 mt-1" style={{ color: theme.textColor }}>Weekly challenge</p></div>
+            <div><p className="text-2xl font-black tabular-nums" style={{ color: '#4CC9F0' }}>{dailyStreak}</p><p className="text-[10px] uppercase tracking-[0.13em] opacity-60 mt-1" style={{ color: theme.textColor }}>Daily streak</p></div>
+            <div><p className="text-lg font-bold" style={{ color: '#96FF66' }}>{recommendedModeName}</p><p className="text-[10px] uppercase tracking-[0.13em] opacity-60 mt-1" style={{ color: theme.textColor }}>Recommended Next Instinct</p></div>
+            <div><p className="text-2xl font-black tabular-nums" style={{ color: weeklyChallenge.completed ? '#52F28C' : '#E8A43A' }}>{weeklyChallenge.roundsDone}/{weeklyChallenge.roundsTarget}</p><p className="text-[10px] uppercase tracking-[0.13em] opacity-60 mt-1" style={{ color: theme.textColor }}>Weekly challenge</p></div>
           </div>
           {firstRunSelection && <p className="mt-3 text-xs text-center" style={{ color: theme.textColor, opacity: 0.72 }}>Built for {firstRunSelection.persona} focus: {GOAL_LABELS[firstRunSelection.goal]}.</p>}
         </div>
@@ -362,8 +410,8 @@ export const EndScreen = ({
           </div>
         )}
 
-        <motion.div className="flex w-full flex-col gap-2.5 sm:gap-3">
-          <JungleButton onClick={handleStartRecommended} className="w-full py-4 text-lg font-bold uppercase">Start Today's Session: {recommendedModeName}</JungleButton>
+          <motion.div className="flex w-full flex-col gap-2.5 sm:gap-3">
+          <JungleButton onClick={handleStartRecommended} className="w-full py-4 text-lg font-bold uppercase">TRAIN: {recommendedModeName}</JungleButton>
           <JungleButton onClick={onPlayAgain} className="w-full py-4 text-lg font-bold uppercase">Replay</JungleButton>
           <button type="button" onClick={onViewStats} className="ui-secondary-button w-full py-3" style={{ color: theme.targetColor, borderColor: `${theme.targetColor}55` }}>Compare My Score</button>
           <button type="button" onClick={onMainMenu} className="ui-secondary-button w-full py-3" style={{ color: theme.textColor, borderColor: `${theme.textColor}40` }}>Main Menu</button>

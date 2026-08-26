@@ -1,5 +1,7 @@
 import { GameModeType, GameResult, GameStats, StoredRound } from '../types/game';
 import { MODE_ORDER, gameModes } from './gameModes';
+import { getExperienceName } from '../config/animalInstincts';
+import { performanceColors } from '../config/designTokens';
 
 const DAY_MS = 86_400_000;
 
@@ -178,11 +180,11 @@ export const estimatePercentileForRound = (round: StoredRound, stats: GameStats)
 };
 
 export const getPercentileBadge = (percentile: number): PercentileBadge => {
-  if (percentile >= 95) return { percentile, label: 'National Class', tone: '#4ade80' };
-  if (percentile >= 85) return { percentile, label: 'Elite', tone: '#22d3ee' };
-  if (percentile >= 70) return { percentile, label: 'Advanced', tone: '#a3e635' };
-  if (percentile >= 50) return { percentile, label: 'Rising', tone: '#facc15' };
-  return { percentile, label: 'Building', tone: '#fb923c' };
+  if (percentile >= 95) return { percentile, label: 'APEX', tone: performanceColors.green };
+  if (percentile >= 85) return { percentile, label: 'PREDATOR', tone: performanceColors.cognition };
+  if (percentile >= 70) return { percentile, label: 'HUNT', tone: performanceColors.bioluminescent };
+  if (percentile >= 50) return { percentile, label: 'CANOPY', tone: performanceColors.amber };
+  return { percentile, label: 'TRAIL', tone: '#fb923c' };
 };
 
 export const getFriendLeaderboard = (
@@ -280,4 +282,27 @@ export const getModeUnlockMap = (stats: GameStats): Partial<Record<GameModeType,
     return acc;
   }, {} as Partial<Record<GameModeType, ModeUnlockStatus>>);
 
-export const getModeLabel = (mode: GameModeType) => gameModes[mode].name;
+export const getModeLabel = (mode: GameModeType) => getExperienceName(mode);
+
+export const getMechanicLabel = (mode: GameModeType) => gameModes[mode].name;
+
+export type InstinctTier = 'TRAIL' | 'CANOPY' | 'HUNT' | 'PREDATOR' | 'APEX';
+
+export const getInstinctTierFromUnlocks = (stats: GameStats): InstinctTier => {
+  const unlocked = getModeUnlockStatuses(stats).filter(status => status.unlocked).length;
+  if (unlocked >= 8) return 'APEX';
+  if (unlocked >= 6) return 'PREDATOR';
+  if (unlocked >= 4) return 'HUNT';
+  if (unlocked >= 2) return 'CANOPY';
+  return 'TRAIL';
+};
+
+export const getPortraitDepth = (stats: GameStats, mode: GameModeType): number => {
+  const unlock = getModeUnlockStatuses(stats).find(status => status.mode === mode);
+  if (!unlock?.unlocked) return 0.12;
+  const pb = stats.pbs[mode];
+  if (!pb) return 0.2;
+  if ((pb.accuracy ?? 0) >= 85 || (pb.benchmarkScore ?? 0) >= 85) return 0.42;
+  if ((pb.accuracy ?? 0) >= 70) return 0.32;
+  return 0.24;
+};

@@ -115,11 +115,11 @@ const getModeStartButton = (modeName: string) => {
   }
 
   const modeButton = cursor
-    ? within(cursor).queryByRole('button', { name: /start (today'?s session|readiness drill)/i })
+    ? within(cursor).queryByRole('button', { name: /^(train|begin benchmark)$/i })
     : null;
 
   if (!modeButton) {
-    throw new Error(`Could not find Start Today's Session button for ${modeName}`);
+    throw new Error(`Could not find TRAIN button for ${modeName}`);
   }
 
   return modeButton;
@@ -128,6 +128,9 @@ const getModeStartButton = (modeName: string) => {
 const startMode = async (modeName: string) => {
   fireEvent.click(getModeStartButton(modeName));
   await flushMicrotasks();
+  await act(async () => {
+    vi.advanceTimersByTime(900);
+  });
   expect(screen.getByRole('button', { name: /pause game/i })).toBeInTheDocument();
 };
 
@@ -140,6 +143,19 @@ describe('App integration flow', () => {
     vi.stubGlobal('confirm', vi.fn(() => true));
     localStorage.removeItem(SPORT_SELECTION_STORAGE_KEY);
     localStorage.removeItem(NIGHT_GUARDRAIL_STORAGE_KEY);
+    localStorage.setItem(
+      'gamespeed_instinct_intro_seen_v1',
+      JSON.stringify({
+        reactionBenchmark: true,
+        quickTap: true,
+        multiTarget: true,
+        swipeStrike: true,
+        holdTrack: true,
+        sequenceMemory: true,
+        peripheralPulse: true,
+        calmFocus: true,
+      }),
+    );
     clearRunwayAnalytics();
     clearSleepCheckIns();
   });
@@ -154,13 +170,13 @@ describe('App integration flow', () => {
 
     expect(
       screen.getByRole('heading', {
-        name: 'Replace the pre-game scroll in 60 seconds',
+        name: 'Train the part of your game that moves before your muscles.',
       }),
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Soccer' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByText('1. Choose role')).toBeInTheDocument();
     expect(screen.queryByText('2. Choose one goal')).not.toBeInTheDocument();
-    expect(screen.getAllByRole('heading', { name: 'Soccer Readiness Drills' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('heading', { name: 'Choose Your Instinct' }).length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: 'Unmute audio' })).toBeInTheDocument();
   });
 
@@ -196,7 +212,7 @@ describe('App integration flow', () => {
 
     expect(screen.getByText('Low-stimulation option')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Start low-stimulation session' })).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: 'Soccer Readiness Drills' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Choose Your Instinct' })).not.toBeInTheDocument();
   });
 
   it('runs the night-before low-stimulation flow into safe benchmark gameplay', async () => {
@@ -212,14 +228,14 @@ describe('App integration flow', () => {
     );
     renderApp();
 
-    expect(screen.queryByRole('heading', { name: 'Soccer Readiness Drills' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Choose Your Instinct' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Start low-stimulation session' }));
     await flushMicrotasks();
 
     expect(screen.getByRole('heading', { name: 'Breathing reset' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Skip routine' }));
     await flushMicrotasks();
-    expect(screen.getByText('Reaction Benchmark')).toBeInTheDocument();
+    expect(screen.getByText('Panther Readiness')).toBeInTheDocument();
     expect(screen.getByText('Benchmark protocol')).toBeInTheDocument();
   });
 
@@ -227,7 +243,7 @@ describe('App integration flow', () => {
     renderApp();
     fireEvent.click(screen.getByRole('button', { name: /Athlete/i }));
     fireEvent.click(screen.getByRole('button', { name: /First-step quickness/i }));
-    fireEvent.click(screen.getAllByRole('button', { name: 'Run the 60-Second Test' })[0]);
+    fireEvent.click(screen.getAllByRole('button', { name: 'TEST MY REACTION' })[0]);
     await flushMicrotasks();
 
     expect(screen.getByRole('button', { name: /pause game/i })).toBeInTheDocument();
@@ -238,7 +254,7 @@ describe('App integration flow', () => {
     renderApp();
     fireEvent.click(screen.getByRole('button', { name: /Athlete/i }));
     fireEvent.click(screen.getByRole('button', { name: /First-step quickness/i }));
-    fireEvent.click(screen.getAllByRole('button', { name: 'Run the 60-Second Test' })[0]);
+    fireEvent.click(screen.getAllByRole('button', { name: 'TEST MY REACTION' })[0]);
     await flushMicrotasks();
 
     expect(screen.getByRole('button', { name: /pause game/i })).toBeInTheDocument();
@@ -251,7 +267,7 @@ describe('App integration flow', () => {
     expect(screen.queryByRole('button', { name: /pause game/i })).not.toBeInTheDocument();
     expect(
       screen.getByRole('heading', {
-        name: 'Replace the pre-game scroll in 60 seconds',
+        name: 'Train the part of your game that moves before your muscles.',
       }),
     ).toBeInTheDocument();
   });
@@ -260,14 +276,15 @@ describe('App integration flow', () => {
     renderApp();
     fireEvent.click(screen.getByRole('button', { name: /Athlete/i }));
     fireEvent.click(screen.getByRole('button', { name: /First-step quickness/i }));
-    fireEvent.click(screen.getAllByRole('button', { name: 'Run the 60-Second Test' })[0]);
+    fireEvent.click(screen.getAllByRole('button', { name: 'TEST MY REACTION' })[0]);
     await flushMicrotasks();
+    await advance(1_000);
 
-    await advance(60_500);
+    await advance(62_000);
 
     expect(screen.getByText('Results Dashboard')).toBeInTheDocument();
-    expect(screen.getByText('Percentile')).toBeInTheDocument();
-    expect(screen.getByText('Recommended Next Mode')).toBeInTheDocument();
+    expect(screen.getByText('Instinct tier')).toBeInTheDocument();
+    expect(screen.getByText('Recommended Next Instinct')).toBeInTheDocument();
     expect(screen.getByText('Onboarding Checklist')).toBeInTheDocument();
     expect(screen.getByText('Save this progress')).toBeInTheDocument();
   });
@@ -275,16 +292,16 @@ describe('App integration flow', () => {
   it('allows selecting a playable mode and starting gameplay', async () => {
     renderApp();
 
-    await startMode('Quick Tap');
+    await startMode('Cobra Strike');
 
-    expect(screen.getByText('Quick Tap')).toBeInTheDocument();
+    expect(screen.getByText('Cobra Strike')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /pause game/i })).toBeInTheDocument();
     expect(screen.getByLabelText('Gameplay area')).toBeInTheDocument();
   });
 
   it('launches Sequence Memory as a playable mode', async () => {
     renderApp();
-    await startMode('Sequence Memory');
+    await startMode('Capuchin Code');
     await advance(120);
     expect(screen.getByText(/Watch sequence/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /pause game/i })).toBeInTheDocument();
@@ -293,7 +310,7 @@ describe('App integration flow', () => {
   it('runs gameplay loop and reaches results for supported v1.1 tap modes', async () => {
     renderApp();
 
-    for (const modeName of ['Quick Tap', 'Multi Target']) {
+    for (const modeName of ['Cobra Strike', 'Jaguar Hunt']) {
       await startMode(modeName);
       await advance(900);
 
@@ -303,19 +320,19 @@ describe('App integration flow', () => {
 
       expect(screen.getByLabelText('Current streak 1')).toBeInTheDocument();
 
-      await advance(60_500);
+      await advance(62_000);
 
       expect(screen.getByText('Final Score')).toBeInTheDocument();
       expect(screen.getAllByText(modeName).length).toBeGreaterThan(0);
 
       fireEvent.click(screen.getByRole('button', { name: 'Main Menu' }));
-      expect(screen.getAllByRole('heading', { name: 'Soccer Readiness Drills' }).length).toBeGreaterThan(0);
+      expect(screen.getAllByRole('heading', { name: 'Choose Your Instinct' }).length).toBeGreaterThan(0);
     }
   });
 
   it('keeps Swipe Strike playable in the full round flow', async () => {
     renderApp();
-    await startMode('Swipe Strike');
+    await startMode('Jaguar Claw');
     await advance(1_000);
 
     const swipeTargetButton = screen.getByRole('button', { name: /swipe target/i });
@@ -323,14 +340,14 @@ describe('App integration flow', () => {
     await advance(220);
     expect(screen.getByLabelText('Current streak 0')).toBeInTheDocument();
 
-    await advance(60_500);
+    await advance(62_000);
     expect(screen.getByText('Final Score')).toBeInTheDocument();
     expect(screen.getByText('Swipe Strike')).toBeInTheDocument();
   });
 
   it('keeps Hold Track playable with pointer interactions', async () => {
     renderApp();
-    await startMode('Hold Track');
+    await startMode('Anaconda Lock');
     await advance(1_000);
 
     const holdTarget = screen.getByRole('button', { name: 'Hold target' });
@@ -346,7 +363,7 @@ describe('App integration flow', () => {
 
   it('runs Sequence Memory preview then accepts correct ordered input', async () => {
     renderApp();
-    await startMode('Sequence Memory');
+    await startMode('Capuchin Code');
     await advance(180);
     expect(screen.getByText(/Watch sequence/i)).toBeInTheDocument();
     const previewTargets = screen.getAllByRole('button', { name: 'Sequence target' });
@@ -376,7 +393,7 @@ describe('App integration flow', () => {
     fireEvent.click(screen.getByRole('button', { name: /see benchmark methodology/i }));
     await flushMicrotasks();
 
-    expect(screen.getByRole('heading', { name: /How GameSpeed Scoring Works/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /PANTHER READINESS TEST/i })).toBeInTheDocument();
     expect(screen.getByText(/Methodology and caveats/i)).toBeInTheDocument();
   });
 
@@ -436,7 +453,7 @@ describe('App integration flow', () => {
 
   it('marks failure when Sequence Memory input order is wrong', async () => {
     renderApp();
-    await startMode('Sequence Memory');
+    await startMode('Capuchin Code');
     await advance(3_200);
 
     const sequenceTargets = screen.getAllByRole('button', { name: 'Sequence target' });
@@ -455,7 +472,7 @@ describe('App integration flow', () => {
 
   it('counts a miss when Hold Track contact breaks early', async () => {
     renderApp();
-    await startMode('Hold Track');
+    await startMode('Anaconda Lock');
     await advance(900);
 
     const holdTarget = screen.getByRole('button', { name: 'Hold target' });
@@ -476,7 +493,7 @@ describe('App integration flow', () => {
 
   it('supports pause and resume without time leaking while paused', async () => {
     renderApp();
-    await startMode('Quick Tap');
+    await startMode('Cobra Strike');
 
     await advance(2_200);
     expect(screen.getByText('58s')).toBeInTheDocument();
@@ -494,20 +511,21 @@ describe('App integration flow', () => {
 
   it('supports replay and returning to main menu from results', async () => {
     renderApp();
-    await startMode('Quick Tap');
+    await startMode('Cobra Strike');
 
-    await advance(60_500);
+    await advance(62_000);
     expect(screen.getByText('Final Score')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Replay' }));
     await flushMicrotasks();
     expect(screen.getByRole('button', { name: /pause game/i })).toBeInTheDocument();
+    await advance(1_000);
 
-    await advance(60_500);
+    await advance(62_000);
     expect(screen.getByText('Final Score')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Main Menu' }));
-    expect(screen.getAllByRole('heading', { name: 'Soccer Readiness Drills' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('heading', { name: 'Choose Your Instinct' }).length).toBeGreaterThan(0);
   });
 
   it('toggles audio safely without crashing the UI', async () => {
@@ -521,7 +539,7 @@ describe('App integration flow', () => {
     await flushMicrotasks();
     expect(screen.getByRole('button', { name: 'Unmute audio' })).toBeInTheDocument();
 
-    await startMode('Quick Tap');
+    await startMode('Cobra Strike');
     await advance(500);
     expect(screen.getByRole('button', { name: /pause game/i })).toBeInTheDocument();
   });
@@ -539,7 +557,7 @@ describe('App integration flow', () => {
     await flushMicrotasks();
     expect(screen.getByRole('button', { name: 'Mute audio' })).toBeInTheDocument();
 
-    await startMode('Quick Tap');
+    await startMode('Cobra Strike');
     await advance(500);
     expect(screen.getByRole('button', { name: /pause game/i })).toBeInTheDocument();
     expect(screen.getByLabelText('Gameplay area')).toBeInTheDocument();
@@ -553,7 +571,7 @@ describe('App integration flow', () => {
     await flushMicrotasks();
     expect(screen.getByRole('button', { name: 'Mute audio' })).toBeInTheDocument();
 
-    await startMode('Quick Tap');
+    await startMode('Cobra Strike');
     await advance(900);
 
     const [target] = screen.getAllByRole('button', { name: 'Hit target' });
@@ -571,7 +589,7 @@ describe('App integration flow', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Coach Mode' }));
     await flushMicrotasks();
 
-    expect(screen.getByRole('heading', { name: 'Team readiness challenge board' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Athlete instinct board' })).toBeInTheDocument();
     fireEvent.change(screen.getByPlaceholderText('Athlete name'), { target: { value: 'Ava' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add' }));
 

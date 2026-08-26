@@ -28,6 +28,7 @@ type ContractorAssetMap = {
     sportToTargetSkin: Record<SportType, string>;
     modeToModeIcon: Record<GameModeType, string>;
     modeToAudioCues: Record<GameModeType, string[]>;
+    modeToInstinctTarget?: Partial<Record<GameModeType, string>>;
   };
 };
 
@@ -146,6 +147,20 @@ export const resolveModeIconAsset = (mode: GameModeType) => {
     path: entry?.file ? buildAssetPath(entry.file) : '',
     fallbackGlyph: entry?.fallbackGlyph ?? '•',
   };
+};
+
+export const resolveInstinctTargetPath = (mode: GameModeType) => {
+  const skinId = manifest.references.modeToInstinctTarget?.[mode];
+  return resolvePathEntry(targetSkinsById[skinId ?? ''], 'icons/target-primate.svg');
+};
+
+export const resolveInstinctTargetFallbackPath = (mode: GameModeType) => {
+  const skinId = manifest.references.modeToInstinctTarget?.[mode];
+  const entry = skinId ? targetSkinsById[skinId] : undefined;
+  if (entry?.fallbackFile) {
+    return buildAssetPath(entry.fallbackFile);
+  }
+  return buildAssetPath('icons/target-primate.svg');
 };
 
 export const resolveHudBadgePath = (badgeId: string) =>
