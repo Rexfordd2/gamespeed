@@ -137,6 +137,7 @@ describe('Macaw Scan integration', () => {
     expect(screen.getByRole('button', { name: 'Prime Me' })).toBeInTheDocument();
     expect(screen.getByText('Scan')).toBeInTheDocument();
     expect(screen.getByText('Macaw Scan')).toBeInTheDocument();
+    expect(screen.getByText(/sequence: settle, see, scan, react, decide, track/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Train an Instinct' }));
     expect(screen.getByRole('heading', { name: 'Multi Target' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Macaw Scan' })).toBeInTheDocument();

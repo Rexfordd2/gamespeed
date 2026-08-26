@@ -446,7 +446,7 @@ export const ReturningHome = ({
                 Prime Me
               </h2>
               <p className="mt-2 text-sm" style={{ color: theme.textColor, opacity: 0.78 }}>
-                {TRAINING_CONTEXT_LABELS[trainingContext]} sequence: settle, see, react, decide, track, then a short physical ready cue.
+                {TRAINING_CONTEXT_LABELS[trainingContext]} {primePreview.sequenceBlurb}
               </p>
               <ol className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {primePreview.phases.map((phase, index) => (

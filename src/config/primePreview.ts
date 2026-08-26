@@ -6,15 +6,24 @@ export const formatPrimeDurationLabel = (estimatedSeconds: number) => {
   return `${minutes} MINUTE PRIME`;
 };
 
-export const getPrimePreview = (protocol: PrimeProtocol = resolvePrimeProtocol()) => ({
-  durationLabel: formatPrimeDurationLabel(protocol.estimatedSeconds),
-  phases: getPrimeExecutableSteps(protocol).map(step => ({
+export const getPrimePreview = (protocol: PrimeProtocol = resolvePrimeProtocol()) => {
+  const executable = getPrimeExecutableSteps(protocol);
+  const phases = executable.map(step => ({
     id: step.id,
     label: step.title,
     summary: step.instruction,
     experienceName: step.experienceName,
-  })),
-});
+  }));
+  const drillLabels = executable
+    .filter(step => step.kind === 'drill')
+    .map(step => step.title.toLowerCase())
+    .join(', ');
+  return {
+    durationLabel: formatPrimeDurationLabel(protocol.estimatedSeconds),
+    phases,
+    sequenceBlurb: `sequence: ${drillLabels}, then a short physical ready cue.`,
+  };
+};
 
 const defaultPreview = getPrimePreview();
 
