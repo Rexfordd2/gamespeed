@@ -20,6 +20,9 @@ export const syncRoundToCloud = async ({ userId, round }: SyncRoundParams): Prom
     return;
   }
 
+  // Insert only known user_rounds columns. Optional Prime metadata lives in
+  // local round.meta and gamespeed_prime_sessions_v1 so sync still succeeds
+  // if the server schema has no Prime fields.
   const { error } = await supabase.from('user_rounds').insert({
     user_id: userId,
     client_round_id: round.clientRoundId,

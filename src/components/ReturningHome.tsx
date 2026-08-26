@@ -16,16 +16,11 @@ import { SPORT_ORDER, SportType, getSportConfig, getSportPack } from '../config/
 import { getSportPackAssets } from '../config/sportPacks';
 import { NightGuardrailSettings } from '../utils/nightGuardrail';
 import { getModeUnlockMap } from '../utils/progression';
-import {
-  PRIME_ENGINE_PENDING_COPY,
-  PRIME_PREVIEW_DURATION_LABEL,
-  PRIME_PREVIEW_PHASES,
-} from '../config/primePreview';
+import { getPrimePreview } from '../config/primePreview';
 import {
   getDefensibleTodayStatus,
   getTimeOfDayGreeting,
   hasBaselineRound,
-  resolveTodaysSessionMode,
 } from '../utils/athleteHome';
 import {
   TRAINING_CONTEXT_LABELS,
@@ -37,7 +32,7 @@ import { trackConversionEvent } from '../lib/analytics';
 import { SleepOnTimeAnswer, getLatestSleepCheckIn, recordSleepCheckIn } from '../utils/sleepCheckIn';
 import { isHapticsSupported } from '../utils/haptics';
 
-type ReturningHomeView = 'dashboard' | 'primeStaging' | 'instincts' | 'settings';
+type ReturningHomeView = 'dashboard' | 'instincts' | 'settings';
 
 interface ReturningHomeProps {
   onStart: (
@@ -45,6 +40,7 @@ interface ReturningHomeProps {
     firstRunSelection?: undefined,
     options?: SessionOptions,
   ) => void;
+  onPrimeStart: (options?: SessionOptions) => void;
   selectedSport: SportType;
   onSportChange: (sport: SportType) => void;
   cueIntensity: CueIntensity;
@@ -110,6 +106,7 @@ const formatSessionAge = (ts: number, nowTs = Date.now()) => {
 
 export const ReturningHome = ({
   onStart,
+  onPrimeStart,
   selectedSport,
   onSportChange,
   cueIntensity,
@@ -135,7 +132,7 @@ export const ReturningHome = ({
   const hasBaseline = hasBaselineRound(stats);
   const greeting = getTimeOfDayGreeting();
   const hapticsAvailable = isHapticsSupported();
-  const todaysMode = resolveTodaysSessionMode(stats, selectedSport);
+  const primePreview = getPrimePreview();
 
   const [view, setView] = useState<ReturningHomeView>('dashboard');
   const [sportPickerOpen, setSportPickerOpen] = useState(false);
@@ -175,11 +172,11 @@ export const ReturningHome = ({
       trainingContext,
       hasBaseline,
     });
-    setView('primeStaging');
-  };
-
-  const handleStartTodaysSession = () => {
-    onStart(todaysMode, undefined, sessionOptions());
+    onPrimeStart({
+      ...sessionOptions(),
+      lowStimulus: isNightGuardrailActive,
+      includeRoutine: false,
+    });
   };
 
   const handleRunBaseline = () => {
@@ -443,16 +440,16 @@ export const ReturningHome = ({
 
             <section className="rounded-3xl p-4 sm:p-5" style={cardStyle} aria-label="GameSpeed Prime">
               <p className="text-[11px] uppercase tracking-[0.18em] font-semibold" style={{ color: sportConfig.accents.secondary }}>
-                {PRIME_PREVIEW_DURATION_LABEL}
+                {primePreview.durationLabel}
               </p>
               <h2 className="mt-1 text-xl font-extrabold sm:text-2xl" style={{ color: theme.textColor }}>
                 Prime Me
               </h2>
               <p className="mt-2 text-sm" style={{ color: theme.textColor, opacity: 0.78 }}>
-                Intended warm-up shape for {TRAINING_CONTEXT_LABELS[trainingContext].toLowerCase()}. The sequenced protocol is not running yet.
+                {TRAINING_CONTEXT_LABELS[trainingContext]} sequence: settle, see, react, decide, track, then a short physical ready cue.
               </p>
-              <ol className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-5">
-                {PRIME_PREVIEW_PHASES.map((phase, index) => (
+              <ol className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {primePreview.phases.map((phase, index) => (
                   <li
                     key={phase.id}
                     className="rounded-2xl px-3 py-2.5"
@@ -463,6 +460,9 @@ export const ReturningHome = ({
                     </p>
                     <p className="mt-1 text-sm font-semibold" style={{ color: theme.textColor }}>
                       {phase.label}
+                    </p>
+                    <p className="mt-0.5 text-[11px] opacity-70" style={{ color: theme.textColor }}>
+                      {phase.experienceName}
                     </p>
                   </li>
                 ))}
@@ -501,41 +501,6 @@ export const ReturningHome = ({
           </>
         )}
 
-        {view === 'primeStaging' && (
-          <section className="rounded-3xl p-4 sm:p-6" style={cardStyle} aria-label="Prime protocol staging">
-            <p className="text-[11px] uppercase tracking-[0.18em] font-semibold" style={{ color: sportConfig.accents.secondary }}>
-              {PRIME_PREVIEW_DURATION_LABEL}
-            </p>
-            <h2 className="mt-2 text-2xl font-extrabold" style={{ color: theme.textColor }}>
-              {PRIME_ENGINE_PENDING_COPY.title}
-            </h2>
-            <p className="mt-2 text-sm leading-relaxed" style={{ color: theme.textColor, opacity: 0.82 }}>
-              {PRIME_ENGINE_PENDING_COPY.body}
-            </p>
-            {!hasBaseline && (
-              <p className="mt-3 text-sm font-semibold" style={{ color: theme.targetColor }}>
-                Your instinct profile is empty. Establish baseline first.
-              </p>
-            )}
-            <div className="mt-5 flex flex-col gap-2 sm:flex-row">
-              <JungleButton
-                onClick={hasBaseline ? handleStartTodaysSession : handleRunBaseline}
-                className="w-full min-h-12 px-5 py-3 text-base font-bold"
-              >
-                {hasBaseline ? PRIME_ENGINE_PENDING_COPY.startSessionCta : PRIME_ENGINE_PENDING_COPY.runBaselineCta}
-              </JungleButton>
-              <button
-                type="button"
-                onClick={() => setView('dashboard')}
-                className="ui-secondary-button min-h-12 px-5 text-sm"
-                style={{ color: theme.textColor, borderColor: `${theme.textColor}44` }}
-              >
-                {PRIME_ENGINE_PENDING_COPY.backCta}
-              </button>
-            </div>
-          </section>
-        )}
-
         {view === 'instincts' && (
           <section className="rounded-3xl p-4 sm:p-6" style={{ backgroundColor: 'rgba(6, 12, 18, 0.84)', border: `1px solid ${theme.textColor}30` }}>
             <div className="mb-4 flex items-center justify-between gap-3">
@@ -557,7 +522,7 @@ export const ReturningHome = ({
               unlocks={unlockMap}
               copy={{
                 title: `${sportConfig.displayName} instincts`,
-                subtitle: 'Existing drills stay available. Prime protocol sequencing is the next step.',
+                subtitle: 'Standalone instincts stay available. Prime Me runs the sequenced protocol.',
                 availableLabel: 'Playable protocols',
                 nextReleaseLabel: 'Sport pack roadmap',
                 benchmarkCta: 'Run Baseline',

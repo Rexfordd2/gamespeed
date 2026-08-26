@@ -39,6 +39,7 @@ interface GameProps {
   includeBreathingRoutine?: boolean;
   cueIntensity?: CueIntensity;
   hapticsEnabled?: boolean;
+  roundSecondsOverride?: number;
 }
 
 const DEFAULT_ROUND_SECONDS = 60;
@@ -92,6 +93,7 @@ export const Game = ({
   includeBreathingRoutine = false,
   cueIntensity = 'standard',
   hapticsEnabled = false,
+  roundSecondsOverride,
 }: GameProps) => {
   const activeMode = resolvePlayableMode(mode);
   const modeManifest = getModeManifest(activeMode);
@@ -102,7 +104,9 @@ export const Game = ({
   const sequencePhaseCues = modeAudioHooks.sequencePhase;
   const holdStartCue = modeAudioHooks.onHoldStart ?? 'hold-lock';
   const ROUND_SECONDS =
-    resolveModeRoundSeconds(activeMode) ?? gameModes[activeMode].config.roundSeconds ?? DEFAULT_ROUND_SECONDS;
+    roundSecondsOverride && roundSecondsOverride > 0
+      ? roundSecondsOverride
+      : resolveModeRoundSeconds(activeMode) ?? gameModes[activeMode].config.roundSeconds ?? DEFAULT_ROUND_SECONDS;
   const ROUND_MS = ROUND_SECONDS * 1000;
 
   const { theme } = useTheme();
@@ -483,7 +487,7 @@ export const Game = ({
     lateDecisionsRef.current = 0;
     falseStartsRef.current = 0;
     streakRunsRef.current = [];
-    const resetRoundSecs = gameModes[activeMode].config.roundSeconds ?? DEFAULT_ROUND_SECONDS;
+    const resetRoundSecs = ROUND_SECONDS;
     const resetRoundMs = resetRoundSecs * 1000;
     remainingMsRef.current = resetRoundMs;
     roundEndsAtRef.current = Date.now() + resetRoundMs;
@@ -538,7 +542,7 @@ export const Game = ({
     setRoutineStep(lowStimulusMode && includeBreathingRoutine ? 'breathing' : null);
     setRoutineSecondsLeft(LOW_STIM_ROUTINE_PHASE_SECONDS);
     fireHaptic('start');
-  }, [activeMode, clearHoldTrackingState, fireHaptic, includeBreathingRoutine, lowStimulusMode]);
+  }, [ROUND_SECONDS, activeMode, clearHoldTrackingState, fireHaptic, includeBreathingRoutine, lowStimulusMode]);
 
   useEffect(() => {
     if (!isRoutineActive) {

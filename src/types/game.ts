@@ -1,6 +1,6 @@
 import type { SportType } from '../config/sports';
 
-export type GameState = 'start' | 'playing' | 'end' | 'stats' | 'coach';
+export type GameState = 'start' | 'playing' | 'prime' | 'end' | 'stats' | 'coach';
 
 export type CueIntensity = 'minimal' | 'standard' | 'guided';
 
@@ -12,6 +12,7 @@ export interface SessionOptions {
   cueIntensity?: CueIntensity;
   hapticsEnabled?: boolean;
   trainingContext?: TrainingContext;
+  roundSecondsOverride?: number;
 }
 
 export type GameModeType =
@@ -137,6 +138,9 @@ export interface StoredRound {
     metricsVersion: number;
     runwayCompletionsCount?: number;
     sleepCorrelationState?: 'pending' | 'insufficient_data' | 'available';
+    primeSessionId?: string;
+    protocolId?: string;
+    primeStepId?: string;
   };
 }
 

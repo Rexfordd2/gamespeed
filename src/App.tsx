@@ -11,6 +11,7 @@ import { AudioToggle } from './components/AudioToggle';
 import { BenchmarkPage } from './components/BenchmarkPage';
 import { PreGameRunway } from './components/PreGameRunway';
 import { CoachMode } from './components/CoachMode';
+import { PrimeSession } from './components/prime/PrimeSession';
 import {
   FirstRunSelection,
   GameStats,
@@ -19,7 +20,9 @@ import {
   GameResult,
   CueIntensity,
   SessionOptions,
+  TrainingContext,
 } from './types/game';
+import { PrimeSessionRecord } from './types/prime';
 import { resolvePlayableMode } from './utils/gameModes';
 import { hasValidRoundHistory } from './utils/athleteHome';
 import { loadStats, recordRound } from './utils/sessionStats';
@@ -29,6 +32,7 @@ import { RoundProgressDelta, getDailyStreak, getRoundProgressDelta } from './uti
 import { trackConversionEvent } from './lib/analytics';
 import { getLandingExperimentAssignment } from './config/landingExperiment';
 import { SportType, loadSelectedSport, saveSelectedSport } from './config/sports';
+import { loadTrainingContext } from './utils/trainingContext';
 import {
   NightGuardrailSettings,
   acknowledgeNightBeforeReminder,
@@ -164,6 +168,7 @@ export const App = () => {
     mode: 'quickTap',
     modeName: 'Quick Tap',
   });
+  const [primeContext, setPrimeContext] = useState<TrainingContext>(loadTrainingContext);
   const hasTrackedReturnVisit = useRef(false);
   const hadAuthenticatedUser = useRef<boolean>(!!user);
   const isNightGuardrailActive = shouldUseLowStimulusMode(nightGuardrailSettings, new Date(clockMs));
@@ -220,6 +225,82 @@ export const App = () => {
     setActiveSessionOptions(nextSessionOptions);
     setFirstRunSelection(nextFirstRunSelection ?? null);
     setGameState('playing');
+  };
+
+  const handlePrimeStart = (options?: SessionOptions) => {
+    const shouldForceLowStimulus = shouldUseLowStimulusMode(
+      nightGuardrailSettings,
+      new Date(clockMs),
+    );
+    const nextSessionOptions = {
+      lowStimulus: shouldForceLowStimulus || !!options?.lowStimulus,
+      includeRoutine: false,
+      cueIntensity: options?.cueIntensity ?? cueIntensityPreference,
+      hapticsEnabled: options?.hapticsEnabled ?? hapticsPreference,
+    };
+    const context = options?.trainingContext ?? loadTrainingContext();
+    setPrimeContext(context);
+    setActiveSessionOptions(nextSessionOptions);
+    setGameState('prime');
+    trackConversionEvent('prime_start', {
+      source: 'returning_home',
+      sport: selectedSport,
+      trainingContext: context,
+      lowStimulus: nextSessionOptions.lowStimulus,
+      experimentVariant: landingExperiment.id,
+    });
+  };
+
+  const handlePrimePersistStep = ({
+    result,
+    sessionId,
+    protocolId,
+    stepId,
+  }: {
+    result: GameResult;
+    sessionId: string;
+    protocolId: string;
+    stepId: string;
+  }) => {
+    const clientRoundId = createClientRoundId();
+    const storedRound = recordRound(result, {
+      clientRoundId,
+      prime: { sessionId, protocolId, stepId },
+    });
+    const nextStats = loadStats();
+    setStatsSnapshot(nextStats);
+    setTotalRoundsCompleted(nextStats.rounds.length);
+    trackConversionEvent('test_completion', {
+      source: 'prime',
+      mode: result.mode,
+      sport: selectedSport,
+      score: result.score,
+      misses: result.misses,
+      bestStreak: result.bestStreak,
+      primeSessionId: sessionId,
+      protocolId,
+      primeStepId: stepId,
+      experimentVariant: landingExperiment.id,
+    });
+    if (user) {
+      void syncRoundToCloud({
+        userId: user.id,
+        round: storedRound,
+      });
+    }
+  };
+
+  const handlePrimeComplete = (session: PrimeSessionRecord) => {
+    setStatsSnapshot(loadStats());
+    trackConversionEvent('prime_complete', {
+      protocolId: session.protocolId,
+      sport: session.sport,
+      trainingContext: session.context,
+      durationMs: session.totalDurationMs,
+      stepsCompleted: session.summary.stepsCompleted,
+      stepsSkipped: session.summary.stepsSkipped,
+      experimentVariant: landingExperiment.id,
+    });
   };
 
   const handleGameOver = (result: GameResult) => {
@@ -304,6 +385,19 @@ export const App = () => {
     setGameState('start');
   };
 
+  const handlePrimeExit = (session: PrimeSessionRecord | null) => {
+    if (session?.status === 'cancelled') {
+      trackConversionEvent('prime_cancel', {
+        protocolId: session.protocolId,
+        sport: session.sport,
+        trainingContext: session.context,
+        stepsCompleted: session.summary.stepsCompleted,
+        experimentVariant: landingExperiment.id,
+      });
+    }
+    handleMainMenu();
+  };
+
   const handleViewStats = () => {
     setStatsSnapshot(loadStats());
     setGameState('stats');
@@ -385,8 +479,8 @@ export const App = () => {
   }, [cueIntensityPreference, hapticsPreference]);
 
   useEffect(() => {
-    const isPlaying = gameState === 'playing';
-    document.body.classList.toggle('gameplay-scroll-lock', isPlaying);
+    const isLocked = gameState === 'playing' || gameState === 'prime';
+    document.body.classList.toggle('gameplay-scroll-lock', isLocked);
     return () => {
       document.body.classList.remove('gameplay-scroll-lock');
     };
@@ -439,7 +533,7 @@ export const App = () => {
 
   useEffect(() => {
     if (gameState !== 'start') {
-      document.title = 'GameSpeed';
+      document.title = gameState === 'prime' ? 'GameSpeed Prime' : 'GameSpeed';
       return;
     }
     if (publicRoute === 'benchmark') {
@@ -501,6 +595,7 @@ export const App = () => {
             ) : isReturningAthlete ? (
               <ReturningHome
                 onStart={handleGameStart}
+                onPrimeStart={handlePrimeStart}
                 selectedSport={selectedSport}
                 onSportChange={handleSportChange}
                 cueIntensity={cueIntensityPreference}
@@ -554,6 +649,19 @@ export const App = () => {
             includeBreathingRoutine={activeSessionOptions.includeRoutine}
             cueIntensity={activeSessionOptions.cueIntensity}
             hapticsEnabled={activeSessionOptions.hapticsEnabled}
+          />
+        )}
+        {gameState === 'prime' && (
+          <PrimeSession
+            context={primeContext}
+            selectedSport={selectedSport}
+            sessionOptions={activeSessionOptions}
+            cueIntensity={activeSessionOptions.cueIntensity}
+            hapticsEnabled={activeSessionOptions.hapticsEnabled}
+            lowStimulus={activeSessionOptions.lowStimulus}
+            onPersistStep={handlePrimePersistStep}
+            onComplete={handlePrimeComplete}
+            onCancel={handlePrimeExit}
           />
         )}
         {gameState === 'end' && (

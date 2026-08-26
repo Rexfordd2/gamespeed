@@ -7,6 +7,7 @@ import { deriveReadinessMetrics } from '../utils/readinessMetrics';
 import { clearStats, recordRound } from '../utils/sessionStats';
 import { TRAINING_CONTEXT_STORAGE_KEY } from '../utils/trainingContext';
 import { SPORT_SELECTION_STORAGE_KEY } from '../config/sports';
+import { clearPrimeSessions } from '../utils/primePersistence';
 
 vi.mock('framer-motion', async () => {
   const ReactLib = await import('react');
@@ -101,6 +102,7 @@ describe('first-time vs returning home', () => {
     vi.stubGlobal('Audio', MockAudio as unknown as typeof Audio);
     vi.stubGlobal('confirm', vi.fn(() => true));
     clearStats();
+    clearPrimeSessions();
     localStorage.removeItem(TRAINING_CONTEXT_STORAGE_KEY);
     localStorage.removeItem(SPORT_SELECTION_STORAGE_KEY);
     localStorage.removeItem('gamespeed_first_run_complete_v1');
@@ -173,7 +175,7 @@ describe('first-time vs returning home', () => {
     expect(screen.getByText('Target bedtime')).toBeInTheDocument();
   });
 
-  it('persists training context and reaches a real session in two Prime Me interactions', async () => {
+  it('persists training context and launches the Prime protocol from Prime Me', async () => {
     seedBaselineHistory();
     renderApp();
 
@@ -181,13 +183,18 @@ describe('first-time vs returning home', () => {
     expect(localStorage.getItem(TRAINING_CONTEXT_STORAGE_KEY)).toBe('game');
 
     fireEvent.click(screen.getByRole('button', { name: 'Prime Me' }));
-    expect(screen.getByRole('heading', { name: 'Prime protocol engine is next' })).toBeInTheDocument();
-    expect(screen.getByText(/is not running yet/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Settle' })).toBeInTheDocument();
+    expect(screen.getByText('Crocodile Stillness')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Prime protocol engine is next' })).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: "Start today's session" }));
+    fireEvent.click(screen.getByRole('button', { name: 'Begin' }));
     await flushMicrotasks();
     expect(screen.getByRole('button', { name: /pause game/i })).toBeInTheDocument();
-    expect(screen.getByText('Quick Tap')).toBeInTheDocument();
+    expect(screen.getByText('Calm Focus')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /return to main menu/i }));
+    expect(screen.getByRole('heading', { name: /Welcome back/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Prime Me' })).toBeInTheDocument();
   });
 
   it('keeps existing modes reachable from Train an Instinct', async () => {

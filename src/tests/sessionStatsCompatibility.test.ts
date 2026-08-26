@@ -67,4 +67,45 @@ describe('session stats backward compatibility', () => {
     expect(stats.rounds[0].score).toBe(12);
     expect(stats.rounds[0].readinessMetrics?.streakQualityPct).toBeGreaterThan(0);
   });
+
+  it('preserves calmFocus and Prime metadata without rewriting standalone history', () => {
+    const primeRound = recordRound(
+      {
+        score: 8,
+        misses: 2,
+        bestStreak: 3,
+        mode: 'calmFocus',
+        modeName: 'Calm Focus',
+      },
+      {
+        ts: 2_000,
+        prime: {
+          sessionId: 'prime-session',
+          protocolId: 'gamespeed-prime-v1',
+          stepId: 'settle',
+        },
+      },
+    );
+    const standalone = recordRound(
+      {
+        score: 11,
+        misses: 1,
+        bestStreak: 5,
+        mode: 'quickTap',
+        modeName: 'Quick Tap',
+      },
+      { ts: 3_000 },
+    );
+
+    expect(primeRound.mode).toBe('calmFocus');
+    expect(primeRound.meta?.primeSessionId).toBe('prime-session');
+    expect(standalone.meta?.primeSessionId).toBeUndefined();
+
+    const reloaded = loadStats();
+    const calmRound = reloaded.rounds.find(round => round.mode === 'calmFocus');
+    const quickRound = reloaded.rounds.find(round => round.mode === 'quickTap' && round.ts === 3_000);
+    expect(calmRound?.meta?.protocolId).toBe('gamespeed-prime-v1');
+    expect(calmRound?.meta?.primeStepId).toBe('settle');
+    expect(quickRound?.meta?.primeSessionId).toBeUndefined();
+  });
 });

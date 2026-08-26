@@ -15,7 +15,10 @@ export type ConversionEventName =
   | 'share_score_click'
   | 'return_visit'
   | 'streak_start'
-  | 'landing_experiment_exposure';
+  | 'landing_experiment_exposure'
+  | 'prime_start'
+  | 'prime_complete'
+  | 'prime_cancel';
 
 type DeviceType = 'mobile' | 'tablet' | 'desktop';
 

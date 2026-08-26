@@ -1,5 +1,6 @@
 import { DEFAULT_SPORT, isSportType } from '../config/sports';
 import { GameResult, GameStats, StoredRound, ModePersonalBests, GameModeType } from '../types/game';
+import { isGameModeType } from './gameModes';
 import { loadRunwayAnalytics } from './runwayStats';
 import { loadSleepCheckIns } from './sleepCheckIn';
 import { deriveReadinessMetrics } from './readinessMetrics';
@@ -43,6 +44,11 @@ const saveStats = (stats: GameStats): void => {
 interface RecordRoundOptions {
   clientRoundId?: string;
   ts?: number;
+  prime?: {
+    sessionId: string;
+    protocolId: string;
+    stepId: string;
+  };
 }
 
 const toNumberOr = (value: unknown, fallback = 0): number =>
@@ -74,15 +80,7 @@ const normalizeRound = (rawRound: unknown): StoredRound | null => {
       sleepCheckInCorrelation: value.meta?.sleepCorrelationState ?? 'pending',
     });
 
-  const mode =
-    value.mode === 'reactionBenchmark' ||
-    value.mode === 'quickTap' ||
-    value.mode === 'multiTarget' ||
-    value.mode === 'swipeStrike' ||
-    value.mode === 'holdTrack' ||
-    value.mode === 'sequenceMemory'
-      ? value.mode
-      : 'quickTap';
+  const mode = typeof value.mode === 'string' && isGameModeType(value.mode) ? value.mode : 'quickTap';
 
   return {
     ts: toNumberOr(value.ts, Date.now()),
@@ -103,6 +101,10 @@ const normalizeRound = (rawRound: unknown): StoredRound | null => {
       metricsVersion: 1,
       runwayCompletionsCount: readinessMetrics.runwayCompletionsCount,
       sleepCorrelationState: readinessMetrics.sleepCheckInCorrelation,
+      primeSessionId:
+        typeof value.meta?.primeSessionId === 'string' ? value.meta.primeSessionId : undefined,
+      protocolId: typeof value.meta?.protocolId === 'string' ? value.meta.protocolId : undefined,
+      primeStepId: typeof value.meta?.primeStepId === 'string' ? value.meta.primeStepId : undefined,
     },
   };
 };
@@ -162,6 +164,9 @@ export const recordRound = (result: GameResult, options?: RecordRoundOptions): S
       metricsVersion: 1,
       runwayCompletionsCount,
       sleepCorrelationState: readinessMetrics.sleepCheckInCorrelation,
+      primeSessionId: options?.prime?.sessionId,
+      protocolId: options?.prime?.protocolId,
+      primeStepId: options?.prime?.stepId,
     },
   };
 
