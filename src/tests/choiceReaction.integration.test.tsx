@@ -118,6 +118,7 @@ describe('Mongoose Read integration', () => {
     expect(screen.getByLabelText(/Mongoose Read rules/i)).toBeInTheDocument();
     expect(screen.getByText('Tap')).toBeInTheDocument();
     expect(screen.getByText('Swipe left')).toBeInTheDocument();
+    expect(screen.getByText('No response')).toBeInTheDocument();
 
     const briefingSurface = screen.getByRole('application', { name: /Mongoose Read rules/i });
     gesture(briefingSurface, 'tap');

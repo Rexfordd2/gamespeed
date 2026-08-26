@@ -14,15 +14,6 @@ export const DEFAULT_CHOICE_STIMULI: ChoiceStimulusDef[] = [
   { id: 'red', kind: 'color', label: 'RED', color: CHOICE_COLORS.red },
 ];
 
-const threeMap: ChoiceRuleSet = {
-  id: 'read-3',
-  mappings: [
-    { stimulusId: 'green', response: 'tap' },
-    { stimulusId: 'yellow', response: 'swipeLeft' },
-    { stimulusId: 'blue', response: 'swipeRight' },
-  ],
-};
-
 const fourMap: ChoiceRuleSet = {
   id: 'read-4',
   mappings: [
@@ -69,11 +60,11 @@ export const CHOICE_PRIME_CONFIG: ChoiceRoundConfig = baseConfig(
 );
 
 /**
- * One variable per rung: mappings → speed → similarity → window → rule switch.
+ * One variable per rung: speed → similarity → window → rule switch.
  * Live boards stay on tap / swipe left / swipe right / no-go.
+ * First board uses the full four-map set so the briefing includes no-go.
  */
 const LADDER: ChoiceRoundConfig[] = [
-  baseConfig(threeMap),
   baseConfig(fourMap),
   baseConfig(fourMap, { stimulusMs: 780, isiMinMs: 550, isiMaxMs: 880 }),
   baseConfig(fourMap, { stimulusMs: 780, isiMinMs: 550, isiMaxMs: 880, similarStimuli: true }),
@@ -82,7 +73,7 @@ const LADDER: ChoiceRoundConfig[] = [
     stimulusMs: 780,
     isiMinMs: 550,
     isiMaxMs: 850,
-    switchAfterTrials: 48,
+    switchAfterTrials: 40,
     alternateRuleSet: fourMapSwitched,
   }),
 ];

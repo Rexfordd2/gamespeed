@@ -296,6 +296,8 @@ describe('choice-reaction engine', () => {
   it('keeps Mongoose Read copy centralized and Prime-ready with legend visible', () => {
     expect(getAnimalInstinct('choiceReaction').experienceName).toBe('Mongoose Read');
     expect(getAnimalInstinct('choiceReaction').tagline).toContain('Read first. Move second');
+    expect(getChoiceConfigForLadder(0).ruleSet.mappings).toHaveLength(4);
+    expect(getChoiceConfigForLadder(0).ruleSet.mappings.some(mapping => mapping.response === 'nogo')).toBe(true);
     expect(getChoiceConfigForLadder(0).ruleSet.mappings.map(mapping => mapping.response).every(response =>
       LIVE_CHOICE_RESPONSE_KINDS.includes(response),
     )).toBe(true);
