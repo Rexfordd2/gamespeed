@@ -19,10 +19,16 @@ import { NightGuardrailSettings } from '../utils/nightGuardrail';
 import {
   getDailyStreak,
   getFriendLeaderboard,
+  getLatestBenchmarkRound,
+  getLatestGameSpeedScore,
   getModeUnlockMap,
   getProgressDisciplineNote,
+  getStrongestPersonalBest,
+  getTodaysInstinct,
   getWeeklyChallenge,
+  getModeLabel,
 } from '../utils/progression';
+import { getExperienceName } from '../config/animalInstincts';
 import { getLandingExperimentAssignment } from '../config/landingExperiment';
 import { trackConversionEvent } from '../lib/analytics';
 import { SleepOnTimeAnswer, getLatestSleepCheckIn, recordSleepCheckIn } from '../utils/sleepCheckIn';
@@ -144,6 +150,13 @@ export const StartScreen = ({
   const unlockMap = getModeUnlockMap(stats);
   const leaderboard = getFriendLeaderboard(stats, playerName).slice(0, 5);
   const disciplineNote = getProgressDisciplineNote(stats);
+  const isEmptyProfile = !isFirstRun && stats.rounds.length === 0;
+  const isReturningAthlete = !isFirstRun && stats.rounds.length > 0;
+  const latestBenchmark = getLatestBenchmarkRound(stats);
+  const latestScore = getLatestGameSpeedScore(stats);
+  const strongestPb = getStrongestPersonalBest(stats);
+  const todaysInstinct = getTodaysInstinct(stats);
+  const recommendedMode = todaysInstinct?.mode ?? 'quickTap';
   const activePersona = persona ?? orderedPersonas[0];
   const hapticsAvailable = isHapticsSupported();
   const sportConfig = getSportConfig(selectedSport);
@@ -527,17 +540,68 @@ export const StartScreen = ({
           <h2 className="font-display text-2xl font-extrabold uppercase tracking-[0.04em] sm:text-3xl" style={{ color: theme.textColor }}>
             {isFirstRun
               ? 'Train the part of your game that moves before your muscles.'
-              : stats.rounds.length === 0
-                ? 'Your instinct profile is empty'
+              : isEmptyProfile
+                ? 'YOUR INSTINCT PROFILE IS EMPTY'
                 : `Welcome back, ${playerName}`}
           </h2>
           <p className="mt-2 text-sm leading-relaxed sm:text-base" style={{ color: theme.textColor, opacity: 0.82 }}>
             {isFirstRun
               ? 'GameSpeed develops the visual and cognitive abilities athletes use to recognize, decide, and react.'
-              : stats.rounds.length === 0
+              : isEmptyProfile
                 ? 'Complete your first Panther Readiness benchmark to establish a baseline.'
                 : `GameSpeed Score trajectory ready. Run ${sportConfig.displayName} readiness or jump into an instinct.`}
           </p>
+
+          {isReturningAthlete && (
+            <div className="mt-5 grid grid-cols-2 gap-2.5 md:grid-cols-4">
+              <div
+                className="rounded-2xl px-3.5 py-3"
+                style={{ backgroundColor: 'rgba(2, 8, 12, 0.7)', border: `1px solid ${theme.targetColor}44` }}
+              >
+                <p className="text-[10px] uppercase tracking-[0.18em] opacity-60" style={{ color: theme.textColor }}>
+                  GameSpeed Score
+                </p>
+                <p className="mt-1 font-display text-3xl font-extrabold tabular-nums" style={{ color: theme.targetColor }}>
+                  {latestScore ?? '—'}
+                </p>
+              </div>
+              <div
+                className="rounded-2xl px-3.5 py-3"
+                style={{ backgroundColor: 'rgba(2, 8, 12, 0.7)', border: `1px solid ${theme.textColor}2c` }}
+              >
+                <p className="text-[10px] uppercase tracking-[0.18em] opacity-60" style={{ color: theme.textColor }}>
+                  Last benchmark
+                </p>
+                <p className="mt-1 text-lg font-bold tabular-nums" style={{ color: theme.textColor }}>
+                  {latestBenchmark?.benchmarkScore ?? latestBenchmark?.accuracy ?? '—'}
+                </p>
+              </div>
+              <div
+                className="rounded-2xl px-3.5 py-3"
+                style={{ backgroundColor: 'rgba(2, 8, 12, 0.7)', border: `1px solid ${theme.textColor}2c` }}
+              >
+                <p className="text-[10px] uppercase tracking-[0.18em] opacity-60" style={{ color: theme.textColor }}>
+                  Personal best
+                </p>
+                <p className="mt-1 text-sm font-semibold" style={{ color: theme.textColor }}>
+                  {strongestPb
+                    ? `${getModeLabel(strongestPb.mode)} · ${strongestPb.accuracy}%`
+                    : '—'}
+                </p>
+              </div>
+              <div
+                className="rounded-2xl px-3.5 py-3"
+                style={{ backgroundColor: 'rgba(2, 8, 12, 0.7)', border: `1px solid ${theme.textColor}2c` }}
+              >
+                <p className="text-[10px] uppercase tracking-[0.18em] opacity-60" style={{ color: theme.textColor }}>
+                  Recommended
+                </p>
+                <p className="mt-1 text-sm font-semibold" style={{ color: theme.targetColor }}>
+                  {getExperienceName(recommendedMode)}
+                </p>
+              </div>
+            </div>
+          )}
 
           <div className="mt-5">
             <div className="grid grid-cols-1 gap-2.5 md:grid-cols-3">
@@ -667,7 +731,7 @@ export const StartScreen = ({
               className="w-full sm:w-auto px-6 py-3 text-base font-bold"
               disabled={isFirstRun && (!persona || !goal)}
             >
-              {isFirstRun ? 'TEST MY REACTION' : 'BEGIN BENCHMARK'}
+              {isFirstRun ? 'TEST MY REACTION' : isEmptyProfile ? 'RUN BASELINE' : 'BEGIN BENCHMARK'}
             </JungleButton>
             <button
               onClick={onOpenRunway}

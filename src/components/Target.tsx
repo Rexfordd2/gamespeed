@@ -11,6 +11,7 @@ interface TargetProps {
   targetIconPath?: string;
   targetIconFallbackPath?: string;
   chromeIconPath?: string;
+  targetStyle?: string;
   interactionMode: 'tap' | 'swipe' | 'hold';
   onActivate: (payload: {
     interactionMode: 'tap' | 'swipe' | 'hold';
@@ -43,6 +44,7 @@ export const Target = ({
   targetIconPath,
   targetIconFallbackPath,
   chromeIconPath,
+  targetStyle,
   interactionMode,
   onActivate,
   onSwipeAttemptFail,
@@ -273,6 +275,7 @@ export const Target = ({
         role="button"
         aria-label={ariaLabel}
         tabIndex={0}
+        data-target-style={targetStyle}
         initial={{ scale: 0.76, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.78, opacity: 0 }}

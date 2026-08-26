@@ -5,12 +5,12 @@ import { motion } from 'framer-motion';
 import { GameModeType, GameStats } from '../types/game';
 import { getModePresentation } from '../utils/modeDescriptions';
 import { JungleButton } from './JungleButton';
-import { getPortraitDepth, ModeUnlockStatus } from '../utils/progression';
+import { getPortraitDepth, getPortraitStage, getTodaysInstinct, ModeUnlockStatus } from '../utils/progression';
 import { SportType } from '../config/sports';
 import { HowToPlayModal } from './HowToPlayModal';
 import { getModeIconVisual } from '../config/modeManifest';
 import { isModeSupportedForSport } from '../config/modeManifest';
-import { getAnimalInstinct } from '../config/animalInstincts';
+import { getAnimalInstinct, getExperienceName } from '../config/animalInstincts';
 import { resolveSemanticAccent } from '../config/designTokens';
 import { framerTransition } from '../config/motion';
 
@@ -36,34 +36,60 @@ interface GameModeSelectorProps {
 
 const modeKeys = MODE_ORDER;
 
+const GeometricGlyph = ({ color, className }: { color: string; className: string }) => (
+  <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none">
+    <polygon points="12,3 21,19 3,19" stroke={color} strokeWidth="1.8" />
+    <circle cx="12" cy="14" r="2.2" fill={color} />
+  </svg>
+);
+
 const ModeIconBadge = ({
   path,
-  glyph,
   color,
   className,
+  stage = 'silhouette',
 }: {
   path: string;
-  glyph: string;
+  glyph?: string;
   color: string;
   className: string;
+  stage?: 'silhouette' | 'eyes' | 'partial' | 'full';
 }) => {
   const [didImageFail, setDidImageFail] = useState(false);
   if (path && !didImageFail) {
     return (
-      <img
-        src={path}
-        alt=""
-        aria-hidden="true"
-        className={className}
-        onError={() => setDidImageFail(true)}
-      />
+      <span className={`relative inline-flex ${className}`} data-portrait-stage={stage}>
+        <img
+          src={path}
+          alt=""
+          aria-hidden="true"
+          className="h-full w-full object-contain instinct-card-silhouette"
+          style={{
+            opacity: stage === 'silhouette' ? 0.55 : stage === 'eyes' ? 0.78 : 1,
+            filter:
+              stage === 'silhouette'
+                ? 'brightness(0.35) contrast(1.2)'
+                : stage === 'eyes'
+                  ? 'brightness(0.7) contrast(1.15)'
+                  : stage === 'partial'
+                    ? 'brightness(0.88)'
+                    : 'none',
+          }}
+          onError={() => setDidImageFail(true)}
+        />
+        {(stage === 'eyes' || stage === 'partial' || stage === 'full') && (
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-[28%] top-[38%] flex justify-between"
+          >
+            <span className="h-1 w-1 rounded-full" style={{ backgroundColor: color, boxShadow: `0 0 6px ${color}` }} />
+            <span className="h-1 w-1 rounded-full" style={{ backgroundColor: color, boxShadow: `0 0 6px ${color}` }} />
+          </span>
+        )}
+      </span>
     );
   }
-  return (
-    <span aria-hidden="true" className={className} style={{ color }}>
-      {glyph}
-    </span>
-  );
+  return <GeometricGlyph color={color} className={className} />;
 };
 
 export const GameModeSelector: React.FC<GameModeSelectorProps> = ({
@@ -84,6 +110,8 @@ export const GameModeSelector: React.FC<GameModeSelectorProps> = ({
     onSelectMode(modeKey);
   };
 
+  const todaysInstinct = stats ? getTodaysInstinct(stats) : null;
+
   return (
     <div className="flex w-full flex-col items-center">
       <motion.h2
@@ -101,6 +129,36 @@ export const GameModeSelector: React.FC<GameModeSelectorProps> = ({
       >
         {copy?.subtitle ?? 'Every athlete reacts. Elite athletes perceive sooner.'}
       </p>
+
+      {todaysInstinct && (
+        <div
+          className="mb-4 w-full rounded-2xl px-4 py-3"
+          style={{
+            backgroundColor: 'rgba(82, 242, 140, 0.08)',
+            border: `1px solid ${theme.targetColor}55`,
+          }}
+        >
+          <p className="text-[10px] uppercase tracking-[0.16em]" style={{ color: theme.targetColor }}>
+            Today&apos;s Instinct
+          </p>
+          <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="font-display text-lg font-bold uppercase tracking-[0.04em]" style={{ color: theme.textColor }}>
+                {getExperienceName(todaysInstinct.mode)}
+              </p>
+              <p className="text-xs opacity-70" style={{ color: theme.textColor }}>
+                {todaysInstinct.reason}
+              </p>
+            </div>
+            <JungleButton
+              onClick={() => handleModeSelect(todaysInstinct.mode)}
+              className="min-h-10 px-4 text-xs uppercase tracking-[0.08em]"
+            >
+              Train
+            </JungleButton>
+          </div>
+        </div>
+      )}
 
       <div className="w-full">
         <p
@@ -122,6 +180,7 @@ export const GameModeSelector: React.FC<GameModeSelectorProps> = ({
           const accent = resolveSemanticAccent(instinct.accent);
           const pb = stats?.pbs[key];
           const silhouetteOpacity = stats ? getPortraitDepth(stats, key) : 0.18;
+          const portraitStage = stats ? getPortraitStage(stats, key) : 'silhouette';
 
           return (
             <motion.div
@@ -137,12 +196,6 @@ export const GameModeSelector: React.FC<GameModeSelectorProps> = ({
               whileHover={{ y: -2 }}
               aria-label={`${instinct.experienceName}, ${instinct.mechanicName}. ${instinct.ability}.`}
             >
-              <ModeIconBadge
-                path={modeIcon.path}
-                glyph={modeIcon.glyph}
-                color={accent}
-                className="instinct-card-silhouette"
-              />
               <div
                 className="pointer-events-none absolute inset-0"
                 style={{
@@ -157,6 +210,7 @@ export const GameModeSelector: React.FC<GameModeSelectorProps> = ({
                     path={modeIcon.path}
                     glyph={modeIcon.glyph}
                     color={accent}
+                    stage={portraitStage}
                     className="h-8 w-8 object-contain text-xl sm:h-10 sm:w-10 sm:text-2xl"
                   />
                   <div>

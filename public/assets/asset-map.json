@@ -374,6 +374,27 @@
         "file": "audio-cues/mode/sequence-fail.mp3",
         "fallbackFile": "audio/effects/target-miss.mp3",
         "required": false
+      },
+      {
+        "id": "instinct-hiss",
+        "channel": "mode",
+        "cueKey": "instinct-hiss",
+        "file": "audio-cues/mode/instinct-hiss.mp3",
+        "required": false
+      },
+      {
+        "id": "instinct-growl",
+        "channel": "mode",
+        "cueKey": "instinct-growl",
+        "file": "audio-cues/mode/instinct-growl.mp3",
+        "required": false
+      },
+      {
+        "id": "instinct-water",
+        "channel": "mode",
+        "cueKey": "instinct-water",
+        "file": "audio-cues/mode/instinct-water.mp3",
+        "required": false
       }
     ],
     "sharedVisuals": [

@@ -331,4 +331,13 @@ export const getExperienceName = (mode: GameModeType): string =>
 export const getMechanicName = (mode: GameModeType): string =>
   getAnimalInstinct(mode).mechanicName;
 
+export const getInstinctIdentityCue = (
+  mode: GameModeType,
+): 'instinct-hiss' | 'instinct-growl' | 'instinct-water' => {
+  const arena = getAnimalInstinct(mode).arena;
+  if (arena === 'riverbank') return 'instinct-water';
+  if (arena === 'clearing' || arena === 'canopy' || arena === 'nightCanopy') return 'instinct-growl';
+  return 'instinct-hiss';
+};
+
 export const animalInstinctRegistry = instincts;

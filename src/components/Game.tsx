@@ -29,7 +29,7 @@ import { SportModeCueKey, getSportPackAssets } from '../config/sportPacks';
 import { GameplayCueOverlay } from './GameplayCueOverlay';
 import { GameplayCueType, getGameplayCueSet, isCueTimingVisible } from '../utils/gameplayCues';
 import { getModeManifest, resolveModeRoundSeconds } from '../config/modeManifest';
-import { getAnimalInstinct } from '../config/animalInstincts';
+import { getAnimalInstinct, getInstinctIdentityCue } from '../config/animalInstincts';
 import { hasSeenModeIntro, markModeIntroSeen, motionDurations } from '../config/motion';
 import { triggerHapticCue } from '../utils/haptics';
 import { resolveInstinctTargetPath, resolveSharedVisualPath } from '../config/assetRegistry';
@@ -597,6 +597,8 @@ export const Game = ({
       nextSpawnAtRef.current = Date.now();
     };
 
+    playCue('mode', getInstinctIdentityCue(activeMode));
+
     if (useShortIntro) {
       setIntroPhase('go');
       timers.push(window.setTimeout(finishIntro, motionDurations.introSkipMs));
@@ -631,7 +633,7 @@ export const Game = ({
       cancelled = true;
       timers.forEach(id => window.clearTimeout(id));
     };
-  }, [activeMode, cueIntensity, isIntroActive, isRoutineActive]);
+  }, [activeMode, cueIntensity, isIntroActive, isRoutineActive, playCue]);
 
   const skipIntro = useCallback(() => {
     setIntroPhase(null);
@@ -834,7 +836,8 @@ export const Game = ({
                   setBestStreak(bestStreakRef.current);
                 }
                 playEffect('hit');
-                fireHaptic('hit');
+                fireHaptic('holdLock');
+                playCue('mode', resolveModeCue(holdStartCue));
                 const completedTargetId = trackedTarget.id;
                 setTargets(prev => {
                   const next = prev.filter(target => target.id !== completedTargetId);
@@ -877,6 +880,7 @@ export const Game = ({
     isHoldMode,
     isSequenceMode,
     isSwipeMode,
+    holdStartCue,
     modeAudioHooks.onSwipeSpawnByDirection,
     fireHaptic,
     keepTargetsInPlayfield,
@@ -1075,6 +1079,7 @@ export const Game = ({
           sequenceSuccessesRef.current += 1;
           updateSequenceFeedback('success');
           updateSequencePhase('feedback');
+          fireHaptic('sequenceSuccess');
           playCue('mode', resolveModeCue(sequencePhaseCues?.success ?? 'sequence-success'));
           const successFeedbackMs = scaleMsByStreak(
             SEQUENCE_SUCCESS_FEEDBACK_MS,
@@ -1629,6 +1634,7 @@ export const Game = ({
                 targetIconPath={stimulusIconByVariant[target.stimulusVariant ?? 'standard']}
                 targetIconFallbackPath={sportAssets.targetIconFallback}
                 chromeIconPath={instinctTargetPath}
+                targetStyle={instinct.targetStyle}
                 onActivate={() => handleTargetClick(target.id)}
                 onSwipeAttemptFail={() => handleSwipeAttemptFail(target.id)}
                 holdVisualState={holdVisualByTarget[target.id]}
