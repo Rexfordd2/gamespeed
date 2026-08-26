@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useTheme } from '../context/ThemeContext';
-import { GameModeType, FirstRunSelection, GameStats, PlayerGoal, PlayerPersona } from '../types/game';
+import { CueIntensity, GameModeType, FirstRunSelection, GameStats, PlayerGoal, PlayerPersona, SessionOptions } from '../types/game';
 import { JungleBackground } from './JungleBackground';
 import { GameModeSelector } from './GameModeSelector';
 import { JungleButton } from './JungleButton';
@@ -12,7 +12,8 @@ import { LandingProgression } from './landing/LandingProgression';
 import { LandingFaq } from './landing/LandingFaq';
 import { LandingFinalCta } from './landing/LandingFinalCta';
 import { landingContent } from '../content/landingContent';
-import { SPORT_ORDER, SportType, getSportConfig } from '../config/sports';
+import { SPORT_ORDER, SportType, getSportConfig, getSportPack } from '../config/sports';
+import { getSportPackAssets } from '../config/sportPacks';
 import { gameModes } from '../utils/gameModes';
 import { NightGuardrailSettings } from '../utils/nightGuardrail';
 import {
@@ -25,15 +26,20 @@ import {
 import { getLandingExperimentAssignment } from '../config/landingExperiment';
 import { trackConversionEvent } from '../lib/analytics';
 import { SleepOnTimeAnswer, getLatestSleepCheckIn, recordSleepCheckIn } from '../utils/sleepCheckIn';
+import { isHapticsSupported } from '../utils/haptics';
 
 interface StartScreenProps {
   onStart: (
     mode: GameModeType,
     firstRunSelection?: FirstRunSelection,
-    options?: { lowStimulus?: boolean; includeRoutine?: boolean },
+    options?: SessionOptions,
   ) => void;
   selectedSport: SportType;
   onSportChange: (sport: SportType) => void;
+  cueIntensity: CueIntensity;
+  onCueIntensityChange: (intensity: CueIntensity) => void;
+  hapticsEnabled: boolean;
+  onHapticsEnabledChange: (enabled: boolean) => void;
   onViewStats: () => void;
   onOpenBenchmarkPage: () => void;
   onOpenRunway: () => void;
@@ -72,10 +78,47 @@ const PERSONA_LABELS: Record<PlayerPersona, string> = {
   gamer: 'Gamer',
 };
 
+const SportOptionIcon = ({ sport }: { sport: SportType }) => {
+  const assets = getSportPackAssets(getSportPack(sport));
+  const [iconSrc, setIconSrc] = useState(assets.sportIcon);
+
+  useEffect(() => {
+    setIconSrc(assets.sportIcon);
+  }, [assets.sportIcon]);
+
+  if (!iconSrc) {
+    return (
+      <span aria-hidden="true" className="text-base leading-none">
+        ◉
+      </span>
+    );
+  }
+
+  return (
+    <img
+      src={iconSrc}
+      alt=""
+      aria-hidden="true"
+      className="h-4 w-4 object-contain"
+      onError={() => {
+        if (iconSrc !== assets.sportIconFallback) {
+          setIconSrc(assets.sportIconFallback);
+          return;
+        }
+        setIconSrc('');
+      }}
+    />
+  );
+};
+
 export const StartScreen = ({
   onStart,
   selectedSport,
   onSportChange,
+  cueIntensity,
+  onCueIntensityChange,
+  hapticsEnabled,
+  onHapticsEnabledChange,
   onViewStats,
   onOpenBenchmarkPage,
   onOpenRunway,
@@ -102,6 +145,7 @@ export const StartScreen = ({
   const leaderboard = getFriendLeaderboard(stats, playerName).slice(0, 5);
   const disciplineNote = getProgressDisciplineNote(stats);
   const activePersona = persona ?? orderedPersonas[0];
+  const hapticsAvailable = isHapticsSupported();
   const sportConfig = getSportConfig(selectedSport);
   const cueVocabulary = sportConfig.cueVocabulary.join(' | ');
   const demoSectionRef = useRef<HTMLElement | null>(null);
@@ -143,7 +187,7 @@ export const StartScreen = ({
 
   const handleStartFirstTest = () => {
     if (!isFirstRun) {
-      onStart('reactionBenchmark');
+      onStart('reactionBenchmark', undefined, { cueIntensity, hapticsEnabled });
       return;
     }
     if (!persona || !goal) {
@@ -157,12 +201,12 @@ export const StartScreen = ({
       isFirstRun,
       experimentVariant: landingExperiment.id,
     });
-    onStart('reactionBenchmark', { persona, goal });
+    onStart('reactionBenchmark', { persona, goal }, { cueIntensity, hapticsEnabled });
   };
 
   const handlePrimaryCta = () => {
     if (!isFirstRun) {
-      onStart('reactionBenchmark');
+      onStart('reactionBenchmark', undefined, { cueIntensity, hapticsEnabled });
       return;
     }
     if (persona && goal) {
@@ -191,6 +235,8 @@ export const StartScreen = ({
     onStart('reactionBenchmark', undefined, {
       lowStimulus: true,
       includeRoutine: nightGuardrailSettings.includeBreathingRoutine,
+      cueIntensity,
+      hapticsEnabled,
     });
   };
 
@@ -303,9 +349,12 @@ export const StartScreen = ({
                     border: `1px solid ${isSelected ? `${option.accents.primary}cc` : `${theme.textColor}2b`}`,
                   }}
                 >
-                  <p className="text-sm font-semibold" style={{ color: theme.textColor }}>
-                    {option.displayName}
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <SportOptionIcon sport={sport} />
+                    <p className="text-sm font-semibold" style={{ color: theme.textColor }}>
+                      {option.displayName}
+                    </p>
+                  </div>
                 </button>
               );
             })}
@@ -658,7 +707,12 @@ export const StartScreen = ({
           {!isNightGuardrailActive && (
             <div className="mt-4">
               <GameModeSelector
-                onSelectMode={mode => onStart(mode)}
+                onSelectMode={mode =>
+                  onStart(mode, undefined, {
+                    cueIntensity,
+                    hapticsEnabled,
+                  })
+                }
                 selectedSport={selectedSport}
                 unlocks={unlockMap}
                 copy={{
@@ -676,6 +730,60 @@ export const StartScreen = ({
                   comingSoonLabel: 'Coming Soon',
                 }}
               />
+              <div
+                className="mt-4 rounded-2xl p-3"
+                style={{
+                  backgroundColor: 'rgba(2, 8, 12, 0.72)',
+                  border: `1px solid ${theme.textColor}2d`,
+                }}
+              >
+                <p className="text-[10px] uppercase tracking-[0.16em]" style={{ color: theme.textColor, opacity: 0.65 }}>
+                  Gameplay cue intensity
+                </p>
+                <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                  {(['minimal', 'standard', 'guided'] as CueIntensity[]).map(level => {
+                    const isActive = cueIntensity === level;
+                    return (
+                      <button
+                        key={level}
+                        type="button"
+                        aria-pressed={isActive}
+                        onClick={() => onCueIntensityChange(level)}
+                        className="rounded-xl px-3 py-2 text-sm text-left capitalize"
+                        style={{
+                          color: theme.textColor,
+                          backgroundColor: isActive ? `${theme.targetColor}22` : 'rgba(2, 8, 12, 0.76)',
+                          border: `1px solid ${isActive ? `${theme.targetColor}bb` : `${theme.textColor}2d`}`,
+                        }}
+                      >
+                        {level}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="mt-3">
+                  <button
+                    type="button"
+                    aria-pressed={hapticsEnabled}
+                    onClick={() => onHapticsEnabledChange(!hapticsEnabled)}
+                    disabled={!hapticsAvailable}
+                    className="w-full rounded-xl px-3 py-2 text-sm text-left"
+                    style={{
+                      color: theme.textColor,
+                      opacity: hapticsAvailable ? 1 : 0.58,
+                      backgroundColor: hapticsEnabled ? `${theme.targetColor}22` : 'rgba(2, 8, 12, 0.76)',
+                      border: `1px solid ${hapticsEnabled ? `${theme.targetColor}bb` : `${theme.textColor}2d`}`,
+                    }}
+                  >
+                    Mobile haptics: {hapticsEnabled ? 'On' : 'Off'}
+                  </button>
+                  <p className="mt-1 text-[11px]" style={{ color: theme.textColor, opacity: 0.65 }}>
+                    {hapticsAvailable
+                      ? 'Adds vibration cues for hit, miss, and rhythm pacing on supported devices.'
+                      : 'Haptics unavailable on this device/browser.'}
+                  </p>
+                </div>
+              </div>
             </div>
           )}
         </section>
@@ -802,7 +910,9 @@ export const StartScreen = ({
 
         <LandingProgression
           content={landingContent.progression}
-          onRunStarter={() => onStart(landingContent.progression.starterMode)}
+          onRunStarter={() =>
+            onStart(landingContent.progression.starterMode, undefined, { cueIntensity, hapticsEnabled })
+          }
         />
         <LandingFaq content={landingContent.faq} />
         <LandingFinalCta

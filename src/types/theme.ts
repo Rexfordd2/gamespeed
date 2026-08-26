@@ -40,6 +40,7 @@ export type ThemeAudioFallbackEffect = 'hit' | 'miss' | 'success';
 
 export interface ThemeAudioCue {
   src: string;
+  fallbackSrc?: string;
   loop?: boolean;
   volume?: number;
   fallbackEffect?: ThemeAudioFallbackEffect;

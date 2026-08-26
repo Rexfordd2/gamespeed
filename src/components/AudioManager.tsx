@@ -65,6 +65,7 @@ export const AudioManager = ({ children }: AudioManagerProps) => {
   const cueCooldownUntilRef = useRef<Map<CueId, number>>(new Map());
   const isMutedRef = useRef(true);
   const unavailableCueIdsRef = useRef<Set<CueId>>(new Set());
+  const fallbackAppliedCueIdsRef = useRef<Set<CueId>>(new Set());
   const warnedAssetsRef = useRef<Set<string>>(new Set());
   const [isMuted, setIsMuted] = useState(true);
   const [isReady, setIsReady] = useState(false);
@@ -79,6 +80,25 @@ export const AudioManager = ({ children }: AudioManagerProps) => {
     warnedAssetsRef.current.add(assetPath);
     console.warn(`[assets] ${assetLabel} is unavailable: ${assetPath}`);
   }, []);
+
+  const tryLoadFallbackSource = useCallback(
+    (cueId: CueId, cueAudio: HTMLAudioElement, cueConfig: ThemeAudioCue) => {
+      if (!cueConfig.fallbackSrc) {
+        return false;
+      }
+      if (fallbackAppliedCueIdsRef.current.has(cueId)) {
+        return false;
+      }
+      fallbackAppliedCueIdsRef.current.add(cueId);
+      cueAudio.src = cueConfig.fallbackSrc;
+      if (typeof cueAudio.load === 'function') {
+        cueAudio.load();
+      }
+      unavailableCueIdsRef.current.delete(cueId);
+      return true;
+    },
+    [],
+  );
 
   const getBackgroundAudio = useCallback(() => {
     const backgroundCueId = backgroundCueIdRef.current;
@@ -117,6 +137,18 @@ export const AudioManager = ({ children }: AudioManagerProps) => {
 
       cueAudio.currentTime = 0;
       cueAudio.play().catch(() => {
+        const swappedToFallback = tryLoadFallbackSource(cueId, cueAudio, cueConfig);
+        if (swappedToFallback) {
+          warnAssetIssue(cueLabelsRef.current.get(cueId) ?? cueId, cueConfig.src);
+          cueAudio.play().catch(() => {
+            unavailableCueIdsRef.current.add(cueId);
+            warnAssetIssue(cueLabelsRef.current.get(cueId) ?? cueId, cueConfig.fallbackSrc ?? cueConfig.src);
+            if (cueConfig.fallbackEffect) {
+              playFallbackEffect(cueConfig.fallbackEffect);
+            }
+          });
+          return;
+        }
         unavailableCueIdsRef.current.add(cueId);
         warnAssetIssue(cueLabelsRef.current.get(cueId) ?? cueId, cueConfig.src);
         if (cueConfig.fallbackEffect) {
@@ -124,7 +156,7 @@ export const AudioManager = ({ children }: AudioManagerProps) => {
         }
       });
     },
-    [warnAssetIssue],
+    [tryLoadFallbackSource, warnAssetIssue],
   );
 
   useEffect(() => {
@@ -132,6 +164,7 @@ export const AudioManager = ({ children }: AudioManagerProps) => {
     initializePromiseRef.current = null;
     setIsReady(false);
     unavailableCueIdsRef.current.clear();
+    fallbackAppliedCueIdsRef.current.clear();
 
     const nextCueElements = new Map<CueId, HTMLAudioElement>();
     const nextCueConfigs = new Map<CueId, ThemeAudioCue>();
@@ -148,6 +181,12 @@ export const AudioManager = ({ children }: AudioManagerProps) => {
         cueAudio.volume = cueConfig.volume ?? 1;
 
         const onError = () => {
+          if (tryLoadFallbackSource(cueId, cueAudio, cueConfig)) {
+            const cueLabel = `${channel} cue "${cueName}"`;
+            nextCueLabels.set(cueId, cueLabel);
+            warnAssetIssue(cueLabel, cueConfig.src);
+            return;
+          }
           unavailableCueIdsRef.current.add(cueId);
           const cueLabel = `${channel} cue "${cueName}"`;
           nextCueLabels.set(cueId, cueLabel);
@@ -198,7 +237,7 @@ export const AudioManager = ({ children }: AudioManagerProps) => {
       cueLabelsRef.current = new Map();
       backgroundCueIdRef.current = null;
     };
-  }, [audioConfig, buildCueId, warnAssetIssue]);
+  }, [audioConfig, buildCueId, tryLoadFallbackSource, warnAssetIssue]);
 
   const ensureAudioReady = useCallback(async () => {
     if (hasInitializedRef.current) return;

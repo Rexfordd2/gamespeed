@@ -12,7 +12,7 @@ export const jungleTheme: JungleThemeConfig = {
   icon: {
     type: 'image',
     path: jungleAssetManifest.icons.target,
-    fallbackPath: jungleVisualFallbacks.icon.target,
+    fallbackPath: jungleAssetManifest.icons.targetFallback ?? jungleVisualFallbacks.icon.target,
   },
   background: {
     gradient: 'bg-gradient-to-b from-[#06120f] via-[#0b2d1f] to-[#03100c]',
@@ -26,22 +26,26 @@ export const jungleTheme: JungleThemeConfig = {
   audio: {
     music: {
       backgroundLoop: {
-        src: jungleAssetManifest.audio.music.rainforestLoop,
+        src: jungleAssetManifest.audio.music.backgroundLoop.src,
+        fallbackSrc: jungleAssetManifest.audio.music.backgroundLoop.fallbackSrc,
         loop: true,
         volume: 0.25,
       },
     },
     gameplay: {
       hit: {
-        src: jungleAssetManifest.audio.gameplay.targetHit,
+        src: jungleAssetManifest.audio.gameplay.hit.src,
+        fallbackSrc: jungleAssetManifest.audio.gameplay.hit.fallbackSrc,
         fallbackEffect: 'hit',
       },
       miss: {
-        src: jungleAssetManifest.audio.gameplay.targetMiss,
+        src: jungleAssetManifest.audio.gameplay.miss.src,
+        fallbackSrc: jungleAssetManifest.audio.gameplay.miss.fallbackSrc,
         fallbackEffect: 'miss',
       },
       success: {
-        src: jungleAssetManifest.audio.gameplay.roundComplete,
+        src: jungleAssetManifest.audio.gameplay.success.src,
+        fallbackSrc: jungleAssetManifest.audio.gameplay.success.fallbackSrc,
         fallbackEffect: 'success',
       },
     },
@@ -49,39 +53,48 @@ export const jungleTheme: JungleThemeConfig = {
     training: {},
     mode: {
       'swipe-left': {
-        src: jungleAssetManifest.audio.mode.swipeLeft,
+        src: jungleAssetManifest.audio.mode.swipeLeft.src,
+        fallbackSrc: jungleAssetManifest.audio.mode.swipeLeft.fallbackSrc,
         fallbackEffect: 'hit',
       },
       'swipe-right': {
-        src: jungleAssetManifest.audio.mode.swipeRight,
+        src: jungleAssetManifest.audio.mode.swipeRight.src,
+        fallbackSrc: jungleAssetManifest.audio.mode.swipeRight.fallbackSrc,
         fallbackEffect: 'hit',
       },
       'swipe-up': {
-        src: jungleAssetManifest.audio.mode.swipeUp,
+        src: jungleAssetManifest.audio.mode.swipeUp.src,
+        fallbackSrc: jungleAssetManifest.audio.mode.swipeUp.fallbackSrc,
         fallbackEffect: 'hit',
       },
       'swipe-down': {
-        src: jungleAssetManifest.audio.mode.swipeDown,
+        src: jungleAssetManifest.audio.mode.swipeDown.src,
+        fallbackSrc: jungleAssetManifest.audio.mode.swipeDown.fallbackSrc,
         fallbackEffect: 'hit',
       },
       'hold-lock': {
-        src: jungleAssetManifest.audio.mode.holdLock,
+        src: jungleAssetManifest.audio.mode.holdLock.src,
+        fallbackSrc: jungleAssetManifest.audio.mode.holdLock.fallbackSrc,
         fallbackEffect: 'hit',
       },
       'sequence-preview': {
-        src: jungleAssetManifest.audio.mode.sequencePreview,
+        src: jungleAssetManifest.audio.mode.sequencePreview.src,
+        fallbackSrc: jungleAssetManifest.audio.mode.sequencePreview.fallbackSrc,
         fallbackEffect: 'hit',
       },
       'sequence-input': {
-        src: jungleAssetManifest.audio.mode.sequenceInput,
+        src: jungleAssetManifest.audio.mode.sequenceInput.src,
+        fallbackSrc: jungleAssetManifest.audio.mode.sequenceInput.fallbackSrc,
         fallbackEffect: 'hit',
       },
       'sequence-success': {
-        src: jungleAssetManifest.audio.mode.sequenceSuccess,
+        src: jungleAssetManifest.audio.mode.sequenceSuccess.src,
+        fallbackSrc: jungleAssetManifest.audio.mode.sequenceSuccess.fallbackSrc,
         fallbackEffect: 'success',
       },
       'sequence-fail': {
-        src: jungleAssetManifest.audio.mode.sequenceFail,
+        src: jungleAssetManifest.audio.mode.sequenceFail.src,
+        fallbackSrc: jungleAssetManifest.audio.mode.sequenceFail.fallbackSrc,
         fallbackEffect: 'miss',
       },
     },

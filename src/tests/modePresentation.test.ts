@@ -19,4 +19,10 @@ describe('mode presentation copy', () => {
       'Use this fixed protocol to compare day-to-day cue pickup, response timing, and composure.',
     );
   });
+
+  it('returns defaults for newly added drills', () => {
+    const calmFocus = getModePresentation('calmFocus', 'basketball');
+    expect(calmFocus.sportLabel).toBe('Calm precision cadence');
+    expect(calmFocus.trainingFocus).toContain('Mental solitude');
+  });
 });

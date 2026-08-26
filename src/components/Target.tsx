@@ -8,6 +8,8 @@ import { SwipeTimingVerdict } from '../utils/modeMechanics';
 
 interface TargetProps {
   target: TargetType;
+  targetIconPath?: string;
+  targetIconFallbackPath?: string;
   interactionMode: 'tap' | 'swipe' | 'hold';
   onActivate: (payload: {
     interactionMode: 'tap' | 'swipe' | 'hold';
@@ -37,6 +39,8 @@ interface TargetProps {
 
 export const Target = ({
   target,
+  targetIconPath,
+  targetIconFallbackPath,
   interactionMode,
   onActivate,
   onSwipeAttemptFail,
@@ -49,16 +53,18 @@ export const Target = ({
   const [showSuccess, setShowSuccess] = useState(false);
   const [isPressed, setIsPressed] = useState(false);
   const [showFailedSwipe, setShowFailedSwipe] = useState(false);
-  const [iconSrc, setIconSrc] = useState(theme.icon.path);
+  const resolvedTargetIconPath = targetIconPath ?? theme.icon.path;
+  const resolvedTargetIconFallbackPath = targetIconFallbackPath ?? theme.icon.fallbackPath;
+  const [iconSrc, setIconSrc] = useState(resolvedTargetIconPath);
   const clickedRef = useRef(false);
   const iconFallbackAttemptedRef = useRef(false);
   const pointerStartRef = useRef<{ x: number; y: number; at: number } | null>(null);
   const failFeedbackTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
-    setIconSrc(theme.icon.path);
+    setIconSrc(resolvedTargetIconPath);
     iconFallbackAttemptedRef.current = false;
-  }, [theme.icon.fallbackPath, theme.icon.path]);
+  }, [resolvedTargetIconFallbackPath, resolvedTargetIconPath]);
 
   useEffect(
     () => () => {
@@ -123,9 +129,9 @@ export const Target = ({
   const ringDelay = -((Date.now() - target.createdAt) / 1000);
 
   const handleIconError = () => {
-    if (!iconFallbackAttemptedRef.current && theme.icon.fallbackPath) {
+    if (!iconFallbackAttemptedRef.current && resolvedTargetIconFallbackPath) {
       iconFallbackAttemptedRef.current = true;
-      setIconSrc(theme.icon.fallbackPath);
+      setIconSrc(resolvedTargetIconFallbackPath);
       return;
     }
     setIconSrc('');
@@ -217,6 +223,15 @@ export const Target = ({
   const holdPhase = holdVisualState?.phase ?? 'idle';
   const holdProgress = holdVisualState?.progress ?? 0;
   const holdProgressArc = ringCircumference * (1 - holdProgress);
+  const stimulusVariant = target.stimulusVariant ?? 'standard';
+  const variantBorderColor =
+    stimulusVariant === 'contrast'
+      ? '#f8fafc'
+      : stimulusVariant === 'peripheral'
+        ? '#a3e635'
+        : stimulusVariant === 'calm'
+          ? '#67e8f9'
+          : theme.targetColor;
 
   const ariaLabel =
     interactionMode === 'hold'
@@ -306,7 +321,7 @@ export const Target = ({
                   ? '#ef4444'
                   : holdPhase === 'locked'
                     ? '#86efac'
-                    : theme.targetColor
+                    : variantBorderColor
             }
             strokeWidth={ringStroke}
             strokeDasharray={ringCircumference}
@@ -376,7 +391,7 @@ export const Target = ({
                       ? '#22c55e'
                       : holdPhase === 'arming'
                         ? '#facc15'
-                        : theme.targetColor
+                        : variantBorderColor
             }`,
             display: 'flex',
             alignItems: 'center',
@@ -394,8 +409,8 @@ export const Target = ({
                     : holdPhase === 'arming'
                       ? '0 0 18px rgba(250, 204, 21, 0.56)'
               : isPressed
-                ? `0 0 20px ${theme.targetColor}88`
-                : `0 0 16px ${theme.targetColor}66`,
+                ? `0 0 20px ${variantBorderColor}88`
+                : `0 0 16px ${variantBorderColor}66`,
             transform: isPressed ? 'scale(0.96)' : showSuccess ? 'scale(1.05)' : 'scale(1)',
           }}
         >

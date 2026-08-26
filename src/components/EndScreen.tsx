@@ -274,6 +274,9 @@ export const EndScreen = ({
               <p className="text-xs font-semibold mt-0.5" style={{ color: theme.textColor }}>
                 Late {readiness?.lateDecisionRatePct ?? 0}% | Streak {readiness?.streakQualityPct ?? result.bestStreak}
               </p>
+              <p className="text-xs mt-1" style={{ color: theme.textColor, opacity: 0.78 }}>
+                Band: {readiness?.neuralReadinessBand ?? 'build'}
+              </p>
             </div>
           </div>
         </motion.div>
@@ -283,6 +286,10 @@ export const EndScreen = ({
           <p className="text-sm leading-relaxed" style={{ color: theme.textColor, opacity: 0.88 }}>
             This round is scored by readiness signals, not just hit count. Track reaction time, decision accuracy, late decisions,
             and streak consistency to see whether game-speed execution is rising or drifting.
+          </p>
+          <p className="mt-2 text-xs leading-relaxed" style={{ color: theme.textColor, opacity: 0.75 }}>
+            Hand-eye index {readiness?.handEyeCoordinationPct ?? '--'}% · Visual focus {readiness?.visualFocusPct ?? '--'}% ·
+            Reaction variability {readiness?.reactionVariabilityMs ?? '--'}ms.
           </p>
         </div>
 

@@ -43,6 +43,7 @@ npm run dev        # dev server at http://localhost:5173/
 | `npm run test` | Vitest unit test suite |
 | `npm run verify` | Run all checks then build (pre-commit gate) |
 | `npm run prepare-assets` | Validate production asset structure and report missing files |
+| `npm run validate-assets` | Validate contractor asset map, naming, and references |
 
 ---
 
@@ -83,13 +84,14 @@ scripts/
 
 ## Asset System
 
-Asset paths are centrally managed in `src/themes/assetManifest.ts` and resolved with `import.meta.env.BASE_URL`.
+Asset paths are centrally managed in `public/assets/asset-map.json` and consumed by runtime resolvers in `src/config/assetRegistry.ts`.
 
 - **Visuals:** production-path SVGs ship in `public/assets/icons/`, `public/assets/backgrounds/overlays/`, and `public/assets/ui/`.
 - **Audio:** expected in `public/assets/audio/music/` and `public/assets/audio/effects/`.
 - **Runtime fallback behavior:** if icon/overlay/audio files are missing, the UI still renders with intentional fallback visuals and synthesized effect tones (no broken-image icons or hard runtime failures).
+- **Sport packs:** sport-specific icon/target skin/HUD/cue copy lives in `src/config/sportPacks.ts` and is resolved through fallbacks before rendering.
 
-See `public/assets/README.md` for the exact production file list and naming.
+See `public/assets/README.md`, `docs/asset-pipeline.md`, and `docs/sport-pack-system.md` for contractor delivery rules and adding new sport packs.
 
 ---
 

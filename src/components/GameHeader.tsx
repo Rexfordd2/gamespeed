@@ -11,6 +11,10 @@ interface GameHeaderProps {
   onMainMenu: () => void;
   isPaused: boolean;
   reducedMotion?: boolean;
+  labels?: {
+    score?: string;
+    streak?: string;
+  };
 }
 
 export const GameHeader = ({
@@ -23,6 +27,7 @@ export const GameHeader = ({
   onMainMenu,
   isPaused,
   reducedMotion = false,
+  labels,
 }: GameHeaderProps) => {
   const { theme } = useTheme();
   const timerPct = Math.max(0, Math.min(100, (timeLeft / totalTime) * 100));
@@ -54,7 +59,7 @@ export const GameHeader = ({
               className="text-[10px] sm:text-xs font-semibold tracking-[0.18em] uppercase opacity-65"
               style={{ color: theme.textColor }}
             >
-              Score
+              {labels?.score ?? 'Score'}
             </span>
             <motion.span
               key={score}
@@ -80,7 +85,7 @@ export const GameHeader = ({
               className="block text-[9px] sm:text-[10px] font-semibold tracking-[0.16em] uppercase opacity-75"
               style={{ color: theme.textColor }}
             >
-              Streak
+              {labels?.streak ?? 'Streak'}
             </span>
             <motion.span
               key={streak}

@@ -135,6 +135,12 @@ export const StatsScreen = ({ onClose, stats, playerName }: StatsScreenProps) =>
             <p className="text-sm tabular-nums" style={{ color: theme.textColor }}>
               Miss rate {groupedSummary.readiness.missRatePct}% · Streak quality {groupedSummary.readiness.streakQualityPct}% · Consistency {groupedSummary.readiness.consistencyPct}%
             </p>
+            <p className="text-sm tabular-nums" style={{ color: theme.textColor }}>
+              Hand-eye {groupedSummary.readiness.handEyeCoordinationPct}% · Visual focus {groupedSummary.readiness.visualFocusPct}% · RT variability {groupedSummary.readiness.reactionVariabilityMs ?? '--'}ms
+            </p>
+            <p className="text-sm" style={{ color: theme.textColor }}>
+              Neural readiness band: <span className="font-semibold capitalize">{groupedSummary.readiness.neuralReadinessBand}</span>
+            </p>
           </div>
         </section>
 

@@ -61,6 +61,7 @@ export const generateTargets = ({
       createdAt: currentTime,
       duration: targetLifespan,
       lifespan: targetLifespan,
+      stimulusVariant: 'peripheral',
     },
   ];
 };

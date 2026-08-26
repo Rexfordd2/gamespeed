@@ -1,4 +1,4 @@
-import { SportType } from '../config/sports';
+import { SportType, resolveSportType } from '../config/sports';
 import {
   CoachAthlete,
   CoachChallengeTemplateId,
@@ -28,6 +28,108 @@ const emptyStore = (): CoachStore => ({
   athletes: [],
 });
 
+const isObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
+const normalizeChallengeProgress = (
+  value: unknown,
+  nowTs: number,
+): CoachAthlete['challengeProgress'] => {
+  const base = emptyChallengeProgress(nowTs);
+  if (!isObject(value)) {
+    return base;
+  }
+  const noScroll = isObject(value.noScroll7Day) ? value.noScroll7Day : null;
+  const runwayCompletion = isObject(value.runwayCompletion) ? value.runwayCompletion : null;
+
+  return {
+    noScroll7Day: {
+      templateId: 'noScroll7Day',
+      completedUnits: Array.isArray(noScroll?.completedUnits)
+        ? noScroll.completedUnits.filter((unit): unit is string => typeof unit === 'string')
+        : [],
+      completedAt: typeof noScroll?.completedAt === 'number' ? noScroll.completedAt : undefined,
+      updatedAt: typeof noScroll?.updatedAt === 'number' ? noScroll.updatedAt : nowTs,
+    },
+    runwayCompletion: {
+      templateId: 'runwayCompletion',
+      completedUnits: Array.isArray(runwayCompletion?.completedUnits)
+        ? runwayCompletion.completedUnits.filter((unit): unit is string => typeof unit === 'string')
+        : [],
+      completedAt: typeof runwayCompletion?.completedAt === 'number' ? runwayCompletion.completedAt : undefined,
+      updatedAt: typeof runwayCompletion?.updatedAt === 'number' ? runwayCompletion.updatedAt : nowTs,
+    },
+  };
+};
+
+const normalizeAthlete = (rawAthlete: unknown): CoachAthlete | null => {
+  if (!isObject(rawAthlete) || typeof rawAthlete.id !== 'string' || typeof rawAthlete.name !== 'string') {
+    return null;
+  }
+
+  const createdAt = typeof rawAthlete.createdAt === 'number' ? rawAthlete.createdAt : Date.now();
+  const updatedAt = typeof rawAthlete.updatedAt === 'number' ? rawAthlete.updatedAt : createdAt;
+
+  const runwayCompletions = Array.isArray(rawAthlete.runwayCompletions)
+    ? rawAthlete.runwayCompletions
+        .filter(
+          completion =>
+            isObject(completion) && typeof completion.id === 'string' && typeof completion.ts === 'number',
+        )
+        .map(completion => ({ id: completion.id as string, ts: completion.ts as number }))
+    : [];
+
+  const gameSessions = Array.isArray(rawAthlete.gameSessions)
+    ? rawAthlete.gameSessions
+        .filter(session => isObject(session) && typeof session.id === 'string' && typeof session.ts === 'number')
+        .map(session => ({
+          id: session.id as string,
+          ts: session.ts as number,
+          reactionTimeMs: typeof session.reactionTimeMs === 'number' ? session.reactionTimeMs : undefined,
+          decisionScore: typeof session.decisionScore === 'number' ? session.decisionScore : undefined,
+        }))
+    : [];
+
+  const sleepCheckIns = Array.isArray(rawAthlete.sleepCheckIns)
+    ? rawAthlete.sleepCheckIns
+        .filter(
+          checkIn =>
+            isObject(checkIn) &&
+            typeof checkIn.id === 'string' &&
+            typeof checkIn.ts === 'number' &&
+            typeof checkIn.readinessScore === 'number',
+        )
+        .map(checkIn => ({
+          id: checkIn.id as string,
+          ts: checkIn.ts as number,
+          readinessScore: Math.min(5, Math.max(1, Math.round(checkIn.readinessScore as number))) as 1 | 2 | 3 | 4 | 5,
+        }))
+    : [];
+
+  return {
+    id: rawAthlete.id,
+    name: rawAthlete.name.trim(),
+    sport: resolveSportType(typeof rawAthlete.sport === 'string' ? rawAthlete.sport : undefined),
+    createdAt,
+    updatedAt,
+    runwayCompletions: runwayCompletions.slice(-MAX_ACTIVITY_ITEMS),
+    gameSessions: gameSessions.slice(-MAX_ACTIVITY_ITEMS),
+    sleepCheckIns: sleepCheckIns.slice(-MAX_ACTIVITY_ITEMS),
+    challengeProgress: normalizeChallengeProgress(rawAthlete.challengeProgress, updatedAt),
+  };
+};
+
+const normalizeStore = (rawStore: unknown): CoachStore => {
+  if (!isObject(rawStore) || rawStore.version !== 1 || !Array.isArray(rawStore.athletes)) {
+    return emptyStore();
+  }
+
+  return {
+    version: 1,
+    athletes: rawStore.athletes.map(normalizeAthlete).filter((athlete): athlete is CoachAthlete => athlete !== null),
+  };
+};
+
 const makeId = () => {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID();
@@ -39,11 +141,12 @@ export const loadCoachStore = (): CoachStore => {
   try {
     const raw = localStorage.getItem(COACH_STORE_STORAGE_KEY);
     if (!raw) return emptyStore();
-    const parsed = JSON.parse(raw) as CoachStore;
-    if (parsed?.version !== 1 || !Array.isArray(parsed.athletes)) {
-      return emptyStore();
+    const parsed = JSON.parse(raw);
+    const normalized = normalizeStore(parsed);
+    if (normalized.athletes.length !== parsed?.athletes?.length) {
+      saveCoachStore(normalized);
     }
-    return parsed;
+    return normalized;
   } catch {
     return emptyStore();
   }

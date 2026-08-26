@@ -1,7 +1,9 @@
-const baseUrl = import.meta.env.BASE_URL;
-
-const buildAssetPath = (relativePath: string) =>
-  `${baseUrl}assets/${relativePath.replace(/^\/+/, '')}`;
+import {
+  resolveAudioCueAsset,
+  resolveSharedVisualPath,
+  resolveTargetSkinFallbackPath,
+  resolveTargetSkinPath,
+} from '../config/assetRegistry';
 
 const svgToDataUri = (svg: string) =>
   `data:image/svg+xml;utf8,${encodeURIComponent(svg.replace(/\s+/g, ' ').trim())}`;
@@ -28,41 +30,42 @@ const targetIconFallbackSvg = `
 
 export const jungleAssetManifest = {
   icons: {
-    target: buildAssetPath('icons/target-primate.svg'),
+    target: resolveTargetSkinPath('soccer'),
+    targetFallback: resolveTargetSkinFallbackPath('soccer'),
   },
   backgrounds: {
     overlays: {
-      top: buildAssetPath('backgrounds/overlays/canopy-top.svg'),
-      left: buildAssetPath('backgrounds/overlays/canopy-left.svg'),
-      right: buildAssetPath('backgrounds/overlays/canopy-right.svg'),
-      bottom: buildAssetPath('backgrounds/overlays/canopy-bottom.svg'),
+      top: resolveSharedVisualPath('canopy-top', 'backgrounds/overlays/canopy-top.svg'),
+      left: resolveSharedVisualPath('canopy-left', 'backgrounds/overlays/canopy-left.svg'),
+      right: resolveSharedVisualPath('canopy-right', 'backgrounds/overlays/canopy-right.svg'),
+      bottom: resolveSharedVisualPath('canopy-bottom', 'backgrounds/overlays/canopy-bottom.svg'),
     },
   },
   audio: {
     music: {
-      rainforestLoop: buildAssetPath('audio/music/rainforest-loop.mp3'),
+      backgroundLoop: resolveAudioCueAsset('music', 'backgroundLoop'),
     },
     gameplay: {
-      targetHit: buildAssetPath('audio/effects/target-hit.mp3'),
-      targetMiss: buildAssetPath('audio/effects/target-miss.mp3'),
-      roundComplete: buildAssetPath('audio/effects/round-complete.mp3'),
+      hit: resolveAudioCueAsset('gameplay', 'hit'),
+      miss: resolveAudioCueAsset('gameplay', 'miss'),
+      success: resolveAudioCueAsset('gameplay', 'success'),
     },
     training: {},
     mode: {
-      swipeLeft: buildAssetPath('audio/effects/target-hit.mp3'),
-      swipeRight: buildAssetPath('audio/effects/target-hit.mp3'),
-      swipeUp: buildAssetPath('audio/effects/target-hit.mp3'),
-      swipeDown: buildAssetPath('audio/effects/target-hit.mp3'),
-      holdLock: buildAssetPath('audio/effects/target-hit.mp3'),
-      sequencePreview: buildAssetPath('audio/effects/target-hit.mp3'),
-      sequenceInput: buildAssetPath('audio/effects/target-hit.mp3'),
-      sequenceSuccess: buildAssetPath('audio/effects/round-complete.mp3'),
-      sequenceFail: buildAssetPath('audio/effects/target-miss.mp3'),
+      swipeLeft: resolveAudioCueAsset('mode', 'swipe-left'),
+      swipeRight: resolveAudioCueAsset('mode', 'swipe-right'),
+      swipeUp: resolveAudioCueAsset('mode', 'swipe-up'),
+      swipeDown: resolveAudioCueAsset('mode', 'swipe-down'),
+      holdLock: resolveAudioCueAsset('mode', 'hold-lock'),
+      sequencePreview: resolveAudioCueAsset('mode', 'sequence-preview'),
+      sequenceInput: resolveAudioCueAsset('mode', 'sequence-input'),
+      sequenceSuccess: resolveAudioCueAsset('mode', 'sequence-success'),
+      sequenceFail: resolveAudioCueAsset('mode', 'sequence-fail'),
     },
     ui: {},
   },
   ui: {
-    vignetteMask: buildAssetPath('ui/hud-vignette.svg'),
+    vignetteMask: resolveSharedVisualPath('hud-vignette', 'ui/hud-vignette.svg'),
   },
 } as const;
 

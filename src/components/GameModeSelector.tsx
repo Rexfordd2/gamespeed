@@ -8,6 +8,8 @@ import { JungleButton } from './JungleButton';
 import { ModeUnlockStatus } from '../utils/progression';
 import { SportType } from '../config/sports';
 import { HowToPlayModal } from './HowToPlayModal';
+import { getModeIconVisual } from '../config/modeManifest';
+import { isModeSupportedForSport } from '../config/modeManifest';
 
 interface GameModeSelectorProps {
   onSelectMode: (mode: GameModeType) => void;
@@ -30,11 +32,42 @@ interface GameModeSelectorProps {
 
 const modeKeys = MODE_ORDER;
 
+const ModeIconBadge = ({
+  path,
+  glyph,
+  color,
+  className,
+}: {
+  path: string;
+  glyph: string;
+  color: string;
+  className: string;
+}) => {
+  const [didImageFail, setDidImageFail] = useState(false);
+  if (path && !didImageFail) {
+    return (
+      <img
+        src={path}
+        alt=""
+        aria-hidden="true"
+        className={className}
+        onError={() => setDidImageFail(true)}
+      />
+    );
+  }
+  return (
+    <span aria-hidden="true" className={className} style={{ color }}>
+      {glyph}
+    </span>
+  );
+};
+
 export const GameModeSelector: React.FC<GameModeSelectorProps> = ({ onSelectMode, selectedSport, unlocks, copy }) => {
   const { theme } = useTheme();
   const [activeDetailsMode, setActiveDetailsMode] = useState<GameModeType | null>(null);
-  const playableModes = modeKeys.filter(isModePlayable);
-  const upcomingModes = modeKeys.filter(mode => !isModePlayable(mode));
+  const supportedModeKeys = modeKeys.filter(mode => isModeSupportedForSport(mode, selectedSport));
+  const playableModes = supportedModeKeys.filter(isModePlayable);
+  const upcomingModes = supportedModeKeys.filter(mode => !isModePlayable(mode));
 
   const handleModeSelect = (modeKey: GameModeType) => {
     if (!isModePlayable(modeKey)) return;
@@ -74,6 +107,7 @@ export const GameModeSelector: React.FC<GameModeSelectorProps> = ({ onSelectMode
         {playableModes.map((key, cardIndex) => {
           const mode = gameModes[key];
           const details = getModePresentation(key, selectedSport);
+          const modeIcon = getModeIconVisual(key);
           const unlockStatus = unlocks?.[key];
           const isLocked = !!unlockStatus && !unlockStatus.unlocked;
 
@@ -93,12 +127,20 @@ export const GameModeSelector: React.FC<GameModeSelectorProps> = ({ onSelectMode
               whileHover={{ y: -2 }}
             >
               <div className="flex items-center justify-between gap-3">
-                <h2
-                className="text-base sm:text-xl font-bold"
-                  style={{ color: theme.textColor }}
-                >
-                  {mode.name}
-                </h2>
+                <div className="flex items-center gap-2.5">
+                  <ModeIconBadge
+                    path={modeIcon.path}
+                    glyph={modeIcon.glyph}
+                    color={theme.targetColor}
+                    className="h-5 w-5 sm:h-6 sm:w-6 object-contain text-lg sm:text-xl"
+                  />
+                  <h2
+                    className="text-base sm:text-xl font-bold"
+                    style={{ color: theme.textColor }}
+                  >
+                    {mode.name}
+                  </h2>
+                </div>
                 <span
                   className="text-[10px] sm:text-xs font-semibold px-2 py-1 rounded-full tracking-wide uppercase"
                   style={
@@ -200,6 +242,7 @@ export const GameModeSelector: React.FC<GameModeSelectorProps> = ({ onSelectMode
             {upcomingModes.map((key, idx) => {
               const mode = gameModes[key];
               const details = getModePresentation(key, selectedSport);
+              const modeIcon = getModeIconVisual(key);
               return (
                 <motion.div
                   key={key}
@@ -214,9 +257,17 @@ export const GameModeSelector: React.FC<GameModeSelectorProps> = ({ onSelectMode
                   }}
                 >
                   <div className="flex items-center justify-between gap-2 mb-2">
-                    <h3 className="text-base font-semibold" style={{ color: theme.textColor, opacity: 0.9 }}>
-                      {mode.name}
-                    </h3>
+                    <div className="flex items-center gap-2">
+                      <ModeIconBadge
+                        path={modeIcon.path}
+                        glyph={modeIcon.glyph}
+                        color={theme.targetColor}
+                        className="h-4 w-4 sm:h-5 sm:w-5 object-contain text-base"
+                      />
+                      <h3 className="text-base font-semibold" style={{ color: theme.textColor, opacity: 0.9 }}>
+                        {mode.name}
+                      </h3>
+                    </div>
                     <span
                       className="text-[10px] font-semibold uppercase tracking-wide px-2 py-1 rounded-full"
                       style={{

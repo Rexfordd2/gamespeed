@@ -17,7 +17,8 @@
     "test:watch": "vitest",
     "verify": "npm run check && npm run test && npm run build",
     "preview:build": "npm run build && vite preview",
-    "prepare-assets": "node scripts/prepare-assets.js"
+    "prepare-assets": "node scripts/prepare-assets.js",
+    "validate-assets": "node scripts/validate-assets.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.103.3",

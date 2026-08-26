@@ -16,6 +16,8 @@ import {
   GameModeType,
   GameState,
   GameResult,
+  CueIntensity,
+  SessionOptions,
 } from './types/game';
 import { resolvePlayableMode } from './utils/gameModes';
 import { loadStats, recordRound } from './utils/sessionStats';
@@ -35,8 +37,11 @@ import {
   shouldTriggerInAppReminder,
   shouldUseLowStimulusMode,
 } from './utils/nightGuardrail';
+import { getDefaultHapticsEnabled } from './utils/haptics';
 
 const FIRST_RUN_COMPLETE_STORAGE_KEY = 'gamespeed_first_run_complete_v1';
+const CUE_INTENSITY_STORAGE_KEY = 'gamespeed_cue_intensity_v1';
+const HAPTICS_ENABLED_STORAGE_KEY = 'gamespeed_haptics_enabled_v1';
 const BENCHMARK_ROUTE_PATH = '/benchmark';
 const RUNWAY_ROUTE_PATH = '/runway';
 type PublicRoute = 'home' | 'benchmark' | 'runway';
@@ -53,6 +58,32 @@ const loadFirstRunComplete = () => {
     return localStorage.getItem(FIRST_RUN_COMPLETE_STORAGE_KEY) === '1';
   } catch {
     return false;
+  }
+};
+
+const resolveCueIntensity = (value: string | null): CueIntensity => {
+  if (value === 'minimal' || value === 'standard' || value === 'guided') {
+    return value;
+  }
+  return 'standard';
+};
+
+const loadCueIntensityPreference = (): CueIntensity => {
+  try {
+    return resolveCueIntensity(localStorage.getItem(CUE_INTENSITY_STORAGE_KEY));
+  } catch {
+    return 'standard';
+  }
+};
+
+const loadHapticsPreference = () => {
+  try {
+    const stored = localStorage.getItem(HAPTICS_ENABLED_STORAGE_KEY);
+    if (stored === '1') return true;
+    if (stored === '0') return false;
+    return getDefaultHapticsEnabled();
+  } catch {
+    return getDefaultHapticsEnabled();
   }
 };
 
@@ -75,12 +106,18 @@ export const App = () => {
   );
   const [showNightReminder, setShowNightReminder] = useState(false);
   const [clockMs, setClockMs] = useState(() => Date.now());
+  const [cueIntensityPreference, setCueIntensityPreference] = useState<CueIntensity>(loadCueIntensityPreference);
+  const [hapticsPreference, setHapticsPreference] = useState<boolean>(loadHapticsPreference);
   const [activeSessionOptions, setActiveSessionOptions] = useState<{
     lowStimulus: boolean;
     includeRoutine: boolean;
+    cueIntensity: CueIntensity;
+    hapticsEnabled: boolean;
   }>({
     lowStimulus: false,
     includeRoutine: false,
+    cueIntensity: cueIntensityPreference,
+    hapticsEnabled: hapticsPreference,
   });
   const [totalRoundsCompleted, setTotalRoundsCompleted] = useState<number>(statsSnapshot.rounds.length);
   const [roundProgressDelta, setRoundProgressDelta] = useState<RoundProgressDelta | null>(null);
@@ -98,7 +135,7 @@ export const App = () => {
   const handleGameStart = (
     mode: GameModeType,
     nextFirstRunSelection?: FirstRunSelection,
-    options?: { lowStimulus?: boolean; includeRoutine?: boolean },
+    options?: SessionOptions,
   ) => {
     const shouldForceLowStimulus = shouldUseLowStimulusMode(
       nightGuardrailSettings,
@@ -108,10 +145,14 @@ export const App = () => {
       ? {
           lowStimulus: true,
           includeRoutine: nightGuardrailSettings.includeBreathingRoutine,
+          cueIntensity: options?.cueIntensity ?? cueIntensityPreference,
+          hapticsEnabled: options?.hapticsEnabled ?? hapticsPreference,
         }
       : {
           lowStimulus: !!options?.lowStimulus,
           includeRoutine: !!options?.includeRoutine,
+          cueIntensity: options?.cueIntensity ?? cueIntensityPreference,
+          hapticsEnabled: options?.hapticsEnabled ?? hapticsPreference,
         };
 
     trackConversionEvent('test_start', {
@@ -219,6 +260,8 @@ export const App = () => {
     setActiveSessionOptions({
       lowStimulus: false,
       includeRoutine: false,
+      cueIntensity: cueIntensityPreference,
+      hapticsEnabled: hapticsPreference,
     });
     setGameState('start');
   };
@@ -231,6 +274,24 @@ export const App = () => {
   const handleSportChange = (sport: SportType) => {
     setSelectedSport(sport);
     saveSelectedSport(sport);
+  };
+
+  const handleCueIntensityPreferenceChange = (nextIntensity: CueIntensity) => {
+    setCueIntensityPreference(nextIntensity);
+    try {
+      localStorage.setItem(CUE_INTENSITY_STORAGE_KEY, nextIntensity);
+    } catch {
+      // Ignore storage failures.
+    }
+  };
+
+  const handleHapticsPreferenceChange = (nextEnabled: boolean) => {
+    setHapticsPreference(nextEnabled);
+    try {
+      localStorage.setItem(HAPTICS_ENABLED_STORAGE_KEY, nextEnabled ? '1' : '0');
+    } catch {
+      // Ignore storage failures.
+    }
   };
 
   const handleCloseStats = () => {
@@ -276,12 +337,14 @@ export const App = () => {
     setActiveSessionOptions({
       lowStimulus: false,
       includeRoutine: false,
+      cueIntensity: cueIntensityPreference,
+      hapticsEnabled: hapticsPreference,
     });
     setGameState('start');
     if (typeof window !== 'undefined') {
       setPublicRoute(getPublicRouteFromPath(window.location.pathname));
     }
-  }, []);
+  }, [cueIntensityPreference, hapticsPreference]);
 
   useEffect(() => {
     const isPlaying = gameState === 'playing';
@@ -402,6 +465,10 @@ export const App = () => {
                 onStart={handleGameStart}
                 selectedSport={selectedSport}
                 onSportChange={handleSportChange}
+                cueIntensity={cueIntensityPreference}
+                onCueIntensityChange={handleCueIntensityPreferenceChange}
+                hapticsEnabled={hapticsPreference}
+                onHapticsEnabledChange={handleHapticsPreferenceChange}
                 onViewStats={handleViewStats}
                 onOpenBenchmarkPage={handleOpenBenchmarkPage}
                 onOpenRunway={handleOpenRunway}
@@ -426,6 +493,8 @@ export const App = () => {
             onMainMenu={handleMainMenu}
             lowStimulusMode={activeSessionOptions.lowStimulus}
             includeBreathingRoutine={activeSessionOptions.includeRoutine}
+            cueIntensity={activeSessionOptions.cueIntensity}
+            hapticsEnabled={activeSessionOptions.hapticsEnabled}
           />
         )}
         {gameState === 'end' && (

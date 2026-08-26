@@ -1,60 +1,68 @@
-# GameSpeed Asset Pack
+# GameSpeed Contractor Asset Pack
 
-This directory is production-facing and organized by media type so assets can be replaced without changing code.
+This folder is now organized around **contractor drop-zones** so icon/skin/audio deliveries can be added without hand-editing many source files.
 
-## Folder layout
+## Single source of truth
+
+All runtime and validator references come from:
+
+- `public/assets/asset-map.json`
+
+If you are adding a new sport, mode, or cue file, update this map once and run:
+
+- `npm run validate-assets`
+
+## Standardized folder structure
 
 ```text
 assets/
-  icons/
-    target-primate.svg
-  backgrounds/
-    overlays/
-      canopy-top.svg
-      canopy-left.svg
-      canopy-right.svg
-      canopy-bottom.svg
-  audio/
+  asset-map.json
+  sport-icons/        # sport picker / sport branding icons
+  mode-icons/         # drill cards
+  target-skins/       # in-game target visual skins
+  hud-badges/         # protocol/score/streak badge art
+  audio-cues/
     music/
-      rainforest-loop.mp3
-    effects/
-      target-hit.mp3
-      target-miss.mp3
-      round-complete.mp3
+    gameplay/
+    training/
+    mode/
+    ui/
+
+  # Backward-compatible legacy fallbacks
+  icons/
+  backgrounds/overlays/
+  audio/music/
+  audio/effects/
   ui/
-    hud-vignette.svg
 ```
 
-## Required files for premium release
+## Naming rules
 
-- `audio/music/rainforest-loop.mp3` (loopable ambience, ~60-120s)
-- `audio/effects/target-hit.mp3` (tight positive feedback, <180ms)
-- `audio/effects/target-miss.mp3` (subtle negative cue, <220ms)
-- `audio/effects/round-complete.mp3` (short completion signature, <400ms)
+- Lowercase kebab-case only.
+- Allowed filename pattern: `^[a-z0-9]+(?:-[a-z0-9]+)*\.(svg|png|webp|mp3|wav|ogg)$`
+- Use semantic names, not tool/export names (for example `quick-tap.svg`, not `icon-final-v7.svg`).
 
-## Audio cue channels
+## Supported formats
 
-- `music`: long-form loops/atmosphere (stored in `audio/music/`)
-- `gameplay`: immediate hit/miss/round success cues (stored in `audio/effects/`)
-- `training`: reaction/anticipation/countdown/directional timing cues (stored in `audio/effects/`)
-- `mode`: per-mode sensory cues (Swipe Strike / Hold Track / Sequence Memory) in `audio/effects/`
-- `ui`: menu/system confirmation cues in `audio/effects/`
+- Visuals (`sport-icons`, `mode-icons`, `target-skins`, `hud-badges`): `svg`, `png`, `webp`
+- Audio (`audio-cues/*`): `mp3`, `wav`, `ogg`
 
-Recommended filename prefixes in `audio/effects/`:
+## Required dimensions
 
-- `training-*` for training cues (`training-countdown-3.mp3`, `training-ready-go.mp3`)
-- `<mode>-*` for mode cues (`swipe-direction-left.mp3`, `sequence-step-correct.mp3`)
-- `ui-*` or `system-*` for UI/system cues
+- Sport icons: `256x256`
+- Mode icons: `256x256`
+- Target skins: `256x256`
+- HUD badges: `128x40`
+- Overlay / vignette legacy shared visuals:
+  - `canopy-top`, `canopy-bottom`: `1920x256`
+  - `canopy-left`, `canopy-right`: `256x1920`
+  - `hud-vignette`: `1920x1080`
 
-This keeps the runtime cue registry explicit and lets new sensory game modes add assets without breaking existing file contracts.
+## Fallback rules
 
-Detailed production target specs live in `audio/SPEC.md`.
+- Runtime attempts standardized `audio-cues/*` first, then falls back to legacy `audio/music` and `audio/effects`.
+- Target skins resolve via `target-skins/*`, then fallback to `icons/target-primate.svg`, then final in-app SVG fallback.
+- Mode icons resolve via `mode-icons/*`, then fallback to existing glyph icons.
+- Missing audio still degrades safely to synthesized fallback effects.
 
-The current SVG files are intentional fallback visuals that keep the experience polished if premium art has not been dropped in yet.
-
-## Path safety
-
-All runtime paths are built from `import.meta.env.BASE_URL`, so the same assets work in:
-
-- local dev (`/`)
-- Vercel production (`/`)
+Detailed cue production specs remain in `audio/SPEC.md`.

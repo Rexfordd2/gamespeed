@@ -60,6 +60,18 @@ const UNLOCK_RULES: UnlockRule[] = [
     requiredAccuracy: 70,
     description: 'Unlock at 12 sessions + 70% best accuracy',
   },
+  {
+    mode: 'peripheralPulse',
+    requiredRounds: 15,
+    requiredAccuracy: 72,
+    description: 'Unlock at 15 sessions + 72% best accuracy',
+  },
+  {
+    mode: 'calmFocus',
+    requiredRounds: 18,
+    requiredAccuracy: 74,
+    description: 'Unlock at 18 sessions + 74% best accuracy',
+  },
 ];
 
 const startOfDay = (ts: number) => {

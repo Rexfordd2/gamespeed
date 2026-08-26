@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Target as TargetType, GameModeType, GameResult } from '../types/game';
+import { CueIntensity, Target as TargetType, GameModeType, GameResult } from '../types/game';
 import { useTheme } from '../context/ThemeContext';
 import { useAudio } from './AudioManager';
-import { SportType } from '../config/sports';
+import { SportType, getSportPack } from '../config/sports';
 import { gameModes, resolvePlayableMode } from '../utils/gameModes';
 import {
   calculateHoldProgress,
@@ -23,6 +23,12 @@ import { deriveReadinessMetrics } from '../utils/readinessMetrics';
 import { GameHeader } from './GameHeader';
 import { Target } from './Target';
 import { JungleButton } from './JungleButton';
+import { SportModeCueKey, getSportPackAssets } from '../config/sportPacks';
+import { GameplayCueOverlay } from './GameplayCueOverlay';
+import { GameplayCueType, getGameplayCueSet, isCueTimingVisible } from '../utils/gameplayCues';
+import { getModeManifest, resolveModeRoundSeconds } from '../config/modeManifest';
+import { triggerHapticCue } from '../utils/haptics';
+import { resolveSharedVisualPath } from '../config/assetRegistry';
 
 interface GameProps {
   mode?: GameModeType;
@@ -31,6 +37,8 @@ interface GameProps {
   onMainMenu: () => void;
   lowStimulusMode?: boolean;
   includeBreathingRoutine?: boolean;
+  cueIntensity?: CueIntensity;
+  hapticsEnabled?: boolean;
 }
 
 const DEFAULT_ROUND_SECONDS = 60;
@@ -69,6 +77,11 @@ type HoldTrackingState = {
 type SequencePhase = 'preview' | 'input' | 'feedback';
 type SequenceFeedback = 'success' | 'failure' | null;
 type SwipeTimingFeedback = 'early' | 'late' | null;
+type OverlayCueEvent = {
+  id: number;
+  text: string;
+  type: GameplayCueType;
+} | null;
 
 export const Game = ({
   mode = 'quickTap',
@@ -77,13 +90,36 @@ export const Game = ({
   onMainMenu,
   lowStimulusMode = false,
   includeBreathingRoutine = false,
+  cueIntensity = 'standard',
+  hapticsEnabled = false,
 }: GameProps) => {
   const activeMode = resolvePlayableMode(mode);
-  const ROUND_SECONDS = gameModes[activeMode].config.roundSeconds ?? DEFAULT_ROUND_SECONDS;
+  const modeManifest = getModeManifest(activeMode);
+  const isSwipeMode = modeManifest.gameplayMechanicType === 'swipe';
+  const isHoldMode = modeManifest.gameplayMechanicType === 'hold';
+  const isSequenceMode = modeManifest.targetRendererKey === 'sequenceTargets';
+  const modeAudioHooks = modeManifest.audioCueHooks;
+  const sequencePhaseCues = modeAudioHooks.sequencePhase;
+  const holdStartCue = modeAudioHooks.onHoldStart ?? 'hold-lock';
+  const ROUND_SECONDS =
+    resolveModeRoundSeconds(activeMode) ?? gameModes[activeMode].config.roundSeconds ?? DEFAULT_ROUND_SECONDS;
   const ROUND_MS = ROUND_SECONDS * 1000;
 
   const { theme } = useTheme();
   const { playEffect, playCue, startBackgroundMusic, stopBackgroundMusic } = useAudio();
+  const sportPack = getSportPack(selectedSport);
+  const sportAssets = getSportPackAssets(sportPack);
+  const stimulusIconByVariant = {
+    standard: sportAssets.targetIcon,
+    contrast: resolveSharedVisualPath('stimulus-contrast', 'icons/target-primate.svg'),
+    peripheral: resolveSharedVisualPath('stimulus-peripheral', 'icons/target-primate.svg'),
+    calm: resolveSharedVisualPath('stimulus-calm', 'icons/target-primate.svg'),
+  } as const;
+  const mappedModeCues = sportPack.audioCueMap?.mode;
+  const resolveModeCue = useCallback(
+    (defaultCue: SportModeCueKey) => mappedModeCues?.[defaultCue] ?? defaultCue,
+    [mappedModeCues],
+  );
 
   const [score, setScore] = useState(0);
   const [misses, setMisses] = useState(0);
@@ -99,6 +135,9 @@ export const Game = ({
   const [sequenceInputStep, setSequenceInputStep] = useState(0);
   const [sequenceLength, setSequenceLength] = useState(SEQUENCE_MIN_LENGTH);
   const [swipeTimingFeedback, setSwipeTimingFeedback] = useState<SwipeTimingFeedback>(null);
+  const [preRoundCueVisible, setPreRoundCueVisible] = useState(true);
+  const [phaseCueEvent, setPhaseCueEvent] = useState<OverlayCueEvent>(null);
+  const [streakCueEvent, setStreakCueEvent] = useState<OverlayCueEvent>(null);
   const [routineStep, setRoutineStep] = useState<'breathing' | 'gaze' | null>(
     lowStimulusMode && includeBreathingRoutine ? 'breathing' : null,
   );
@@ -132,6 +171,7 @@ export const Game = ({
   const reactionTimesRef = useRef<number[]>([]);
   const attemptsRef = useRef(0);
   const lateDecisionsRef = useRef(0);
+  const falseStartsRef = useRef(0);
   const streakRunsRef = useRef<number[]>([]);
   const holdBreakUntilRef = useRef<Record<string, number>>({});
   const sequencePhaseRef = useRef<SequencePhase>('preview');
@@ -147,6 +187,18 @@ export const Game = ({
   const lastMissFeedbackAtRef = useRef(0);
   const isRoutineActive = routineStep !== null;
   const sequenceCueLabelsRef = useRef<string[]>([]);
+  const cueEventCounterRef = useRef(0);
+  const phaseCueTimeoutRef = useRef<number | null>(null);
+  const streakCueTimeoutRef = useRef<number | null>(null);
+  const prevStreakRef = useRef(0);
+  const prevMissesRef = useRef(0);
+  const prevPhaseCueKeyRef = useRef('');
+  const fireHaptic = useCallback(
+    (cue: 'hit' | 'miss' | 'streak' | 'start' | 'complete') => {
+      triggerHapticCue(cue, { enabled: hapticsEnabled, lowStimulus: lowStimulusMode });
+    },
+    [hapticsEnabled, lowStimulusMode],
+  );
 
   const triggerMissFeedback = useCallback(() => {
     const now = Date.now();
@@ -291,7 +343,7 @@ export const Game = ({
       updateSequencePhase('preview');
       sequencePhaseEndsAtRef.current = now + streakScaledPreviewMs;
       sequencePhaseRemainingMsRef.current = Math.max(0, sequencePhaseEndsAtRef.current - now);
-      playCue('mode', 'sequence-preview');
+      playCue('mode', resolveModeCue(sequencePhaseCues?.preview ?? 'sequence-preview'));
     },
     [
       keepTargetsInPlayfield,
@@ -302,6 +354,8 @@ export const Game = ({
       updateSequencePreviewStep,
       playCue,
       selectedSport,
+      resolveModeCue,
+      sequencePhaseCues?.preview,
     ],
   );
 
@@ -338,6 +392,12 @@ export const Game = ({
       if (swipeFeedbackTimeoutRef.current !== null) {
         window.clearTimeout(swipeFeedbackTimeoutRef.current);
       }
+      if (phaseCueTimeoutRef.current !== null) {
+        window.clearTimeout(phaseCueTimeoutRef.current);
+      }
+      if (streakCueTimeoutRef.current !== null) {
+        window.clearTimeout(streakCueTimeoutRef.current);
+      }
     },
     [],
   );
@@ -348,6 +408,7 @@ export const Game = ({
       gameOverFiredRef.current = true;
       if (trigger === 'timeout') {
         playEffect('success');
+        fireHaptic('complete');
       }
 
       const gameMode = gameModes[activeMode];
@@ -385,6 +446,7 @@ export const Game = ({
         misses: missesRef.current,
         totalAttempts: attemptsRef.current,
         lateDecisions: lateDecisionsRef.current,
+        falseStarts: falseStartsRef.current,
         reactionTimesMs: reactionTimesRef.current,
         streakRuns: streakRunsRef.current.length > 0 ? streakRunsRef.current : [bestStreakRef.current],
       });
@@ -406,7 +468,7 @@ export const Game = ({
         readinessMetrics,
       });
     },
-    [activeMode, onGameOver, playEffect, selectedSport],
+    [activeMode, fireHaptic, onGameOver, playEffect, selectedSport],
   );
 
   useEffect(() => {
@@ -419,6 +481,7 @@ export const Game = ({
     gameOverFiredRef.current = false;
     attemptsRef.current = 0;
     lateDecisionsRef.current = 0;
+    falseStartsRef.current = 0;
     streakRunsRef.current = [];
     const resetRoundSecs = gameModes[activeMode].config.roundSeconds ?? DEFAULT_ROUND_SECONDS;
     const resetRoundMs = resetRoundSecs * 1000;
@@ -438,9 +501,21 @@ export const Game = ({
     sequenceInputStepRef.current = 0;
     sequenceLengthRef.current = SEQUENCE_MIN_LENGTH;
     sequenceCueLabelsRef.current = [];
+    cueEventCounterRef.current = 0;
+    prevStreakRef.current = 0;
+    prevMissesRef.current = 0;
+    prevPhaseCueKeyRef.current = '';
     if (swipeFeedbackTimeoutRef.current !== null) {
       window.clearTimeout(swipeFeedbackTimeoutRef.current);
       swipeFeedbackTimeoutRef.current = null;
+    }
+    if (phaseCueTimeoutRef.current !== null) {
+      window.clearTimeout(phaseCueTimeoutRef.current);
+      phaseCueTimeoutRef.current = null;
+    }
+    if (streakCueTimeoutRef.current !== null) {
+      window.clearTimeout(streakCueTimeoutRef.current);
+      streakCueTimeoutRef.current = null;
     }
 
     setTargets([]);
@@ -457,9 +532,13 @@ export const Game = ({
     setSequenceInputStep(0);
     setSequenceLength(SEQUENCE_MIN_LENGTH);
     setSwipeTimingFeedback(null);
+    setPreRoundCueVisible(true);
+    setPhaseCueEvent(null);
+    setStreakCueEvent(null);
     setRoutineStep(lowStimulusMode && includeBreathingRoutine ? 'breathing' : null);
     setRoutineSecondsLeft(LOW_STIM_ROUTINE_PHASE_SECONDS);
-  }, [activeMode, clearHoldTrackingState, includeBreathingRoutine, lowStimulusMode]);
+    fireHaptic('start');
+  }, [activeMode, clearHoldTrackingState, fireHaptic, includeBreathingRoutine, lowStimulusMode]);
 
   useEffect(() => {
     if (!isRoutineActive) {
@@ -514,7 +593,7 @@ export const Game = ({
         MIN_TARGET_LIFESPAN_SECONDS,
       );
 
-      if (activeMode === 'sequenceMemory') {
+      if (isSequenceMode) {
         if (sequencePhaseRef.current === 'feedback' && now >= sequencePhaseEndsAtRef.current) {
           const nextLength =
             sequenceFeedbackRef.current === 'success'
@@ -537,7 +616,7 @@ export const Game = ({
               updateSequenceInputStep(0);
               sequencePhaseEndsAtRef.current = 0;
               sequencePhaseRemainingMsRef.current = 0;
-              playCue('mode', 'sequence-input');
+              playCue('mode', resolveModeCue(sequencePhaseCues?.input ?? 'sequence-input'));
             } else {
               updateSequencePreviewStep(nextStep);
               sequencePhaseEndsAtRef.current =
@@ -560,6 +639,7 @@ export const Game = ({
 
         if (expiredCount > 0) {
           playEffect('miss');
+          fireHaptic('miss');
           triggerMissFeedback();
           attemptsRef.current += expiredCount;
           lateDecisionsRef.current += expiredCount;
@@ -588,24 +668,24 @@ export const Game = ({
           nextTargets = hasNewTarget
             ? keepTargetsInPlayfield(generatedTargets)
             : generatedTargets;
-          if (hasNewTarget && activeMode === 'swipeStrike') {
+          if (hasNewTarget && isSwipeMode && modeAudioHooks.onSwipeSpawnByDirection) {
             const newestTarget = nextTargets[nextTargets.length - 1];
             if (newestTarget?.swipeDirection) {
-              playCue('mode', `swipe-${newestTarget.swipeDirection}`);
+              playCue('mode', resolveModeCue(`swipe-${newestTarget.swipeDirection}` as SportModeCueKey));
             }
           }
           nextSpawnAtRef.current = now + streakScaledIntervalMs;
         }
       }
 
-      if (activeMode === 'swipeStrike' && nextTargets.length > 0) {
+      if (isSwipeMode && nextTargets.length > 0) {
         nextTargets = updateSwipeTargetsForTime(nextTargets, now);
       }
-      if (activeMode === 'holdTrack' && nextTargets.length > 0) {
+      if (isHoldMode && nextTargets.length > 0) {
         nextTargets = updateHoldTargetsForTime(nextTargets, now);
       }
 
-      if (activeMode === 'holdTrack') {
+      if (isHoldMode) {
         const holdState = holdTrackingRef.current;
         if (holdState.targetId && holdState.pointerId !== null) {
           const trackedTarget = nextTargets.find(target => target.id === holdState.targetId);
@@ -626,8 +706,10 @@ export const Game = ({
               holdBreakUntilRef.current[failedTargetId] = now + HOLD_BREAK_FEEDBACK_MS;
               setHoldVisual(failedTargetId, 'broken', calculateHoldProgress(holdState.heldMs, trackedTarget.hold.requiredMs));
               playEffect('miss');
+              fireHaptic('miss');
               triggerMissFeedback();
               attemptsRef.current += 1;
+              falseStartsRef.current += 1;
               missesRef.current += 1;
               setMisses(prev => prev + 1);
               if (streakRef.current !== 0) {
@@ -666,11 +748,15 @@ export const Game = ({
                 setScore(prev => prev + 1);
                 streakRef.current += 1;
                 setStreak(streakRef.current);
+                if (streakRef.current > 0 && streakRef.current % 4 === 0) {
+                  fireHaptic('streak');
+                }
                 if (streakRef.current > bestStreakRef.current) {
                   bestStreakRef.current = streakRef.current;
                   setBestStreak(bestStreakRef.current);
                 }
                 playEffect('hit');
+                fireHaptic('hit');
                 const completedTargetId = trackedTarget.id;
                 setTargets(prev => {
                   const next = prev.filter(target => target.id !== completedTargetId);
@@ -710,9 +796,16 @@ export const Game = ({
     clearHoldTrackingState,
     clearHoldVisual,
     finishGame,
+    isHoldMode,
+    isSequenceMode,
+    isSwipeMode,
+    modeAudioHooks.onSwipeSpawnByDirection,
+    fireHaptic,
     keepTargetsInPlayfield,
     playEffect,
     playCue,
+    resolveModeCue,
+    sequencePhaseCues?.input,
     startSequenceRound,
     setHoldVisual,
     updateSequenceInputStep,
@@ -756,13 +849,57 @@ export const Game = ({
     sequenceLengthRef.current = sequenceLength;
   }, [sequenceLength]);
 
+  const pushPhaseCue = useCallback(
+    (text: string, type: GameplayCueType) => {
+      if (!isCueTimingVisible(cueIntensity, 'phaseTriggered')) return;
+      cueEventCounterRef.current += 1;
+      setPhaseCueEvent({ id: cueEventCounterRef.current, text, type });
+      if (phaseCueTimeoutRef.current !== null) {
+        window.clearTimeout(phaseCueTimeoutRef.current);
+      }
+      phaseCueTimeoutRef.current = window.setTimeout(() => {
+        setPhaseCueEvent(current => (current && current.id === cueEventCounterRef.current ? null : current));
+        phaseCueTimeoutRef.current = null;
+      }, cueIntensity === 'guided' ? 2300 : 1800);
+    },
+    [cueIntensity],
+  );
+
+  const pushStreakCue = useCallback(
+    (text: string, type: GameplayCueType) => {
+      if (!isCueTimingVisible(cueIntensity, 'streakTriggered')) return;
+      cueEventCounterRef.current += 1;
+      setStreakCueEvent({ id: cueEventCounterRef.current, text, type });
+      if (streakCueTimeoutRef.current !== null) {
+        window.clearTimeout(streakCueTimeoutRef.current);
+      }
+      streakCueTimeoutRef.current = window.setTimeout(() => {
+        setStreakCueEvent(current => (current && current.id === cueEventCounterRef.current ? null : current));
+        streakCueTimeoutRef.current = null;
+      }, 2100);
+    },
+    [cueIntensity],
+  );
+
+  useEffect(() => {
+    if (!isCueTimingVisible(cueIntensity, 'preRound')) {
+      setPreRoundCueVisible(false);
+      return;
+    }
+    setPreRoundCueVisible(true);
+    const timeoutId = window.setTimeout(() => {
+      setPreRoundCueVisible(false);
+    }, cueIntensity === 'guided' ? 2600 : 1800);
+    return () => window.clearTimeout(timeoutId);
+  }, [activeMode, cueIntensity]);
+
   const handleTargetClick = useCallback(
     (targetId: string) => {
       if (isPausedRef.current || gameOverFiredRef.current) return;
       const hitTarget = targetsRef.current.find(target => target.id === targetId);
       if (!hitTarget) return;
 
-      if (activeMode === 'swipeStrike') {
+      if (isSwipeMode) {
         const elapsedMs = Date.now() - hitTarget.createdAt;
         const swipeTiming = getSwipeTimingWindow(
           Math.max(1, hitTarget.lifespan * 1000),
@@ -779,8 +916,10 @@ export const Game = ({
             swipeFeedbackTimeoutRef.current = null;
           }, 240);
           playEffect('miss');
+          fireHaptic('miss');
           triggerMissFeedback();
           attemptsRef.current += 1;
+          falseStartsRef.current += 1;
           if (timingVerdict === 'late') {
             lateDecisionsRef.current += 1;
           }
@@ -800,14 +939,16 @@ export const Game = ({
         }
       }
 
-      if (activeMode === 'sequenceMemory') {
+      if (isSequenceMode) {
         if (sequencePhaseRef.current !== 'input') return;
 
         const expectedTargetId = sequenceOrderRef.current[sequenceInputStepRef.current];
         if (targetId !== expectedTargetId) {
           playEffect('miss');
+          fireHaptic('miss');
           triggerMissFeedback();
           attemptsRef.current += 1;
+          falseStartsRef.current += 1;
           missesRef.current += 1;
           setMisses(prev => prev + 1);
           if (streakRef.current !== 0) {
@@ -817,7 +958,7 @@ export const Game = ({
           }
           updateSequenceFeedback('failure');
           updateSequencePhase('feedback');
-          playCue('mode', 'sequence-fail');
+          playCue('mode', resolveModeCue(sequencePhaseCues?.failure ?? 'sequence-fail'));
           const failureFeedbackMs = scaleMsByStreak(
             SEQUENCE_FAILURE_FEEDBACK_MS,
             streakRef.current,
@@ -834,11 +975,15 @@ export const Game = ({
         setScore(prev => prev + 1);
         streakRef.current += 1;
         setStreak(streakRef.current);
+        if (streakRef.current > 0 && streakRef.current % 4 === 0) {
+          fireHaptic('streak');
+        }
         if (streakRef.current > bestStreakRef.current) {
           bestStreakRef.current = streakRef.current;
           setBestStreak(bestStreakRef.current);
         }
         playEffect('hit');
+        fireHaptic('hit');
 
         const nextInputStep = sequenceInputStepRef.current + 1;
         updateSequenceInputStep(nextInputStep);
@@ -852,7 +997,7 @@ export const Game = ({
           sequenceSuccessesRef.current += 1;
           updateSequenceFeedback('success');
           updateSequencePhase('feedback');
-          playCue('mode', 'sequence-success');
+          playCue('mode', resolveModeCue(sequencePhaseCues?.success ?? 'sequence-success'));
           const successFeedbackMs = scaleMsByStreak(
             SEQUENCE_SUCCESS_FEEDBACK_MS,
             streakRef.current,
@@ -870,11 +1015,15 @@ export const Game = ({
       setScore(prev => prev + 1);
       streakRef.current += 1;
       setStreak(streakRef.current);
+      if (streakRef.current > 0 && streakRef.current % 4 === 0) {
+        fireHaptic('streak');
+      }
       if (streakRef.current > bestStreakRef.current) {
         bestStreakRef.current = streakRef.current;
         setBestStreak(bestStreakRef.current);
       }
       playEffect('hit');
+      fireHaptic('hit');
 
       setTargets(prev => {
         const next = prev.filter(target => target.id !== targetId);
@@ -882,7 +1031,20 @@ export const Game = ({
         return next;
       });
     },
-    [activeMode, playCue, playEffect, triggerMissFeedback, updateSequenceFeedback, updateSequenceInputStep, updateSequencePhase],
+    [
+      isSequenceMode,
+      isSwipeMode,
+      fireHaptic,
+      playCue,
+      playEffect,
+      resolveModeCue,
+      sequencePhaseCues?.failure,
+      sequencePhaseCues?.success,
+      triggerMissFeedback,
+      updateSequenceFeedback,
+      updateSequenceInputStep,
+      updateSequencePhase,
+    ],
   );
 
   const handleSwipeAttemptFail = useCallback(
@@ -900,8 +1062,10 @@ export const Game = ({
       }, 220);
 
       playEffect('miss');
+      fireHaptic('miss');
       triggerMissFeedback();
       attemptsRef.current += 1;
+      falseStartsRef.current += 1;
       missesRef.current += 1;
       setMisses(prev => prev + 1);
       if (streakRef.current !== 0) {
@@ -916,7 +1080,7 @@ export const Game = ({
         return next;
       });
     },
-    [activeMode, playEffect, triggerMissFeedback],
+    [activeMode, fireHaptic, playEffect, triggerMissFeedback],
   );
 
   const togglePause = useCallback(() => {
@@ -933,20 +1097,20 @@ export const Game = ({
         }
         clearHoldTrackingState();
         remainingMsRef.current = Math.max(0, roundEndsAtRef.current - Date.now());
-        if (activeMode === 'sequenceMemory' && sequencePhaseEndsAtRef.current > 0) {
+        if (isSequenceMode && sequencePhaseEndsAtRef.current > 0) {
           sequencePhaseRemainingMsRef.current = Math.max(0, sequencePhaseEndsAtRef.current - Date.now());
         }
         setTimeLeft(Math.ceil(remainingMsRef.current / 1000));
       } else {
         roundEndsAtRef.current = Date.now() + remainingMsRef.current;
-        if (activeMode === 'sequenceMemory' && sequencePhaseRef.current !== 'input') {
+        if (isSequenceMode && sequencePhaseRef.current !== 'input') {
           sequencePhaseEndsAtRef.current = Date.now() + sequencePhaseRemainingMsRef.current;
         }
       }
 
       return nextPaused;
     });
-  }, [activeMode, clearHoldTrackingState, clearHoldVisual]);
+  }, [clearHoldTrackingState, clearHoldVisual, isSequenceMode]);
 
   const handleQuit = useCallback(() => {
     if (window.confirm('Quit this round and return to main menu?')) {
@@ -986,9 +1150,9 @@ export const Game = ({
         lastTickAt: Date.now(),
       };
       setHoldVisual(targetId, 'arming', 0);
-      playCue('mode', 'hold-lock');
+      playCue('mode', resolveModeCue(holdStartCue));
     },
-    [activeMode, playCue, setHoldVisual],
+    [activeMode, holdStartCue, playCue, resolveModeCue, setHoldVisual],
   );
 
   const handleHoldPointerMove = useCallback(({ pointerId, x, y }: { pointerId: number; x: number; y: number }) => {
@@ -1015,8 +1179,10 @@ export const Game = ({
       holdBreakUntilRef.current[targetId] = Date.now() + HOLD_BREAK_FEEDBACK_MS;
       setHoldVisual(targetId, 'broken', calculateHoldProgress(tracking.heldMs, target.hold.requiredMs));
       playEffect('miss');
+      fireHaptic('miss');
       triggerMissFeedback();
       attemptsRef.current += 1;
+      falseStartsRef.current += 1;
       missesRef.current += 1;
       setMisses(prev => prev + 1);
       if (streakRef.current !== 0) {
@@ -1035,7 +1201,7 @@ export const Game = ({
       }, HOLD_BREAK_FEEDBACK_MS);
       clearHoldTrackingState();
     },
-    [activeMode, clearHoldTrackingState, clearHoldVisual, playEffect, setHoldVisual, triggerMissFeedback],
+    [activeMode, clearHoldTrackingState, clearHoldVisual, fireHaptic, playEffect, setHoldVisual, triggerMissFeedback],
   );
 
   useEffect(() => {
@@ -1061,14 +1227,109 @@ export const Game = ({
 
   const gameMode = gameModes[activeMode];
   const isBenchmarkMode = gameMode.category === 'benchmark';
-  const isSequenceMode = activeMode === 'sequenceMemory';
   const sequenceExpectedTargetId = sequenceOrderRef.current[sequenceInputStep];
-  const activeSwipeTarget = activeMode === 'swipeStrike' ? targets[0] : undefined;
+  const activeSwipeTarget = isSwipeMode ? targets[0] : undefined;
   const swipeCueLabel =
-    activeSwipeTarget?.swipeDirection && activeMode === 'swipeStrike'
+    activeSwipeTarget?.swipeDirection && isSwipeMode
       ? getSwipeCueLabel(selectedSport, activeSwipeTarget.swipeDirection)
       : null;
-  const holdCueLabel = activeMode === 'holdTrack' ? getHoldTrackCueLabel(selectedSport) : null;
+  const holdCueLabel = isHoldMode ? getHoldTrackCueLabel(selectedSport) : null;
+  const cueSet = getGameplayCueSet(selectedSport, activeMode);
+  const holdIsActive = Object.values(holdVisualByTarget).some(
+    holdState => holdState.phase === 'arming' || holdState.phase === 'locked',
+  );
+
+  const phaseCueKey =
+    isSequenceMode
+      ? `${sequencePhase}:${sequenceFeedback ?? 'none'}`
+      : isSwipeMode
+        ? `swipe:${activeSwipeTarget?.swipeDirection ?? 'none'}`
+        : isHoldMode
+          ? `hold:${holdIsActive ? 'active' : targets.length > 0 ? 'ready' : 'none'}`
+          : `${activeMode}:${targets.length > 0 ? 'engaged' : 'idle'}`;
+
+  useEffect(() => {
+    if (!isCueTimingVisible(cueIntensity, 'phaseTriggered')) {
+      setPhaseCueEvent(null);
+      prevPhaseCueKeyRef.current = phaseCueKey;
+      return;
+    }
+    if (prevPhaseCueKeyRef.current === phaseCueKey) {
+      return;
+    }
+    prevPhaseCueKeyRef.current = phaseCueKey;
+
+    if (isSequenceMode) {
+      if (sequencePhase === 'preview') {
+        pushPhaseCue(cueSet.focus, 'focus');
+        return;
+      }
+      if (sequencePhase === 'input') {
+        pushPhaseCue(cueSet.tactical, 'tactical');
+        return;
+      }
+      if (sequenceFeedback === 'failure') {
+        pushPhaseCue(cueSet.reset, 'reset');
+        return;
+      }
+      if (sequenceFeedback === 'success') {
+        pushPhaseCue(cueSet.tactical, 'tactical');
+      }
+      return;
+    }
+
+    if (isSwipeMode && swipeCueLabel) {
+      pushPhaseCue(`Directional cue: ${swipeCueLabel}`, 'tactical');
+      return;
+    }
+
+    if (isHoldMode && holdCueLabel) {
+      pushPhaseCue(holdIsActive ? `Maintain lock: ${holdCueLabel}` : cueSet.focus, holdIsActive ? 'tactical' : 'focus');
+      return;
+    }
+
+    if (targets.length > 0) {
+      pushPhaseCue(cueSet.focus, 'focus');
+    }
+  }, [
+    activeMode,
+    cueIntensity,
+    cueSet.focus,
+    cueSet.reset,
+    cueSet.tactical,
+    holdCueLabel,
+    holdIsActive,
+    isHoldMode,
+    isSequenceMode,
+    isSwipeMode,
+    phaseCueKey,
+    pushPhaseCue,
+    sequenceFeedback,
+    sequencePhase,
+    swipeCueLabel,
+    targets.length,
+  ]);
+
+  useEffect(() => {
+    const previousStreak = prevStreakRef.current;
+    const previousMisses = prevMissesRef.current;
+    prevStreakRef.current = streak;
+    prevMissesRef.current = misses;
+
+    if (!isCueTimingVisible(cueIntensity, 'streakTriggered')) {
+      setStreakCueEvent(null);
+      return;
+    }
+
+    if (streak > previousStreak && streak > 0 && streak % 4 === 0) {
+      pushStreakCue(`Streak ${streak}. ${cueSet.tactical}`, 'tactical');
+      return;
+    }
+
+    if (misses > previousMisses) {
+      pushStreakCue(cueSet.reset, 'reset');
+    }
+  }, [cueIntensity, cueSet.reset, cueSet.tactical, misses, pushStreakCue, streak]);
 
   return (
     <div
@@ -1085,6 +1346,10 @@ export const Game = ({
         onMainMenu={handleQuit}
         isPaused={isPaused}
         reducedMotion={lowStimulusMode}
+        labels={{
+          score: sportPack.hudLabels.score,
+          streak: sportPack.hudLabels.streak,
+        }}
       />
 
       <div
@@ -1118,44 +1383,32 @@ export const Game = ({
               color: theme.textColor,
             }}
           >
-            {isBenchmarkMode ? 'Benchmark protocol' : 'Drill protocol'}
+            {isBenchmarkMode
+              ? sportPack.hudLabels.benchmarkProtocol
+              : sportPack.hudLabels.drillProtocol}
           </div>
         </div>
-        {activeMode === 'swipeStrike' && activeSwipeTarget && activeSwipeTarget.swipeDirection && (
-          <div className="absolute inset-x-0 top-3 z-[14] pointer-events-none px-3 sm:px-4">
+        <GameplayCueOverlay
+          cueIntensity={cueIntensity}
+          cueSet={cueSet}
+          preRoundCueText={preRoundCueVisible ? cueSet.focus : null}
+          phaseCue={phaseCueEvent ? { text: phaseCueEvent.text, type: phaseCueEvent.type } : null}
+          streakCue={streakCueEvent ? { text: streakCueEvent.text, type: streakCueEvent.type } : null}
+          lowStimulusMode={lowStimulusMode}
+        />
+        {isSwipeMode && swipeTimingFeedback && (
+          <div className="absolute inset-x-0 top-[max(58px,calc(env(safe-area-inset-top,0px)+48px))] z-[15] pointer-events-none px-3 sm:px-4">
             <div
-              className="mx-auto max-w-sm rounded-xl px-3 py-2 text-center"
+              className="mx-auto max-w-sm rounded-xl px-3 py-1.5 text-center"
               style={{
-                backgroundColor: 'rgba(4, 12, 12, 0.8)',
-                border: `1px solid ${theme.targetColor}77`,
-                color: theme.textColor,
+                backgroundColor: 'rgba(12, 5, 5, 0.78)',
+                border: '1px solid rgba(248, 113, 113, 0.65)',
+                color: '#fca5a5',
               }}
-              aria-live="polite"
             >
-              <p className="text-[10px] uppercase tracking-[0.18em] opacity-70">Swipe window</p>
-              <p className="mt-1 text-sm font-semibold">
-                {swipeCueLabel} ({activeSwipeTarget.swipeDirection})
+              <p className="text-xs">
+                {swipeTimingFeedback === 'early' ? 'Too early. Let the cue settle.' : 'Too late. Commit sooner.'}
               </p>
-              {swipeTimingFeedback && (
-                <p className="mt-1 text-xs" style={{ color: '#fca5a5' }}>
-                  {swipeTimingFeedback === 'early' ? 'Too early. Let the cue settle.' : 'Too late. Commit sooner.'}
-                </p>
-              )}
-            </div>
-          </div>
-        )}
-        {activeMode === 'holdTrack' && holdCueLabel && (
-          <div className="absolute inset-x-0 top-3 z-[14] pointer-events-none px-3 sm:px-4">
-            <div
-              className="mx-auto max-w-sm rounded-xl px-3 py-2 text-center"
-              style={{
-                backgroundColor: 'rgba(4, 12, 12, 0.8)',
-                border: `1px solid ${theme.targetColor}77`,
-                color: theme.textColor,
-              }}
-            >
-              <p className="text-[10px] uppercase tracking-[0.18em] opacity-70">Hold track</p>
-              <p className="mt-1 text-sm font-semibold">Maintain lock: {holdCueLabel}</p>
             </div>
           </div>
         )}
@@ -1283,8 +1536,10 @@ export const Game = ({
                 key={`${target.id}-${target.createdAt}`}
                 target={target}
                 interactionMode={
-                  activeMode === 'swipeStrike' ? 'swipe' : activeMode === 'holdTrack' ? 'hold' : 'tap'
+                  isSwipeMode ? 'swipe' : isHoldMode ? 'hold' : 'tap'
                 }
+                targetIconPath={stimulusIconByVariant[target.stimulusVariant ?? 'standard']}
+                targetIconFallbackPath={sportAssets.targetIconFallback}
                 onActivate={() => handleTargetClick(target.id)}
                 onSwipeAttemptFail={() => handleSwipeAttemptFail(target.id)}
                 holdVisualState={holdVisualByTarget[target.id]}

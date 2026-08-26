@@ -6,6 +6,7 @@ type DeriveReadinessMetricsInput = {
   misses: number;
   totalAttempts?: number;
   lateDecisions?: number;
+  falseStarts?: number;
   reactionTimesMs?: number[];
   streakRuns?: number[];
   runwayCompletionsCount?: number;
@@ -50,6 +51,7 @@ export const deriveReadinessMetrics = (
   const lateDecisions = clamp(input.lateDecisions ?? 0, 0, misses);
   const reactionSamples = (input.reactionTimesMs ?? []).filter(value => value > 0);
   const streakRuns = (input.streakRuns ?? []).filter(value => value > 0);
+  const falseStarts = clamp(input.falseStarts ?? 0, 0, attempts);
 
   const decisionAccuracyPct =
     attempts > 0 ? roundToInt((input.score / attempts) * 100) : 0;
@@ -72,6 +74,26 @@ export const deriveReadinessMetrics = (
   const averageReaction = avg(reactionSamples);
   const reactionSpeedScore =
     medianReaction === null ? 45 : clamp(((800 - medianReaction) / 600) * 100, 0, 100);
+  const reactionVariabilityMs = reactionSamples.length === 0 ? null : roundToInt(stdDev(reactionSamples));
+  const visualFocusPct = roundToInt(
+    clamp(
+      100 -
+        ((reactionVariabilityMs ?? 52) / Math.max(averageReaction ?? 320, 120)) * 135 -
+        falseStarts * 1.2,
+      0,
+      100,
+    ),
+  );
+  const handEyeCoordinationPct = roundToInt(
+    clamp(
+      decisionAccuracyPct * 0.52 +
+        (100 - lateDecisionRatePct) * 0.23 +
+        consistencyPct * 0.15 +
+        (100 - clamp(falseStarts * 5, 0, 100)) * 0.1,
+      0,
+      100,
+    ),
+  );
   const readinessScore = roundToInt(
     clamp(
       decisionAccuracyPct * 0.4 +
@@ -83,17 +105,29 @@ export const deriveReadinessMetrics = (
       100,
     ),
   );
+  const neuralReadinessBand: ReadinessMetrics['neuralReadinessBand'] =
+    readinessScore >= 85
+      ? 'elite'
+      : readinessScore >= 72
+        ? 'prime'
+        : readinessScore >= 55
+          ? 'build'
+          : 'recovery';
 
   return {
     reactionTimeMs: {
       average: averageReaction === null ? null : roundToInt(averageReaction),
       median: medianReaction === null ? null : roundToInt(medianReaction),
     },
+    reactionVariabilityMs,
     decisionAccuracyPct,
     missRatePct,
     lateDecisionRatePct,
     streakQualityPct,
     consistencyPct,
+    handEyeCoordinationPct,
+    visualFocusPct,
+    neuralReadinessBand,
     readinessScore,
     runwayCompletionsCount: Math.max(0, input.runwayCompletionsCount ?? 0),
     sleepCheckInCorrelation: input.sleepCheckInCorrelation ?? 'pending',
@@ -170,6 +204,10 @@ export type StatsGroupSummary = {
     lateDecisionRatePct: number;
     streakQualityPct: number;
     consistencyPct: number;
+    handEyeCoordinationPct: number;
+    visualFocusPct: number;
+    reactionVariabilityMs: number | null;
+    neuralReadinessBand: ReadinessMetrics['neuralReadinessBand'];
     readinessScore: number;
   };
   recovery: {
@@ -188,6 +226,10 @@ export const getStatsGroupSummary = (stats: GameStats): StatsGroupSummary => {
         lateDecisionRatePct: 0,
         streakQualityPct: 0,
         consistencyPct: 0,
+        handEyeCoordinationPct: 0,
+        visualFocusPct: 0,
+        reactionVariabilityMs: null,
+        neuralReadinessBand: 'recovery',
         readinessScore: 0,
       },
       recovery: { runwayCompletionsCount: 0, sleepCorrelationState: 'pending' },
@@ -197,6 +239,9 @@ export const getStatsGroupSummary = (stats: GameStats): StatsGroupSummary => {
   const readinessList = stats.rounds.map(round => round.readinessMetrics);
   const reactionMedians = readinessList
     .map(metrics => metrics?.reactionTimeMs.median)
+    .filter((value): value is number => value !== null && value !== undefined);
+  const variabilitySamples = readinessList
+    .map(metrics => metrics?.reactionVariabilityMs)
     .filter((value): value is number => value !== null && value !== undefined);
 
   const lastRound = stats.rounds[stats.rounds.length - 1];
@@ -223,6 +268,18 @@ export const getStatsGroupSummary = (stats: GameStats): StatsGroupSummary => {
       consistencyPct: roundToInt(
         avg(readinessList.map(metrics => metrics?.consistencyPct ?? 0)) ?? 0,
       ),
+      handEyeCoordinationPct: roundToInt(
+        avg(readinessList.map(metrics => metrics?.handEyeCoordinationPct ?? 0)) ?? 0,
+      ),
+      visualFocusPct: roundToInt(
+        avg(readinessList.map(metrics => metrics?.visualFocusPct ?? 0)) ?? 0,
+      ),
+      reactionVariabilityMs:
+        variabilitySamples.length > 0 ? roundToInt(avg(variabilitySamples) ?? 0) : null,
+      neuralReadinessBand:
+        (['elite', 'prime', 'build', 'recovery'] as const).find(band =>
+          readinessList.some(metrics => metrics?.neuralReadinessBand === band),
+        ) ?? 'recovery',
       readinessScore: roundToInt(
         avg(readinessList.map(metrics => metrics?.readinessScore ?? 0)) ?? 0,
       ),

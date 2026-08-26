@@ -20,8 +20,12 @@ describe('readiness metric derivation', () => {
     expect(metrics.lateDecisionRatePct).toBe(13);
     expect(metrics.reactionTimeMs.median).toBe(290);
     expect(metrics.reactionTimeMs.average).toBe(288);
+    expect(metrics.reactionVariabilityMs).toBeGreaterThan(0);
     expect(metrics.streakQualityPct).toBeGreaterThan(0);
     expect(metrics.consistencyPct).toBeGreaterThan(0);
+    expect(metrics.handEyeCoordinationPct).toBeGreaterThan(0);
+    expect(metrics.visualFocusPct).toBeGreaterThan(0);
+    expect(metrics.neuralReadinessBand).toBeTruthy();
     expect(metrics.runwayCompletionsCount).toBe(2);
   });
 });
@@ -100,6 +104,8 @@ describe('stats aggregation and by-sport trends', () => {
 
     expect(grouped.gameplay.rounds).toBe(3);
     expect(grouped.readiness.readinessScore).toBeGreaterThan(0);
+    expect(grouped.readiness.handEyeCoordinationPct).toBeGreaterThan(0);
+    expect(grouped.readiness.visualFocusPct).toBeGreaterThan(0);
     expect(grouped.recovery.runwayCompletionsCount).toBe(3);
     expect(trends.length).toBe(2);
     expect(trends[0].roundsTracked).toBeGreaterThanOrEqual(trends[1].roundsTracked);

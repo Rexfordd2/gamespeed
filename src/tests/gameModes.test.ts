@@ -3,6 +3,8 @@ import { generateTargets as quickTap } from '../modes/quickTap';
 import { generateTargets as multiTarget } from '../modes/multiTarget';
 import { generateTargets as swipeStrike } from '../modes/swipeStrike';
 import { generateTargets as holdTrack } from '../modes/holdTrack';
+import { generateTargets as peripheralPulse } from '../modes/peripheralPulse';
+import { generateTargets as calmFocus } from '../modes/calmFocus';
 import {
   generateSequenceTargets,
   getSequenceLengthForSuccesses,
@@ -134,11 +136,15 @@ describe('gameModes registry', () => {
     expect(gameModes.swipeStrike).toBeDefined();
     expect(gameModes.holdTrack).toBeDefined();
     expect(gameModes.sequenceMemory).toBeDefined();
+    expect(gameModes.peripheralPulse).toBeDefined();
+    expect(gameModes.calmFocus).toBeDefined();
     expect(gameModes.quickTap.availability).toBe('playable');
     expect(gameModes.multiTarget.availability).toBe('playable');
     expect(gameModes.swipeStrike.availability).toBe('playable');
     expect(gameModes.holdTrack.availability).toBe('playable');
     expect(gameModes.sequenceMemory.availability).toBe('playable');
+    expect(gameModes.peripheralPulse.availability).toBe('playable');
+    expect(gameModes.calmFocus.availability).toBe('playable');
   });
 
   it('every mode has a generateTargets function', () => {
@@ -178,7 +184,13 @@ describe('gameModes registry', () => {
   });
 
   it('playable advanced modes still produce targets (generator must not crash)', () => {
-    const advancedModes: GameModeType[] = ['sequenceMemory', 'holdTrack', 'swipeStrike'];
+    const advancedModes: GameModeType[] = [
+      'sequenceMemory',
+      'holdTrack',
+      'swipeStrike',
+      'peripheralPulse',
+      'calmFocus',
+    ];
     for (const key of advancedModes) {
       const mode = gameModes[key];
       const result = mode.generateTargets({
@@ -298,6 +310,23 @@ describe('sequenceMemory helpers', () => {
     expect(getSequenceLengthForSuccesses(2)).toBe(4);
     expect(getSequenceLengthForSuccesses(4)).toBe(5);
     expect(getSequenceLengthForSuccesses(10)).toBe(6);
+  });
+});
+
+describe('peripheralPulse.generateTargets', () => {
+  it('spawns paired peripheral targets with variants', () => {
+    const result = peripheralPulse({ ...base, existingTargets: [] });
+    expect(result.length).toBeGreaterThanOrEqual(2);
+    expect(result[0].stimulusVariant).toBeTruthy();
+    expect(result[1].stimulusVariant).toBeTruthy();
+  });
+});
+
+describe('calmFocus.generateTargets', () => {
+  it('spawns a single calm target', () => {
+    const result = calmFocus({ ...base, existingTargets: [] });
+    expect(result).toHaveLength(1);
+    expect(result[0].stimulusVariant).toBe('calm');
   });
 });
 

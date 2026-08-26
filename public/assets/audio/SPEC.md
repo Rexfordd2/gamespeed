@@ -141,20 +141,27 @@ Use this spec to produce a cohesive, repeat-safe audio pack for a jungle/rainfor
 ## Recommended folder structure
 
 ```text
-public/assets/audio/
+public/assets/audio-cues/
   music/
-    rainforest-loop.mp3
-  effects/
+    background-loop.mp3
+  gameplay/
     target-hit.mp3
     target-miss.mp3
     round-complete.mp3
-    round-start.mp3
-    pause.mp3
-    resume.mp3
-    swipe-whoosh.mp3
+  mode/
+    swipe-left.mp3
+    swipe-right.mp3
+    swipe-up.mp3
+    swipe-down.mp3
     hold-lock.mp3
-    sequence-cue.mp3
+    sequence-preview.mp3
+    sequence-input.mp3
+    sequence-success.mp3
+    sequence-fail.mp3
+  training/
     countdown-tick.mp3
+  ui/
+    ui-confirm.mp3
 ```
 
 ## Naming convention rules

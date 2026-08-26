@@ -4,7 +4,7 @@ import { useTheme } from '../context/ThemeContext';
 import { JungleBackground } from './JungleBackground';
 import { JungleButton } from './JungleButton';
 import { COACH_CHALLENGE_TEMPLATES } from '../utils/coachChallenges';
-import { getAthleteSummary } from '../utils/coachSummary';
+import { getAthleteSummary, getCoachDashboardSummary, TrendDirection } from '../utils/coachSummary';
 import { localCoachRepository } from '../utils/coachStore';
 
 interface CoachModeProps {
@@ -17,6 +17,33 @@ const TREND_LABELS = {
   declining: 'Needs attention',
   'insufficient-data': 'Not enough data',
 } as const;
+
+const DIRECTION_LABELS: Record<TrendDirection, string> = {
+  up: 'Up',
+  flat: 'Flat',
+  down: 'Down',
+  'insufficient-data': 'Not enough data',
+};
+
+const DIRECTION_COLORS: Record<TrendDirection, string> = {
+  up: '#86efac',
+  flat: '#7dd3fc',
+  down: '#fca5a5',
+  'insufficient-data': '#cbd5e1',
+};
+
+const formatDateRange = (startTs: number, endTs: number) => {
+  const formatter = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' });
+  return `${formatter.format(new Date(startTs))} - ${formatter.format(new Date(endTs))}`;
+};
+
+const formatActivityAge = (ts: number | null) => {
+  if (!ts) return 'No activity logged';
+  const days = Math.floor((Date.now() - ts) / 86_400_000);
+  if (days <= 0) return 'Today';
+  if (days === 1) return '1 day ago';
+  return `${days} days ago`;
+};
 
 const sportLabel = (sport: SportType) => getSportConfig(sport).displayName;
 
@@ -31,6 +58,7 @@ export const CoachMode = ({ onBack }: CoachModeProps) => {
     () => [...store.athletes].sort((a, b) => b.updatedAt - a.updatedAt),
     [store.athletes],
   );
+  const dashboard = useMemo(() => getCoachDashboardSummary(sortedAthletes), [sortedAthletes]);
 
   const refresh = () => setStore(localCoachRepository.load());
 
@@ -142,6 +170,145 @@ export const CoachMode = ({ onBack }: CoachModeProps) => {
           </div>
         </section>
 
+        {sortedAthletes.length > 0 && (
+          <section
+            className="rounded-3xl p-5 sm:p-6"
+            style={{ backgroundColor: 'rgba(6, 12, 18, 0.78)', border: `1px solid ${theme.targetColor}4D` }}
+          >
+            <div className="flex flex-col gap-1">
+              <p className="text-[11px] uppercase tracking-[0.15em] font-semibold" style={{ color: theme.targetColor }}>
+                Weekly coach proof dashboard
+              </p>
+              <h2 className="text-xl font-bold" style={{ color: theme.textColor }}>
+                Local summary ({formatDateRange(dashboard.weeklyWindowStartTs, dashboard.weeklyWindowEndTs)})
+              </h2>
+            </div>
+
+            <div className="mt-4 grid grid-cols-1 gap-2 md:grid-cols-2">
+              <div className="rounded-2xl p-3.5" style={{ backgroundColor: 'rgba(2,8,12,0.72)' }}>
+                <p className="text-xs font-semibold uppercase tracking-[0.08em]" style={{ color: theme.textColor, opacity: 0.75 }}>
+                  Completion streaks
+                </p>
+                <div className="mt-2 space-y-1.5">
+                  {[...dashboard.athleteSummaries]
+                    .sort((a, b) => b.completionStreak - a.completionStreak)
+                    .slice(0, 5)
+                    .map(item => (
+                      <div key={`streak_${item.athleteId}`} className="flex items-center justify-between text-sm">
+                        <span style={{ color: theme.textColor }}>{item.athleteName}</span>
+                        <span className="font-semibold tabular-nums" style={{ color: '#86efac' }}>
+                          {item.completionStreak}d
+                        </span>
+                      </div>
+                    ))}
+                </div>
+              </div>
+
+              <div className="rounded-2xl p-3.5" style={{ backgroundColor: 'rgba(2,8,12,0.72)' }}>
+                <p className="text-xs font-semibold uppercase tracking-[0.08em]" style={{ color: theme.textColor, opacity: 0.75 }}>
+                  Runway usage (week)
+                </p>
+                <div className="mt-2 space-y-1.5">
+                  {dashboard.athleteSummaries.map(item => (
+                    <div key={`runway_${item.athleteId}`} className="flex items-center justify-between text-sm">
+                      <span style={{ color: theme.textColor }}>{item.athleteName}</span>
+                      <span className="font-semibold tabular-nums" style={{ color: item.atRisk.missedRunwayUsage ? '#fca5a5' : '#86efac' }}>
+                        {item.runwayUsageThisWeek}/3 ({DIRECTION_LABELS[item.runwayUsageTrend]})
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-2xl p-3.5" style={{ backgroundColor: 'rgba(2,8,12,0.72)' }}>
+                <p className="text-xs font-semibold uppercase tracking-[0.08em]" style={{ color: theme.textColor, opacity: 0.75 }}>
+                  Readiness check trends
+                </p>
+                <p className="mt-1 text-xs" style={{ color: DIRECTION_COLORS[dashboard.readinessTrend] }}>
+                  Team trend: {DIRECTION_LABELS[dashboard.readinessTrend]}
+                </p>
+                <div className="mt-2 space-y-1.5">
+                  {dashboard.athleteSummaries.map(item => (
+                    <div key={`readiness_${item.athleteId}`} className="flex items-center justify-between text-sm">
+                      <span style={{ color: theme.textColor }}>{item.athleteName}</span>
+                      <span className="tabular-nums" style={{ color: DIRECTION_COLORS[item.readinessTrend] }}>
+                        {item.readinessAverageThisWeek || '-'} ({DIRECTION_LABELS[item.readinessTrend]})
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-2xl p-3.5" style={{ backgroundColor: 'rgba(2,8,12,0.72)' }}>
+                <p className="text-xs font-semibold uppercase tracking-[0.08em]" style={{ color: theme.textColor, opacity: 0.75 }}>
+                  By-sport performance trend
+                </p>
+                <div className="mt-2 space-y-1.5">
+                  {dashboard.sportPerformanceTrends.length === 0 ? (
+                    <p className="text-sm" style={{ color: theme.textColor, opacity: 0.75 }}>
+                      Add readiness sessions to unlock sport trends.
+                    </p>
+                  ) : (
+                    dashboard.sportPerformanceTrends.map(item => (
+                      <div key={`sport_${item.sport}`} className="flex items-center justify-between text-sm">
+                        <span style={{ color: theme.textColor }}>{sportLabel(item.sport)}</span>
+                        <span className="tabular-nums" style={{ color: DIRECTION_COLORS[item.trend] }}>
+                          {DIRECTION_LABELS[item.trend]} ({item.delta > 0 ? '+' : ''}
+                          {item.delta})
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-2xl p-3.5" style={{ backgroundColor: 'rgba(2,8,12,0.72)' }}>
+                <p className="text-xs font-semibold uppercase tracking-[0.08em]" style={{ color: theme.textColor, opacity: 0.75 }}>
+                  Recent athlete activity
+                </p>
+                <div className="mt-2 space-y-1.5">
+                  {dashboard.recentAthleteActivity.length === 0 ? (
+                    <p className="text-sm" style={{ color: theme.textColor, opacity: 0.75 }}>
+                      No athlete activity yet.
+                    </p>
+                  ) : (
+                    dashboard.recentAthleteActivity.map(item => (
+                      <div key={`activity_${item.athleteId}`} className="flex items-center justify-between text-sm">
+                        <span style={{ color: theme.textColor }}>
+                          {item.athleteName} - {item.recentActivityType}
+                        </span>
+                        <span style={{ color: theme.textColor, opacity: 0.75 }}>{formatActivityAge(item.recentActivityTs)}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-2xl p-3.5" style={{ backgroundColor: 'rgba(2,8,12,0.72)' }}>
+                <p className="text-xs font-semibold uppercase tracking-[0.08em]" style={{ color: theme.textColor, opacity: 0.75 }}>
+                  At-risk flags
+                </p>
+                <div className="mt-2 space-y-1.5">
+                  {dashboard.atRiskAthletes.length === 0 ? (
+                    <p className="text-sm" style={{ color: '#86efac' }}>
+                      No at-risk flags this week.
+                    </p>
+                  ) : (
+                    dashboard.atRiskAthletes.map(item => (
+                      <div key={`risk_${item.athleteId}`} className="text-sm">
+                        <p className="font-semibold" style={{ color: '#fca5a5' }}>
+                          {item.athleteName}
+                        </p>
+                        <p style={{ color: theme.textColor, opacity: 0.8 }}>{item.atRisk.reasons.join(' | ')}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+
         {sortedAthletes.length === 0 ? (
           <section
             className="rounded-3xl p-5 sm:p-6"
@@ -154,6 +321,7 @@ export const CoachMode = ({ onBack }: CoachModeProps) => {
         ) : (
           sortedAthletes.map(athlete => {
             const summary = getAthleteSummary(athlete);
+            const athleteDashboard = dashboard.athleteSummaries.find(item => item.athleteId === athlete.id);
             return (
               <section
                 key={athlete.id}
@@ -226,6 +394,11 @@ export const CoachMode = ({ onBack }: CoachModeProps) => {
                   <p className="text-xs" style={{ color: theme.textColor, opacity: 0.72 }}>
                     Recent reaction/decision trend: {TREND_LABELS[summary.reactionDecisionTrend]}
                   </p>
+                  {athleteDashboard && athleteDashboard.atRisk.reasons.length > 0 && (
+                    <p className="mt-1 text-xs" style={{ color: '#fca5a5' }}>
+                      At-risk: {athleteDashboard.atRisk.reasons.join(' | ')}
+                    </p>
+                  )}
                 </div>
 
                 <div className="mt-4 flex flex-wrap gap-2">

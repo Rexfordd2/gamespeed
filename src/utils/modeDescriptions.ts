@@ -49,6 +49,14 @@ const DEFAULT_SPORT_COPY: Record<GameModeType, ModeSportCopyOverride> = {
     sportLabel: 'Pattern recall under pace',
     sportDescription: 'Store a short visual order, then execute it cleanly under timer pressure.',
   },
+  peripheralPulse: {
+    sportLabel: 'Peripheral cue scan',
+    sportDescription: 'Read left-right edge cues quickly while keeping central visual control.',
+  },
+  calmFocus: {
+    sportLabel: 'Calm precision cadence',
+    sportDescription: 'Train steady, low-stimulation response quality and visual composure.',
+  },
 };
 
 const modeSportOverrides: Partial<Record<SportType, Partial<Record<GameModeType, ModeSportCopyOverride>>>> = {
@@ -321,6 +329,44 @@ export const modeDescriptions: Record<GameModeType, ModeDescription> = {
       'Watch the glow order first and avoid tapping during preview.',
       'In input phase, commit to one clean cue at a time.',
       'Difficulty ramps gradually every few successful sequences.',
+    ],
+  },
+  peripheralPulse: {
+    title: 'Peripheral Pulse',
+    description: 'Alternating edge-lane targets to build peripheral pickup and controlled hand-eye sequencing.',
+    trainingFocus: 'Peripheral awareness + controlled transitions',
+    intensity: 'Medium-High',
+    rhythm: 'Alternating lane pulses',
+    whyThisMatters: 'Many sport reads happen outside your center gaze; this mode trains wider-field decisions.',
+    evidenceStyle: {
+      cuePickup: 'Forces left-right edge detection with reduced center dependence.',
+      anticipation: 'Improves early pattern pickup before lane shifts complete.',
+      decisionSpeed: 'Builds faster transitions between peripheral cues.',
+      gazeStability: 'Promotes stable head/gaze while attention shifts across field.',
+    },
+    tips: [
+      'Keep eyes quiet and avoid chasing each cue with large head movement.',
+      'Scan edge targets in rhythm, then reset to center between taps.',
+      'Prioritize clean order over frantic speed when load rises.',
+    ],
+  },
+  calmFocus: {
+    title: 'Calm Focus',
+    description: 'Low-arousal single-cue mode for visual stillness, controlled pace, and repeatable execution quality.',
+    trainingFocus: 'Mental solitude and precision',
+    intensity: 'Low-Moderate',
+    rhythm: 'Deliberate cue cadence',
+    whyThisMatters: 'Great performance often starts with calm control; this mode builds quiet, reliable execution.',
+    evidenceStyle: {
+      cuePickup: 'Rewards patient first-read accuracy without overreaching.',
+      anticipation: 'Reduces impulsive taps by spacing cues intentionally.',
+      decisionSpeed: 'Balances speed with controlled response timing.',
+      gazeStability: 'Emphasizes quiet-eye behavior and steady target lock.',
+    },
+    tips: [
+      'Breathe out slowly before each response to reduce noise.',
+      'Tap with smooth intent, not urgency.',
+      'Use this mode on heavy stress days or pre-sleep sessions.',
     ],
   },
 };

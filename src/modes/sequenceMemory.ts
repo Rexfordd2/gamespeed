@@ -55,6 +55,7 @@ export const generateSequenceTargets = ({
       createdAt: currentTime,
       duration: targetLifespan,
       lifespan: targetLifespan,
+      stimulusVariant: i % 2 === 0 ? 'contrast' : 'standard',
     });
   }
 

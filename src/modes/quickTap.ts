@@ -32,6 +32,7 @@ export const generateTargets = ({
       createdAt: now,
       duration: targetLifespan,
       lifespan: targetLifespan,
+      stimulusVariant: Math.random() > 0.75 ? 'contrast' : 'standard',
     },
   ];
 };

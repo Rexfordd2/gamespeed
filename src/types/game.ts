@@ -2,13 +2,24 @@ import type { SportType } from '../config/sports';
 
 export type GameState = 'start' | 'playing' | 'end' | 'stats' | 'coach';
 
+export type CueIntensity = 'minimal' | 'standard' | 'guided';
+
+export interface SessionOptions {
+  lowStimulus?: boolean;
+  includeRoutine?: boolean;
+  cueIntensity?: CueIntensity;
+  hapticsEnabled?: boolean;
+}
+
 export type GameModeType =
   | 'reactionBenchmark'
   | 'quickTap'
   | 'multiTarget'
   | 'swipeStrike'
   | 'holdTrack'
-  | 'sequenceMemory';
+  | 'sequenceMemory'
+  | 'peripheralPulse'
+  | 'calmFocus';
 
 export type ModeAvailability = 'playable' | 'comingSoon';
 
@@ -51,6 +62,7 @@ export interface Target {
     requiredMs: number;
     breakRadiusPx: number;
   };
+  stimulusVariant?: 'standard' | 'contrast' | 'peripheral' | 'calm';
 }
 
 export interface GenerateTargetsParams {
@@ -146,11 +158,15 @@ export interface ReadinessMetrics {
     average: number | null;
     median: number | null;
   };
+  reactionVariabilityMs: number | null;
   decisionAccuracyPct: number;
   missRatePct: number;
   lateDecisionRatePct: number;
   streakQualityPct: number;
   consistencyPct: number;
+  handEyeCoordinationPct: number;
+  visualFocusPct: number;
+  neuralReadinessBand: 'recovery' | 'build' | 'prime' | 'elite';
   readinessScore: number;
   runwayCompletionsCount: number;
   sleepCheckInCorrelation: 'pending' | 'insufficient_data' | 'available';

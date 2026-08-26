@@ -1,0 +1,459 @@
+{
+  "version": 1,
+  "naming": {
+    "idPattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+    "fileNamePattern": "^[a-z0-9]+(?:-[a-z0-9]+)*\\.(svg|png|webp|mp3|wav|ogg)$"
+  },
+  "sports": [
+    "soccer",
+    "football",
+    "volleyball",
+    "boxing",
+    "baseball_softball",
+    "racquet",
+    "basketball"
+  ],
+  "modes": [
+    "reactionBenchmark",
+    "quickTap",
+    "multiTarget",
+    "swipeStrike",
+    "holdTrack",
+    "sequenceMemory",
+    "peripheralPulse",
+    "calmFocus"
+  ],
+  "groups": {
+    "sportIcons": [
+      {
+        "id": "soccer",
+        "file": "sport-icons/soccer.svg",
+        "fallbackFile": "icons/target-primate.svg",
+        "required": false,
+        "dimensions": "256x256"
+      },
+      {
+        "id": "football",
+        "file": "sport-icons/football.svg",
+        "fallbackFile": "icons/target-primate.svg",
+        "required": false,
+        "dimensions": "256x256"
+      },
+      {
+        "id": "volleyball",
+        "file": "sport-icons/volleyball.svg",
+        "fallbackFile": "icons/target-primate.svg",
+        "required": false,
+        "dimensions": "256x256"
+      },
+      {
+        "id": "boxing",
+        "file": "sport-icons/boxing.svg",
+        "fallbackFile": "icons/target-primate.svg",
+        "required": false,
+        "dimensions": "256x256"
+      },
+      {
+        "id": "baseball-softball",
+        "file": "sport-icons/baseball-softball.svg",
+        "fallbackFile": "icons/target-primate.svg",
+        "required": false,
+        "dimensions": "256x256"
+      },
+      {
+        "id": "racquet",
+        "file": "sport-icons/racquet.svg",
+        "fallbackFile": "icons/target-primate.svg",
+        "required": false,
+        "dimensions": "256x256"
+      },
+      {
+        "id": "basketball",
+        "file": "sport-icons/basketball.svg",
+        "fallbackFile": "icons/target-primate.svg",
+        "required": false,
+        "dimensions": "256x256"
+      }
+    ],
+    "modeIcons": [
+      {
+        "id": "reaction-benchmark",
+        "file": "mode-icons/reaction-benchmark.svg",
+        "fallbackGlyph": "⏱",
+        "required": false,
+        "dimensions": "256x256"
+      },
+      {
+        "id": "quick-tap",
+        "file": "mode-icons/quick-tap.svg",
+        "fallbackGlyph": "⚡",
+        "required": false,
+        "dimensions": "256x256"
+      },
+      {
+        "id": "multi-target",
+        "file": "mode-icons/multi-target.svg",
+        "fallbackGlyph": "◎",
+        "required": false,
+        "dimensions": "256x256"
+      },
+      {
+        "id": "swipe-strike",
+        "file": "mode-icons/swipe-strike.svg",
+        "fallbackGlyph": "↔",
+        "required": false,
+        "dimensions": "256x256"
+      },
+      {
+        "id": "hold-track",
+        "file": "mode-icons/hold-track.svg",
+        "fallbackGlyph": "◉",
+        "required": false,
+        "dimensions": "256x256"
+      },
+      {
+        "id": "sequence-memory",
+        "file": "mode-icons/sequence-memory.svg",
+        "fallbackGlyph": "⋯",
+        "required": false,
+        "dimensions": "256x256"
+      },
+      {
+        "id": "peripheral-pulse",
+        "file": "mode-icons/peripheral-pulse.svg",
+        "fallbackGlyph": "◌",
+        "required": false,
+        "dimensions": "256x256"
+      },
+      {
+        "id": "calm-focus",
+        "file": "mode-icons/calm-focus.svg",
+        "fallbackGlyph": "☯",
+        "required": false,
+        "dimensions": "256x256"
+      }
+    ],
+    "targetSkins": [
+      {
+        "id": "soccer-default",
+        "file": "target-skins/soccer-default.svg",
+        "fallbackFile": "icons/target-primate.svg",
+        "required": false,
+        "dimensions": "256x256"
+      },
+      {
+        "id": "football-default",
+        "file": "target-skins/football-default.svg",
+        "fallbackFile": "icons/target-primate.svg",
+        "required": false,
+        "dimensions": "256x256"
+      },
+      {
+        "id": "volleyball-default",
+        "file": "target-skins/volleyball-default.svg",
+        "fallbackFile": "icons/target-primate.svg",
+        "required": false,
+        "dimensions": "256x256"
+      },
+      {
+        "id": "boxing-default",
+        "file": "target-skins/boxing-default.svg",
+        "fallbackFile": "icons/target-primate.svg",
+        "required": false,
+        "dimensions": "256x256"
+      },
+      {
+        "id": "baseball-softball-default",
+        "file": "target-skins/baseball-softball-default.svg",
+        "fallbackFile": "icons/target-primate.svg",
+        "required": false,
+        "dimensions": "256x256"
+      },
+      {
+        "id": "racquet-default",
+        "file": "target-skins/racquet-default.svg",
+        "fallbackFile": "icons/target-primate.svg",
+        "required": false,
+        "dimensions": "256x256"
+      },
+      {
+        "id": "basketball-default",
+        "file": "target-skins/basketball-default.svg",
+        "fallbackFile": "icons/target-primate.svg",
+        "required": false,
+        "dimensions": "256x256"
+      }
+    ],
+    "hudBadges": [
+      {
+        "id": "benchmark-protocol",
+        "file": "hud-badges/benchmark-protocol.svg",
+        "required": false,
+        "dimensions": "128x40"
+      },
+      {
+        "id": "drill-protocol",
+        "file": "hud-badges/drill-protocol.svg",
+        "required": false,
+        "dimensions": "128x40"
+      },
+      {
+        "id": "score",
+        "file": "hud-badges/score.svg",
+        "required": false,
+        "dimensions": "128x40"
+      },
+      {
+        "id": "streak",
+        "file": "hud-badges/streak.svg",
+        "required": false,
+        "dimensions": "128x40"
+      }
+    ],
+    "audioCues": [
+      {
+        "id": "background-loop",
+        "channel": "music",
+        "cueKey": "backgroundLoop",
+        "file": "audio-cues/music/background-loop.mp3",
+        "fallbackFile": "audio/music/rainforest-loop.mp3",
+        "required": false,
+        "durationMs": "75000-120000"
+      },
+      {
+        "id": "target-hit",
+        "channel": "gameplay",
+        "cueKey": "hit",
+        "file": "audio-cues/gameplay/target-hit.mp3",
+        "fallbackFile": "audio/effects/target-hit.mp3",
+        "required": false,
+        "durationMs": "<180"
+      },
+      {
+        "id": "target-miss",
+        "channel": "gameplay",
+        "cueKey": "miss",
+        "file": "audio-cues/gameplay/target-miss.mp3",
+        "fallbackFile": "audio/effects/target-miss.mp3",
+        "required": false,
+        "durationMs": "<220"
+      },
+      {
+        "id": "round-complete",
+        "channel": "gameplay",
+        "cueKey": "success",
+        "file": "audio-cues/gameplay/round-complete.mp3",
+        "fallbackFile": "audio/effects/round-complete.mp3",
+        "required": false,
+        "durationMs": "<420"
+      },
+      {
+        "id": "swipe-left",
+        "channel": "mode",
+        "cueKey": "swipe-left",
+        "file": "audio-cues/mode/swipe-left.mp3",
+        "fallbackFile": "audio/effects/target-hit.mp3",
+        "required": false
+      },
+      {
+        "id": "swipe-right",
+        "channel": "mode",
+        "cueKey": "swipe-right",
+        "file": "audio-cues/mode/swipe-right.mp3",
+        "fallbackFile": "audio/effects/target-hit.mp3",
+        "required": false
+      },
+      {
+        "id": "swipe-up",
+        "channel": "mode",
+        "cueKey": "swipe-up",
+        "file": "audio-cues/mode/swipe-up.mp3",
+        "fallbackFile": "audio/effects/target-hit.mp3",
+        "required": false
+      },
+      {
+        "id": "swipe-down",
+        "channel": "mode",
+        "cueKey": "swipe-down",
+        "file": "audio-cues/mode/swipe-down.mp3",
+        "fallbackFile": "audio/effects/target-hit.mp3",
+        "required": false
+      },
+      {
+        "id": "hold-lock",
+        "channel": "mode",
+        "cueKey": "hold-lock",
+        "file": "audio-cues/mode/hold-lock.mp3",
+        "fallbackFile": "audio/effects/target-hit.mp3",
+        "required": false
+      },
+      {
+        "id": "sequence-preview",
+        "channel": "mode",
+        "cueKey": "sequence-preview",
+        "file": "audio-cues/mode/sequence-preview.mp3",
+        "fallbackFile": "audio/effects/target-hit.mp3",
+        "required": false
+      },
+      {
+        "id": "sequence-input",
+        "channel": "mode",
+        "cueKey": "sequence-input",
+        "file": "audio-cues/mode/sequence-input.mp3",
+        "fallbackFile": "audio/effects/target-hit.mp3",
+        "required": false
+      },
+      {
+        "id": "sequence-success",
+        "channel": "mode",
+        "cueKey": "sequence-success",
+        "file": "audio-cues/mode/sequence-success.mp3",
+        "fallbackFile": "audio/effects/round-complete.mp3",
+        "required": false
+      },
+      {
+        "id": "sequence-fail",
+        "channel": "mode",
+        "cueKey": "sequence-fail",
+        "file": "audio-cues/mode/sequence-fail.mp3",
+        "fallbackFile": "audio/effects/target-miss.mp3",
+        "required": false
+      }
+    ],
+    "sharedVisuals": [
+      {
+        "id": "target-primate",
+        "file": "icons/target-primate.svg",
+        "required": true,
+        "dimensions": "256x256"
+      },
+      {
+        "id": "canopy-top",
+        "file": "backgrounds/overlays/canopy-top.svg",
+        "required": true,
+        "dimensions": "1920x256"
+      },
+      {
+        "id": "canopy-left",
+        "file": "backgrounds/overlays/canopy-left.svg",
+        "required": true,
+        "dimensions": "256x1920"
+      },
+      {
+        "id": "canopy-right",
+        "file": "backgrounds/overlays/canopy-right.svg",
+        "required": true,
+        "dimensions": "256x1920"
+      },
+      {
+        "id": "canopy-bottom",
+        "file": "backgrounds/overlays/canopy-bottom.svg",
+        "required": true,
+        "dimensions": "1920x256"
+      },
+      {
+        "id": "hud-vignette",
+        "file": "ui/hud-vignette.svg",
+        "required": true,
+        "dimensions": "1920x1080"
+      },
+      {
+        "id": "stimulus-contrast",
+        "file": "target-skins/stimulus-contrast.svg",
+        "required": false,
+        "dimensions": "256x256"
+      },
+      {
+        "id": "stimulus-peripheral",
+        "file": "target-skins/stimulus-peripheral.svg",
+        "required": false,
+        "dimensions": "256x256"
+      },
+      {
+        "id": "stimulus-calm",
+        "file": "target-skins/stimulus-calm.svg",
+        "required": false,
+        "dimensions": "256x256"
+      }
+    ]
+  },
+  "references": {
+    "sportToSportIcon": {
+      "soccer": "soccer",
+      "football": "football",
+      "volleyball": "volleyball",
+      "boxing": "boxing",
+      "baseball_softball": "baseball-softball",
+      "racquet": "racquet",
+      "basketball": "basketball"
+    },
+    "sportToTargetSkin": {
+      "soccer": "soccer-default",
+      "football": "football-default",
+      "volleyball": "volleyball-default",
+      "boxing": "boxing-default",
+      "baseball_softball": "baseball-softball-default",
+      "racquet": "racquet-default",
+      "basketball": "basketball-default"
+    },
+    "modeToModeIcon": {
+      "reactionBenchmark": "reaction-benchmark",
+      "quickTap": "quick-tap",
+      "multiTarget": "multi-target",
+      "swipeStrike": "swipe-strike",
+      "holdTrack": "hold-track",
+      "sequenceMemory": "sequence-memory",
+      "peripheralPulse": "peripheral-pulse",
+      "calmFocus": "calm-focus"
+    },
+    "modeToAudioCues": {
+      "reactionBenchmark": [],
+      "quickTap": [],
+      "multiTarget": [],
+      "swipeStrike": [
+        "mode:swipe-left",
+        "mode:swipe-right",
+        "mode:swipe-up",
+        "mode:swipe-down"
+      ],
+      "holdTrack": [
+        "mode:hold-lock"
+      ],
+      "sequenceMemory": [
+        "mode:sequence-preview",
+        "mode:sequence-input",
+        "mode:sequence-success",
+        "mode:sequence-fail"
+      ],
+      "peripheralPulse": [],
+      "calmFocus": []
+    }
+  },
+  "supportedFormats": {
+    "sportIcons": [
+      "svg",
+      "png",
+      "webp"
+    ],
+    "modeIcons": [
+      "svg",
+      "png",
+      "webp"
+    ],
+    "targetSkins": [
+      "svg",
+      "png",
+      "webp"
+    ],
+    "hudBadges": [
+      "svg",
+      "png",
+      "webp"
+    ],
+    "audioCues": [
+      "mp3",
+      "wav",
+      "ogg"
+    ]
+  }
+}

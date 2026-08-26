@@ -1,31 +1,29 @@
 import { promises as fs } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
+import { validateAssetMap } from './assetValidationCore.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const assetsRoot = join(__dirname, '../public/assets');
+const assetMapPath = join(assetsRoot, 'asset-map.json');
 
 const expectedDirectories = [
+  'sport-icons',
+  'mode-icons',
+  'target-skins',
+  'hud-badges',
+  'audio-cues/music',
+  'audio-cues/gameplay',
+  'audio-cues/training',
+  'audio-cues/mode',
+  'audio-cues/ui',
   'icons',
   'backgrounds/overlays',
   'audio/music',
   'audio/effects',
   'ui',
-];
-
-const expectedFiles = [
-  'icons/target-primate.svg',
-  'backgrounds/overlays/canopy-top.svg',
-  'backgrounds/overlays/canopy-left.svg',
-  'backgrounds/overlays/canopy-right.svg',
-  'backgrounds/overlays/canopy-bottom.svg',
-  'ui/hud-vignette.svg',
-  'audio/music/rainforest-loop.mp3',
-  'audio/effects/target-hit.mp3',
-  'audio/effects/target-miss.mp3',
-  'audio/effects/round-complete.mp3',
 ];
 
 const ensureDirectories = async () => {
@@ -35,27 +33,40 @@ const ensureDirectories = async () => {
   }
 };
 
-const pathExists = async (pathToCheck) => {
-  try {
-    await fs.access(pathToCheck);
-    return true;
-  } catch {
-    return false;
-  }
+const readJson = async path => JSON.parse(await fs.readFile(path, 'utf8'));
+
+const listFilesRecursive = async root => {
+  const files = [];
+  const walk = async currentPath => {
+    const entries = await fs.readdir(currentPath, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = join(currentPath, entry.name);
+      if (entry.isDirectory()) {
+        await walk(fullPath);
+      } else {
+        files.push(fullPath.slice(root.length + 1).replace(/\\/g, '/'));
+      }
+    }
+  };
+  await walk(root);
+  return files;
 };
 
 const main = async () => {
   await ensureDirectories();
+  const assetMap = await readJson(assetMapPath);
+  const existingFiles = new Set(await listFilesRecursive(assetsRoot));
+  const validation = validateAssetMap({ assetMap, existingFiles });
 
-  console.log('GameSpeed asset scaffold check');
+  console.log('GameSpeed asset scaffold + validation');
   console.log(`Assets root: ${assetsRoot}`);
   console.log('');
-
-  for (const relativePath of expectedFiles) {
-    const fullPath = join(assetsRoot, relativePath);
-    const exists = await pathExists(fullPath);
-    const status = exists ? 'OK' : 'MISSING';
-    console.log(`[${status}] ${relativePath}`);
+  console.log(`Directories ensured: ${expectedDirectories.length}`);
+  console.log(`Validation errors: ${validation.errors.length}`);
+  console.log(`Validation warnings: ${validation.warnings.length}`);
+  if (validation.errors.length) {
+    console.log('');
+    validation.errors.forEach(error => console.log(`- ${error}`));
   }
 };
 

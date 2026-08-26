@@ -48,6 +48,7 @@ export const generateTargets = ({
       createdAt: now,
       duration: targetLifespan,
       lifespan: targetLifespan,
+      stimulusVariant: i % 2 === 0 ? 'contrast' : 'peripheral',
     });
   }
 
