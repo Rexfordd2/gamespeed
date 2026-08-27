@@ -52,7 +52,7 @@ export const ChameleonReadBoard = ({
               : round.feedback === 'premature'
                 ? 'Wait for the question.'
                 : asking
-                  ? item?.question ?? 'Answer from what you just saw.'
+                  ? 'Answer from what you just saw.'
                   : 'Adapt before the picture changes.';
 
   const ariaLabel = encoding
