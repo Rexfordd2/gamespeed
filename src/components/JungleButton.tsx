@@ -22,7 +22,7 @@ export const JungleButton: React.FC<JungleButtonProps> = ({
   const { theme } = useTheme();
   const background = disabled
     ? `${theme.targetColor}66`
-    : `linear-gradient(135deg, ${theme.targetColor}, #a3e635)`;
+    : `linear-gradient(135deg, ${theme.targetColor}, #96FF66)`;
 
   return (
     <motion.button
@@ -31,7 +31,7 @@ export const JungleButton: React.FC<JungleButtonProps> = ({
       className={`px-6 py-3 rounded-xl font-semibold tracking-[0.01em] relative overflow-hidden ${className}`}
       style={{
         background,
-        color: '#102013',
+        color: '#06120F',
         cursor: disabled ? 'not-allowed' : 'pointer',
         boxShadow: disabled ? 'none' : `0 10px 24px ${theme.targetColor}45`,
       }}

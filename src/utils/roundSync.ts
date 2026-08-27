@@ -15,9 +15,11 @@ export const createClientRoundId = (): string => {
   return `round_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 };
 
-export const syncRoundToCloud = async ({ userId, round }: SyncRoundParams): Promise<void> => {
+export type CloudSyncResult = 'skipped' | 'synced' | 'failed';
+
+export const syncRoundToCloud = async ({ userId, round }: SyncRoundParams): Promise<CloudSyncResult> => {
   if (!isSupabaseConfigured || !supabase || !round.clientRoundId) {
-    return;
+    return 'skipped';
   }
 
   const { error } = await supabase.from('user_rounds').insert({
@@ -37,5 +39,8 @@ export const syncRoundToCloud = async ({ userId, round }: SyncRoundParams): Prom
   // Duplicate key means this round already synced; treat as success.
   if (error && error.code !== DUPLICATE_KEY_ERROR_CODE) {
     console.error('Failed to sync round to cloud:', error.message);
+    return 'failed';
   }
+
+  return 'synced';
 };

@@ -155,6 +155,8 @@ export const App = () => {
   });
   const [totalRoundsCompleted, setTotalRoundsCompleted] = useState<number>(statsSnapshot.rounds.length);
   const [roundProgressDelta, setRoundProgressDelta] = useState<RoundProgressDelta | null>(null);
+  const [cloudSyncStatus, setCloudSyncStatus] = useState<'idle' | 'synced' | 'failed'>('idle');
+  const [screenTransitionKey, setScreenTransitionKey] = useState(0);
   const [gameResult, setGameResult] = useState<GameResult>({
     score: 0,
     misses: 0,
@@ -215,6 +217,8 @@ export const App = () => {
     setSelectedMode(resolvePlayableMode(startMode));
     setActiveSessionOptions(nextSessionOptions);
     setFirstRunSelection(nextFirstRunSelection ?? null);
+    setCloudSyncStatus('idle');
+    setScreenTransitionKey(key => key + 1);
     setGameState('playing');
   };
 
@@ -233,6 +237,7 @@ export const App = () => {
     setLastRoundSelection(firstRunSelection);
     setTotalRoundsCompleted(nextStats.rounds.length);
     setShowPostFirstSessionChecklist(isFirstCompletedSession);
+    setScreenTransitionKey(key => key + 1);
     setGameState('end');
     setFirstRunSelection(null);
 
@@ -280,17 +285,29 @@ export const App = () => {
       void syncRoundToCloud({
         userId: user.id,
         round: storedRound,
+      }).then(result => {
+        if (result === 'failed') {
+          setCloudSyncStatus('failed');
+        } else if (result === 'synced') {
+          setCloudSyncStatus('synced');
+        }
       });
+    } else {
+      setCloudSyncStatus('idle');
     }
   };
 
   const handlePlayAgain = () => {
     setShowPostFirstSessionChecklist(false);
+    setCloudSyncStatus('idle');
+    setScreenTransitionKey(key => key + 1);
     setGameState('playing');
   };
 
   const handleMainMenu = () => {
     setShowPostFirstSessionChecklist(false);
+    setCloudSyncStatus('idle');
+    setScreenTransitionKey(key => key + 1);
     setActiveSessionOptions({
       lowStimulus: false,
       includeRoutine: false,
@@ -482,6 +499,7 @@ export const App = () => {
     <ThemeProvider theme={jungleTheme}>
       <AudioManager>
         <AudioToggle />
+        <div key={screenTransitionKey} className="screen-mist-sweep">
         {gameState === 'start' && (
           <>
             {publicRoute === 'benchmark' ? (
@@ -546,6 +564,7 @@ export const App = () => {
             stats={statsSnapshot}
             roundProgressDelta={roundProgressDelta}
             playerName={profile?.display_name || user?.email?.split('@')[0] || 'You'}
+            cloudSyncStatus={cloudSyncStatus}
           />
         )}
         {gameState === 'stats' && (
@@ -556,6 +575,7 @@ export const App = () => {
           />
         )}
         {gameState === 'coach' && <CoachMode onBack={handleMainMenu} />}
+        </div>
       </AudioManager>
     </ThemeProvider>
   );

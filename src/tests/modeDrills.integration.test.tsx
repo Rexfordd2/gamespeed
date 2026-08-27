@@ -82,7 +82,7 @@ const getModeStartButton = (modeName: string) => {
     cursor = cursor.parentElement;
   }
   const modeButton = cursor
-    ? within(cursor).queryByRole('button', { name: /start (today'?s session|readiness drill)/i })
+    ? within(cursor).queryByRole('button', { name: /^(train|begin benchmark)$/i })
     : null;
   if (!modeButton) throw new Error(`Could not find start button for ${modeName}`);
   return modeButton;
@@ -91,6 +91,9 @@ const getModeStartButton = (modeName: string) => {
 const startMode = async (modeName: string) => {
   fireEvent.click(getModeStartButton(modeName));
   await flushMicrotasks();
+  await act(async () => {
+    vi.advanceTimersByTime(900);
+  });
   expect(screen.getByRole('button', { name: /pause game/i })).toBeInTheDocument();
 };
 
@@ -112,6 +115,19 @@ describe('mode drills integration', () => {
     vi.useFakeTimers();
     vi.stubGlobal('Audio', MockAudio as unknown as typeof Audio);
     vi.stubGlobal('confirm', vi.fn(() => true));
+    localStorage.setItem(
+      'gamespeed_instinct_intro_seen_v1',
+      JSON.stringify({
+        reactionBenchmark: true,
+        quickTap: true,
+        multiTarget: true,
+        swipeStrike: true,
+        holdTrack: true,
+        sequenceMemory: true,
+        peripheralPulse: true,
+        calmFocus: true,
+      }),
+    );
   });
 
   afterEach(() => {
@@ -121,7 +137,7 @@ describe('mode drills integration', () => {
 
   it('Swipe Strike registers an early swipe as a fail', async () => {
     renderApp();
-    await startMode('Swipe Strike');
+    await startMode('Jaguar Claw');
     await advance(140);
 
     const earlyTarget = screen.getByRole('button', { name: /swipe target/i });
@@ -138,7 +154,7 @@ describe('mode drills integration', () => {
 
   it('Swipe Strike treats wrong-direction swipes as misses', async () => {
     renderApp();
-    await startMode('Swipe Strike');
+    await startMode('Jaguar Claw');
     await advance(620);
 
     const target = screen.getByRole('button', { name: /swipe target/i });
@@ -162,7 +178,7 @@ describe('mode drills integration', () => {
 
   it('Hold Track scores sustained holds', async () => {
     renderApp();
-    await startMode('Hold Track');
+    await startMode('Anaconda Lock');
     await advance(400);
 
     const successTarget = screen.getByRole('button', { name: 'Hold target' });
@@ -177,7 +193,7 @@ describe('mode drills integration', () => {
 
   it('Hold Track resets streak when contact breaks', async () => {
     renderApp();
-    await startMode('Hold Track');
+    await startMode('Anaconda Lock');
     await advance(450);
 
     const failTarget = screen.getByRole('button', { name: 'Hold target' });
@@ -189,7 +205,7 @@ describe('mode drills integration', () => {
 
   it('Sequence Memory handles spawn, ordered input, fail path, and pause safety', async () => {
     renderApp();
-    await startMode('Sequence Memory');
+    await startMode('Capuchin Code');
     await advance(180);
 
     const previewTargets = screen.getAllByRole('button', { name: 'Sequence target' });

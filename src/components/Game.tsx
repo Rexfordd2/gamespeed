@@ -23,12 +23,16 @@ import { deriveReadinessMetrics } from '../utils/readinessMetrics';
 import { GameHeader } from './GameHeader';
 import { Target } from './Target';
 import { JungleButton } from './JungleButton';
+import { JungleBackground } from './JungleBackground';
+import { InstinctIntro } from './InstinctIntro';
 import { SportModeCueKey, getSportPackAssets } from '../config/sportPacks';
 import { GameplayCueOverlay } from './GameplayCueOverlay';
 import { GameplayCueType, getGameplayCueSet, isCueTimingVisible } from '../utils/gameplayCues';
 import { getModeManifest, resolveModeRoundSeconds } from '../config/modeManifest';
+import { getAnimalInstinct, getInstinctIdentityCue } from '../config/animalInstincts';
+import { hasSeenModeIntro, markModeIntroSeen, motionDurations } from '../config/motion';
 import { triggerHapticCue } from '../utils/haptics';
-import { resolveSharedVisualPath } from '../config/assetRegistry';
+import { resolveInstinctTargetPath, resolveSharedVisualPath } from '../config/assetRegistry';
 
 interface GameProps {
   mode?: GameModeType;
@@ -82,6 +86,7 @@ type OverlayCueEvent = {
   text: string;
   type: GameplayCueType;
 } | null;
+type InstinctIntroPhase = 'silhouette' | 'title' | 'wait' | 'pulse' | 'go' | null;
 
 export const Game = ({
   mode = 'quickTap',
@@ -95,6 +100,7 @@ export const Game = ({
 }: GameProps) => {
   const activeMode = resolvePlayableMode(mode);
   const modeManifest = getModeManifest(activeMode);
+  const instinct = getAnimalInstinct(activeMode);
   const isSwipeMode = modeManifest.gameplayMechanicType === 'swipe';
   const isHoldMode = modeManifest.gameplayMechanicType === 'hold';
   const isSequenceMode = modeManifest.targetRendererKey === 'sequenceTargets';
@@ -109,6 +115,7 @@ export const Game = ({
   const { playEffect, playCue, startBackgroundMusic, stopBackgroundMusic } = useAudio();
   const sportPack = getSportPack(selectedSport);
   const sportAssets = getSportPackAssets(sportPack);
+  const instinctTargetPath = resolveInstinctTargetPath(activeMode);
   const stimulusIconByVariant = {
     standard: sportAssets.targetIcon,
     contrast: resolveSharedVisualPath('stimulus-contrast', 'icons/target-primate.svg'),
@@ -142,6 +149,10 @@ export const Game = ({
     lowStimulusMode && includeBreathingRoutine ? 'breathing' : null,
   );
   const [routineSecondsLeft, setRoutineSecondsLeft] = useState(LOW_STIM_ROUTINE_PHASE_SECONDS);
+  const [introPhase, setIntroPhase] = useState<InstinctIntroPhase>(
+    lowStimulusMode && includeBreathingRoutine ? null : 'silhouette',
+  );
+  const [introPulseCount, setIntroPulseCount] = useState(0);
   const [, setBestStreak] = useState(0);
   const screenSizeRef = useRef({
     width: window.innerWidth,
@@ -186,6 +197,8 @@ export const Game = ({
   const swipeFeedbackTimeoutRef = useRef<number | null>(null);
   const lastMissFeedbackAtRef = useRef(0);
   const isRoutineActive = routineStep !== null;
+  const isIntroActive = introPhase !== null;
+  const isPrePlayActive = isRoutineActive || isIntroActive;
   const sequenceCueLabelsRef = useRef<string[]>([]);
   const cueEventCounterRef = useRef(0);
   const phaseCueTimeoutRef = useRef<number | null>(null);
@@ -194,7 +207,7 @@ export const Game = ({
   const prevMissesRef = useRef(0);
   const prevPhaseCueKeyRef = useRef('');
   const fireHaptic = useCallback(
-    (cue: 'hit' | 'miss' | 'streak' | 'start' | 'complete') => {
+    (cue: 'hit' | 'miss' | 'streak' | 'start' | 'complete' | 'holdLock' | 'sequenceSuccess' | 'benchmarkComplete') => {
       triggerHapticCue(cue, { enabled: hapticsEnabled, lowStimulus: lowStimulusMode });
     },
     [hapticsEnabled, lowStimulusMode],
@@ -408,10 +421,8 @@ export const Game = ({
       gameOverFiredRef.current = true;
       if (trigger === 'timeout') {
         playEffect('success');
-        fireHaptic('complete');
+        fireHaptic(activeMode === 'reactionBenchmark' ? 'benchmarkComplete' : 'complete');
       }
-
-      const gameMode = gameModes[activeMode];
 
       let medianReactionTimeMs: number | undefined;
       let benchmarkScore: number | undefined;
@@ -456,7 +467,7 @@ export const Game = ({
         misses: missesRef.current,
         bestStreak: bestStreakRef.current,
         mode: activeMode,
-        modeName: gameMode.name,
+        modeName: instinct.experienceName,
         sport: selectedSport,
         totalAttempts: attemptsRef.current,
         lateDecisions: lateDecisionsRef.current,
@@ -468,7 +479,7 @@ export const Game = ({
         readinessMetrics,
       });
     },
-    [activeMode, fireHaptic, onGameOver, playEffect, selectedSport],
+    [activeMode, fireHaptic, instinct.experienceName, onGameOver, playEffect, selectedSport],
   );
 
   useEffect(() => {
@@ -537,6 +548,8 @@ export const Game = ({
     setStreakCueEvent(null);
     setRoutineStep(lowStimulusMode && includeBreathingRoutine ? 'breathing' : null);
     setRoutineSecondsLeft(LOW_STIM_ROUTINE_PHASE_SECONDS);
+    setIntroPhase(lowStimulusMode && includeBreathingRoutine ? null : 'silhouette');
+    setIntroPulseCount(0);
     fireHaptic('start');
   }, [activeMode, clearHoldTrackingState, fireHaptic, includeBreathingRoutine, lowStimulusMode]);
 
@@ -555,7 +568,8 @@ export const Game = ({
           return LOW_STIM_ROUTINE_PHASE_SECONDS;
         }
         setRoutineStep(null);
-        roundEndsAtRef.current = Date.now() + remainingMsRef.current;
+        setIntroPhase('silhouette');
+        setIntroPulseCount(0);
         return 0;
       });
     }, 1000);
@@ -564,12 +578,78 @@ export const Game = ({
   }, [isRoutineActive, routineStep]);
 
   useEffect(() => {
+    if (isRoutineActive || !isIntroActive) {
+      return;
+    }
+
+    const seen = hasSeenModeIntro(activeMode);
+    const guided = cueIntensity === 'guided';
+    const useShortIntro = seen && !guided;
+    let cancelled = false;
+    const timers: number[] = [];
+
+    const finishIntro = () => {
+      if (cancelled) return;
+      setIntroPhase(null);
+      setIntroPulseCount(0);
+      markModeIntroSeen(activeMode);
+      roundEndsAtRef.current = Date.now() + remainingMsRef.current;
+      nextSpawnAtRef.current = Date.now();
+    };
+
+    playCue('mode', getInstinctIdentityCue(activeMode));
+
+    if (useShortIntro) {
+      setIntroPhase('go');
+      timers.push(window.setTimeout(finishIntro, motionDurations.introSkipMs));
+      return () => {
+        cancelled = true;
+        timers.forEach(id => window.clearTimeout(id));
+      };
+    }
+
+    const schedule = [
+      { phase: 'silhouette' as const, at: 0 },
+      { phase: 'title' as const, at: 700 },
+      { phase: 'wait' as const, at: 1400 },
+      { phase: 'pulse' as const, at: 2000, pulse: 1 },
+      { phase: 'pulse' as const, at: 2400, pulse: 2 },
+      { phase: 'pulse' as const, at: 2800, pulse: 3 },
+      { phase: 'go' as const, at: 3100 },
+    ];
+
+    schedule.forEach(step => {
+      timers.push(
+        window.setTimeout(() => {
+          if (cancelled) return;
+          setIntroPhase(step.phase);
+          if (step.pulse) setIntroPulseCount(step.pulse);
+        }, step.at),
+      );
+    });
+    timers.push(window.setTimeout(finishIntro, motionDurations.introFullMs));
+
+    return () => {
+      cancelled = true;
+      timers.forEach(id => window.clearTimeout(id));
+    };
+  }, [activeMode, cueIntensity, isIntroActive, isRoutineActive, playCue]);
+
+  const skipIntro = useCallback(() => {
+    setIntroPhase(null);
+    setIntroPulseCount(0);
+    markModeIntroSeen(activeMode);
+    roundEndsAtRef.current = Date.now() + remainingMsRef.current;
+    nextSpawnAtRef.current = Date.now();
+  }, [activeMode]);
+
+  useEffect(() => {
     const gameMode = gameModes[activeMode];
     const interval = window.setInterval(() => {
       if (gameOverFiredRef.current || isPausedRef.current) {
         return;
       }
-      if (isRoutineActive) {
+      if (isPrePlayActive) {
         return;
       }
 
@@ -756,7 +836,8 @@ export const Game = ({
                   setBestStreak(bestStreakRef.current);
                 }
                 playEffect('hit');
-                fireHaptic('hit');
+                fireHaptic('holdLock');
+                playCue('mode', resolveModeCue(holdStartCue));
                 const completedTargetId = trackedTarget.id;
                 setTargets(prev => {
                   const next = prev.filter(target => target.id !== completedTargetId);
@@ -799,6 +880,7 @@ export const Game = ({
     isHoldMode,
     isSequenceMode,
     isSwipeMode,
+    holdStartCue,
     modeAudioHooks.onSwipeSpawnByDirection,
     fireHaptic,
     keepTargetsInPlayfield,
@@ -813,7 +895,7 @@ export const Game = ({
     updateSequencePreviewStep,
     updateHoldTargetsForTime,
     updateSwipeTargetsForTime,
-    isRoutineActive,
+    isPrePlayActive,
     triggerMissFeedback,
   ]);
 
@@ -997,6 +1079,7 @@ export const Game = ({
           sequenceSuccessesRef.current += 1;
           updateSequenceFeedback('success');
           updateSequencePhase('feedback');
+          fireHaptic('sequenceSuccess');
           playCue('mode', resolveModeCue(sequencePhaseCues?.success ?? 'sequence-success'));
           const successFeedbackMs = scaleMsByStreak(
             SEQUENCE_SUCCESS_FEEDBACK_MS,
@@ -1336,12 +1419,22 @@ export const Game = ({
       className={`game-container relative w-full overflow-hidden ${lowStimulusMode ? 'game-low-stimulus' : ''}`}
       style={{ backgroundColor: theme.backgroundColor, height: '100dvh' }}
     >
+      <JungleBackground
+        variant={instinct.arena}
+        intensity={lowStimulusMode ? 'low' : streak >= 8 ? 'high' : 'medium'}
+        mist={!lowStimulusMode}
+        rain={instinct.arena === 'riverbank' && !lowStimulusMode}
+        particles={!lowStimulusMode}
+        animalEyes={!lowStimulusMode}
+        performanceTier={streak >= 8 ? 'combo' : misses > score ? 'miss' : 'neutral'}
+      />
       <GameHeader
         score={score}
         streak={streak}
         timeLeft={timeLeft}
         totalTime={ROUND_SECONDS}
-        modeName={gameMode.name}
+        modeName={instinct.experienceName}
+        abilityLabel={instinct.ability}
         onPause={togglePause}
         onMainMenu={handleQuit}
         isPaused={isPaused}
@@ -1540,6 +1633,8 @@ export const Game = ({
                 }
                 targetIconPath={stimulusIconByVariant[target.stimulusVariant ?? 'standard']}
                 targetIconFallbackPath={sportAssets.targetIconFallback}
+                chromeIconPath={instinctTargetPath}
+                targetStyle={instinct.targetStyle}
                 onActivate={() => handleTargetClick(target.id)}
                 onSwipeAttemptFail={() => handleSwipeAttemptFail(target.id)}
                 holdVisualState={holdVisualByTarget[target.id]}
@@ -1549,6 +1644,16 @@ export const Game = ({
               />
             ))}
       </div>
+
+      {isIntroActive && (
+        <InstinctIntro
+          mode={activeMode}
+          phase={introPhase}
+          pulseCount={introPulseCount}
+          canSkip={hasSeenModeIntro(activeMode) || cueIntensity !== 'guided'}
+          onSkip={skipIntro}
+        />
+      )}
 
       {/* Pause overlay */}
       {isRoutineActive && (

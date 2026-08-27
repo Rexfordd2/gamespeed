@@ -31,8 +31,10 @@ interface FaqItem {
 export interface LandingContent {
   hero: {
     eyebrow: string;
+    brand: string;
     title: string;
     subtitle: string;
+    attribution: string;
     personas: Record<LandingPersona, HeroPersonaContent>;
     benchmarkMicrocopy: string;
     trustMicrocopy: string;
@@ -103,17 +105,18 @@ export interface LandingContent {
 
 export const landingContent: LandingContent = {
   hero: {
-    eyebrow: 'GameSpeed Performance Lab',
-    title: 'Train Faster Reactions. Sharper Decisions. Better Game Speed.',
-    subtitle:
-      'A sport-readiness platform for athletes to improve cue pickup, reaction timing, and split-second decisions under pressure.',
+    eyebrow: 'GAME SPEED',
+    brand: 'GAME SPEED',
+    title: 'TRAIN YOUR INSTINCTS',
+    subtitle: 'Reaction. Vision. Awareness. Decision Speed.',
+    attribution: 'An Athlete Houze Performance System',
     personas: {
       athlete: {
         label: 'Train for Sport',
         supporting:
           'Build first-step separation, cleaner reads in traffic, and better execution late in demanding sessions.',
         bullets: [
-          'Pre-practice baseline in 60 seconds',
+          'Pre-practice Panther Readiness in 60 seconds',
           'Peripheral awareness under fatigue',
           'Weekly readiness trend tracking',
         ],
@@ -129,33 +132,33 @@ export const landingContent: LandingContent = {
         ],
       },
     },
-    benchmarkMicrocopy: 'Benchmark placeholder: sport/title percentile bands coming soon.',
+    benchmarkMicrocopy: 'Panther Readiness establishes your personal neural baseline.',
     trustMicrocopy: 'No signup required for your first test',
-    primaryCta: 'Run the 60-Second Test',
-    secondaryCta: 'Watch Demo',
+    primaryCta: 'ENTER THE JUNGLE',
+    secondaryCta: 'TEST MY REACTION',
   },
   demo: {
-    heading: 'Interactive First-Run Preview',
+    heading: 'First Hunt Preview',
     body:
-      'Each session starts with a controlled benchmark, then routes you into focused drills. You always know what improved and what to train next.',
-    shellLabel: 'First-Run Shell',
+      'Check readiness, train a weakness, then beat yesterday. Every session ends with measurable feedback — not guesswork.',
+    shellLabel: 'Instinct Lab Shell',
     metrics: [
       { label: 'Round length', value: '45-60 sec' },
-      { label: 'Tracked signals', value: 'Speed + Accuracy + Streak' },
-      { label: 'Modes available', value: '6 live drills' },
+      { label: 'Tracked signals', value: 'Speed + Accuracy + Consistency' },
+      { label: 'Instincts live', value: '8 training modes' },
     ],
     steps: [
-      '1) Run benchmark to capture reaction baseline',
-      '2) Select a drill targeting your weakest signal',
-      '3) Review session stats and push your next milestone',
+      '1) Run Panther Readiness to capture your baseline',
+      '2) Choose an instinct targeting your weakest signal',
+      '3) Review GameSpeed Score and push the next hunt',
     ],
-    runButton: 'Run the 60-Second Test',
+    runButton: 'TEST MY REACTION',
   },
   whyItMatters: {
-    heading: 'Why It Matters',
+    heading: 'Why Instinct Training Matters',
     personaSuffix: {
       athlete: 'for Athletes',
-      gamer: 'for Gamers',
+      gamer: 'for Competitors',
     },
     athlete: [
       {
@@ -187,20 +190,19 @@ export const landingContent: LandingContent = {
     ],
   },
   trainingModes: {
-    heading: 'Training Modes',
+    heading: 'Choose Your Instinct',
     body:
-      'Run the benchmark for objective readiness, then rotate through specialized drills for speed, awareness, and control.',
+      'Every athlete reacts. Elite athletes perceive sooner. Each instinct trains a specific neurological capability.',
     selector: {
-      title: 'Choose Your Drill',
-      subtitle:
-        'Open a mode, review the quick protocol, and start your next reaction rep.',
-      availableLabel: 'Available now',
+      title: 'CHOOSE YOUR INSTINCT',
+      subtitle: 'Every athlete reacts. Elite athletes perceive sooner.',
+      availableLabel: 'Live instincts',
       nextReleaseLabel: 'Next release',
-      benchmarkCta: 'Run the 60-Second Test',
-      drillCta: "Start Today's Session",
-      benchmarkPillLabel: 'Benchmark',
-      drillPillLabel: 'Playable',
-      focusLabel: 'Focus',
+      benchmarkCta: 'BEGIN BENCHMARK',
+      drillCta: 'TRAIN',
+      benchmarkPillLabel: 'Readiness',
+      drillPillLabel: 'Instinct',
+      focusLabel: 'Ability',
       intensityLabel: 'Intensity',
       comingSoonLabel: 'Coming Soon',
     },
@@ -208,31 +210,29 @@ export const landingContent: LandingContent = {
   socialProof: {
     heading: 'Proof and Benchmarks',
     benchmarkFraming:
-      'Use your benchmark score as a personal baseline, then compare week-over-week trend lines instead of chasing random one-off highs.',
-    // Placeholder-only values; source in `src/content/credibilityContent.ts`.
+      'Use Panther Readiness as a personal baseline, then compare week-over-week trend lines instead of chasing random one-off highs.',
     proofStats: socialProofStats,
-    // Placeholder-only values; source in `src/content/credibilityContent.ts`.
     testimonials: socialProofTestimonials,
   },
   progression: {
-    heading: 'Progression That Retains Habits',
+    heading: 'Deeper Into the Rainforest',
     body:
-      'Daily streaks, leaderboard pressure, and milestone targets turn one-off reps into long-term gains.',
+      'Progression follows training achievement: Trail, Canopy, Hunt, Predator, Apex — earned by real session quality.',
     hooks: [
       {
-        title: 'Streak engine',
-        body: 'Protect your training streak with at least one benchmark + one drill each day.',
+        title: 'Daily consistency',
+        body: 'Protect your training streak with at least one readiness check and one instinct drill.',
       },
       {
-        title: 'Leaderboard momentum',
-        body: 'Compete on benchmark consistency and weekly readiness improvement.',
+        title: 'Benchmark momentum',
+        body: 'Compete against your own baseline consistency and weekly readiness improvement.',
       },
       {
-        title: 'Milestone path',
-        body: 'Unlock tier markers as your reaction score and accuracy bands climb.',
+        title: 'Instinct path',
+        body: 'Unlock deeper rainforest tiers as accuracy and readiness bands climb.',
       },
     ],
-    cta: "Start Today's Session",
+    cta: 'ENTER THE JUNGLE',
     starterMode: 'reactionBenchmark',
   },
   faq: {
@@ -241,34 +241,34 @@ export const landingContent: LandingContent = {
       {
         question: 'Who is this built for?',
         answer:
-          'GameSpeed is built for athletes preparing for training, practice, and competition. Drills focus on cue pickup, anticipation, and decision speed.',
+          'GameSpeed is built for athletes preparing for training, practice, and competition. Instincts train cue pickup, anticipation, and decision speed.',
       },
       {
         question: 'How long is one session?',
         answer:
-          'Most users run 3-8 minutes: one benchmark plus two to four focused drill rounds.',
+          'Most athletes run 3-8 minutes: one Panther Readiness check plus two to four focused instinct rounds.',
       },
       {
         question: 'Do I need an account to train?',
         answer:
-          'You can run drills immediately. An account unlocks synced profile data, history, and progression tracking.',
+          'You can train immediately. An account unlocks synced profile data, history, and progression tracking.',
       },
       {
-        question: 'How should I use the benchmark score?',
+        question: 'How should I use GameSpeed Score?',
         answer:
-          'Treat it as your readiness baseline. Compare trends over time rather than obsessing over one session.',
+          'Treat it as your cognitive performance metric. Compare trends over time. It is not a medical diagnosis.',
       },
     ],
   },
   finalCta: {
-    heading: 'Train Your Speed Before It Matters',
+    heading: 'PRIMAL INSTINCT. MODERN PERFORMANCE.',
     body:
-      'Run the benchmark now, identify your gap, and start a progression loop you can sustain.',
-    primaryCta: 'Run the 60-Second Test',
-    secondaryCta: 'Watch Demo',
+      'Train the part of your game that moves before your muscles. Establish your baseline, then hunt improvement.',
+    primaryCta: 'TEST MY REACTION',
+    secondaryCta: 'EXPLORE INSTINCTS',
   },
   footer: {
-    version: 'v1.3 - Reaction Benchmark + 5 drills + session stats',
+    version: 'v1.4 - Instinct ecosystem + Panther Readiness + 7 drills',
     statsLinkLabel: 'Compare My Score',
     feedbackLabel: 'Send feedback',
     feedbackUrl: 'https://github.com/rexfordd2/gamespeed/issues',

@@ -1,5 +1,7 @@
 import { GameModeType, GameResult, GameStats, StoredRound } from '../types/game';
-import { MODE_ORDER, gameModes } from './gameModes';
+import { MODE_ORDER, gameModes, isModePlayable } from './gameModes';
+import { getExperienceName } from '../config/animalInstincts';
+import { performanceColors } from '../config/designTokens';
 
 const DAY_MS = 86_400_000;
 
@@ -178,11 +180,11 @@ export const estimatePercentileForRound = (round: StoredRound, stats: GameStats)
 };
 
 export const getPercentileBadge = (percentile: number): PercentileBadge => {
-  if (percentile >= 95) return { percentile, label: 'National Class', tone: '#4ade80' };
-  if (percentile >= 85) return { percentile, label: 'Elite', tone: '#22d3ee' };
-  if (percentile >= 70) return { percentile, label: 'Advanced', tone: '#a3e635' };
-  if (percentile >= 50) return { percentile, label: 'Rising', tone: '#facc15' };
-  return { percentile, label: 'Building', tone: '#fb923c' };
+  if (percentile >= 95) return { percentile, label: 'APEX', tone: performanceColors.green };
+  if (percentile >= 85) return { percentile, label: 'PREDATOR', tone: performanceColors.cognition };
+  if (percentile >= 70) return { percentile, label: 'HUNT', tone: performanceColors.bioluminescent };
+  if (percentile >= 50) return { percentile, label: 'CANOPY', tone: performanceColors.amber };
+  return { percentile, label: 'TRAIL', tone: '#fb923c' };
 };
 
 export const getFriendLeaderboard = (
@@ -280,4 +282,99 @@ export const getModeUnlockMap = (stats: GameStats): Partial<Record<GameModeType,
     return acc;
   }, {} as Partial<Record<GameModeType, ModeUnlockStatus>>);
 
-export const getModeLabel = (mode: GameModeType) => gameModes[mode].name;
+export const getModeLabel = (mode: GameModeType) => getExperienceName(mode);
+
+export const getMechanicLabel = (mode: GameModeType) => gameModes[mode].name;
+
+export type InstinctTier = 'TRAIL' | 'CANOPY' | 'HUNT' | 'PREDATOR' | 'APEX';
+
+export const getInstinctTierFromUnlocks = (stats: GameStats): InstinctTier => {
+  const unlocked = getModeUnlockStatuses(stats).filter(status => status.unlocked).length;
+  if (unlocked >= 8) return 'APEX';
+  if (unlocked >= 6) return 'PREDATOR';
+  if (unlocked >= 4) return 'HUNT';
+  if (unlocked >= 2) return 'CANOPY';
+  return 'TRAIL';
+};
+
+export type PortraitStage = 'silhouette' | 'eyes' | 'partial' | 'full';
+
+export const getPortraitStage = (stats: GameStats, mode: GameModeType): PortraitStage => {
+  const unlock = getModeUnlockStatuses(stats).find(status => status.mode === mode);
+  if (!unlock?.unlocked) return 'silhouette';
+  const pb = stats.pbs[mode];
+  if (!pb) return 'eyes';
+  if ((pb.accuracy ?? 0) >= 85 || (pb.benchmarkScore ?? 0) >= 85) return 'full';
+  if ((pb.accuracy ?? 0) >= 70) return 'partial';
+  return 'eyes';
+};
+
+const portraitOpacityByStage: Record<PortraitStage, number> = {
+  silhouette: 0.14,
+  eyes: 0.24,
+  partial: 0.34,
+  full: 0.46,
+};
+
+export const getPortraitDepth = (stats: GameStats, mode: GameModeType): number =>
+  portraitOpacityByStage[getPortraitStage(stats, mode)];
+
+/** Recommend an instinct only when enough PBs exist to compare modes. */
+export const getTodaysInstinct = (
+  stats: GameStats,
+): { mode: GameModeType; reason: string } | null => {
+  const unlockedWithPb = getModeUnlockStatuses(stats)
+    .filter(status => status.unlocked && stats.pbs[status.mode] && isModePlayable(status.mode))
+    .map(status => status.mode);
+
+  if (unlockedWithPb.length < 2) {
+    return null;
+  }
+
+  const ranked = [...unlockedWithPb].sort((a, b) => {
+    const pbA = stats.pbs[a]!;
+    const pbB = stats.pbs[b]!;
+    const scoreA = (pbA.accuracy ?? 0) * 0.6 + (pbA.benchmarkScore ?? pbA.score ?? 0) * 0.4;
+    const scoreB = (pbB.accuracy ?? 0) * 0.6 + (pbB.benchmarkScore ?? pbB.score ?? 0) * 0.4;
+    return scoreA - scoreB;
+  });
+
+  const mode = ranked[0];
+  return {
+    mode,
+    reason: `Lowest readiness sample among ${unlockedWithPb.length} tracked instincts.`,
+  };
+};
+
+export const getLatestBenchmarkRound = (stats: GameStats): StoredRound | null => {
+  const benchmarks = stats.rounds
+    .filter(round => round.mode === 'reactionBenchmark')
+    .sort((a, b) => b.ts - a.ts);
+  return benchmarks[0] ?? null;
+};
+
+export const getLatestGameSpeedScore = (stats: GameStats): number | null => {
+  const recent = getRecentHistory(stats, 1)[0];
+  if (!recent) return null;
+  if (typeof recent.benchmarkScore === 'number') return recent.benchmarkScore;
+  return recent.accuracy ?? null;
+};
+
+export const getStrongestPersonalBest = (
+  stats: GameStats,
+): { mode: GameModeType; score: number; accuracy: number } | null => {
+  const entries = (Object.keys(stats.pbs) as GameModeType[])
+    .map(mode => {
+      const pb = stats.pbs[mode];
+      if (!pb) return null;
+      return {
+        mode,
+        score: pb.score,
+        accuracy: pb.accuracy,
+      };
+    })
+    .filter((entry): entry is { mode: GameModeType; score: number; accuracy: number } => !!entry);
+
+  if (!entries.length) return null;
+  return entries.sort((a, b) => b.accuracy - a.accuracy || b.score - a.score)[0];
+};

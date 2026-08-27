@@ -109,13 +109,13 @@ export const CoachMode = ({ onBack }: CoachModeProps) => {
           }}
         >
           <p className="text-[11px] uppercase tracking-[0.18em] font-semibold" style={{ color: theme.targetColor }}>
-            Coach Mode (local data)
+            Coach Mode · Analytical
           </p>
-          <h1 className="mt-2 text-2xl font-extrabold sm:text-3xl" style={{ color: theme.textColor }}>
-            Team readiness challenge board
+          <h1 className="font-display mt-2 text-2xl font-extrabold uppercase tracking-[0.04em] sm:text-3xl" style={{ color: theme.textColor }}>
+            Athlete instinct board
           </h1>
           <p className="mt-2 text-sm sm:text-base" style={{ color: theme.textColor, opacity: 0.8 }}>
-            Add athletes, run weekly readiness goals, and log runway or session activity for baseline coaching review.
+            Data-dense coaching surface. Add athletes, review trends, assign challenges, and compare readiness baselines.
           </p>
           <div className="mt-4 flex flex-col gap-2 sm:flex-row">
             <button

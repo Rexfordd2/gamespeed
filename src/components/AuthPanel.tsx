@@ -104,6 +104,10 @@ export const AuthPanel = () => {
   if (isLoading) {
     return (
       <section className="rounded-2xl p-4 sm:p-5 mb-5" style={panelStyle}>
+        <div className="loading-predator-eyes mb-3" aria-hidden="true">
+          <span />
+          <span />
+        </div>
         <p className="text-sm sm:text-base" style={{ color: theme.textColor, opacity: 0.86 }}>
           Restoring session...
         </p>
