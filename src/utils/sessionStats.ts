@@ -1,5 +1,5 @@
 import { DEFAULT_SPORT, isSportType } from '../config/sports';
-import { GameResult, GameStats, StoredRound, ModePersonalBests, GameModeType } from '../types/game';
+import { GameResult, GameStats, StoredRound, GameModeType } from '../types/game';
 import { loadRunwayAnalytics } from './runwayStats';
 import { loadSleepCheckIns } from './sleepCheckIn';
 import { deriveReadinessMetrics } from './readinessMetrics';
