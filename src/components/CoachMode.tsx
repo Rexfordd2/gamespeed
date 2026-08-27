@@ -61,14 +61,10 @@ export const CoachMode = ({ onBack }: CoachModeProps) => {
     [store.athletes],
   );
   const dashboard = useMemo(() => getCoachDashboardSummary(sortedAthletes), [sortedAthletes]);
-  const recentPrimeRecipes = useMemo(
-    () =>
-      loadPrimeSessions()
-        .slice()
-        .sort((a, b) => b.ts - a.ts)
-        .slice(0, 5),
-    [store],
-  );
+  const recentPrimeRecipes = loadPrimeSessions()
+    .slice()
+    .sort((a, b) => b.ts - a.ts)
+    .slice(0, 5);
 
   const refresh = () => setStore(localCoachRepository.load());
 
