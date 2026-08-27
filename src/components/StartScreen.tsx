@@ -5,6 +5,7 @@ import { CueIntensity, GameModeType, FirstRunSelection, GameStats, PlayerGoal, P
 import { JungleBackground } from './JungleBackground';
 import { GameModeSelector } from './GameModeSelector';
 import { JungleButton } from './JungleButton';
+import { NightSettingsPanel } from './NightSettingsPanel';
 import { LandingHero } from './landing/LandingHero';
 import { LandingDemoShell } from './landing/LandingDemoShell';
 import { LandingWhyItMatters } from './landing/LandingWhyItMatters';
@@ -18,7 +19,6 @@ import { gameModes } from '../utils/gameModes';
 import { NightGuardrailSettings } from '../utils/nightGuardrail';
 import {
   getDailyStreak,
-  getFriendLeaderboard,
   getModeUnlockMap,
   getProgressDisciplineNote,
   getWeeklyChallenge,
@@ -125,7 +125,6 @@ export const StartScreen = ({
   onOpenCoachMode,
   isFirstRun,
   stats,
-  playerName,
   nightGuardrailSettings,
   onNightGuardrailSettingsChange,
   showNightReminder,
@@ -142,7 +141,6 @@ export const StartScreen = ({
   const streakDays = getDailyStreak(stats);
   const weeklyChallenge = getWeeklyChallenge(stats);
   const unlockMap = getModeUnlockMap(stats);
-  const leaderboard = getFriendLeaderboard(stats, playerName).slice(0, 5);
   const disciplineNote = getProgressDisciplineNote(stats);
   const activePersona = persona ?? orderedPersonas[0];
   const hapticsAvailable = isHapticsSupported();
@@ -154,6 +152,7 @@ export const StartScreen = ({
   const [readiness, setReadiness] = useState<1 | 2 | 3 | 4 | 5>(3);
   const [latestCheckInLabel, setLatestCheckInLabel] = useState<string | null>(null);
   const [savedCheckInNotice, setSavedCheckInNotice] = useState<string | null>(null);
+  const [showNightSettings, setShowNightSettings] = useState(false);
 
   useEffect(() => {
     const latest = getLatestSleepCheckIn();
@@ -379,136 +378,62 @@ export const StartScreen = ({
           </div>
         </section>
 
-        <section
-          className="rounded-3xl p-4 sm:p-6 md:p-7 backdrop-blur-md"
-          style={{
-            backgroundColor: 'rgba(5, 10, 16, 0.8)',
-            border: `1px solid ${theme.textColor}33`,
-          }}
-        >
-          <p
-            className="text-[11px] uppercase tracking-[0.18em] font-semibold"
-            style={{ color: theme.textColor, opacity: 0.75 }}
+        {isNightGuardrailActive && (
+          <section
+            className="rounded-2xl p-4"
+            style={{
+              backgroundColor: 'rgba(6, 12, 18, 0.9)',
+              border: '1px solid rgba(148, 163, 184, 0.45)',
+            }}
           >
-            Night-Before Guardrail
-          </p>
-          <h2 className="mt-2 text-xl font-bold sm:text-2xl" style={{ color: theme.textColor }}>
-            Protect your final 2 hours before bed
-          </h2>
-          <p className="mt-2 text-sm sm:text-base" style={{ color: theme.textColor, opacity: 0.8 }}>
-            Set your bedtime and reminder preference. On competition nights, the app offers a lower-stimulation session.
-          </p>
+            <p className="text-xs uppercase tracking-[0.15em]" style={{ color: theme.textColor, opacity: 0.68 }}>
+              Low-stimulation option
+            </p>
+            <p className="mt-2 text-sm leading-relaxed sm:text-base" style={{ color: theme.textColor, opacity: 0.86 }}>
+              Tonight is set as a competition eve. Use a calm readiness check with dimmed visuals and reduced motion.
+            </p>
+            <JungleButton onClick={handleStartLowStimulusSession} className="mt-4 w-full sm:w-auto px-6 py-3 text-base">
+              Start low-stimulation session
+            </JungleButton>
+          </section>
+        )}
 
-          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <label className="rounded-2xl p-3" style={{ backgroundColor: 'rgba(2, 8, 12, 0.72)', border: `1px solid ${theme.textColor}2d` }}>
-              <span className="text-xs uppercase tracking-[0.12em]" style={{ color: theme.textColor, opacity: 0.7 }}>
-                Target bedtime
-              </span>
-              <input
-                type="time"
-                value={nightGuardrailSettings.targetBedtime}
-                onChange={event =>
-                  onNightGuardrailSettingsChange({
-                    ...nightGuardrailSettings,
-                    targetBedtime: event.target.value,
-                  })
-                }
-                className="mt-2 w-full rounded-lg px-3 py-2 text-sm"
-                style={{
-                  backgroundColor: 'rgba(0,0,0,0.2)',
-                  color: theme.textColor,
-                  border: `1px solid ${theme.textColor}44`,
-                }}
-              />
-            </label>
-
-            <label className="rounded-2xl p-3" style={{ backgroundColor: 'rgba(2, 8, 12, 0.72)', border: `1px solid ${theme.textColor}2d` }}>
-              <span className="text-xs uppercase tracking-[0.12em]" style={{ color: theme.textColor, opacity: 0.7 }}>
-                Reminder preference
-              </span>
-              <select
-                value={nightGuardrailSettings.reminderPreference}
-                onChange={event =>
-                  onNightGuardrailSettingsChange({
-                    ...nightGuardrailSettings,
-                    reminderPreference: event.target.value === 'off' ? 'off' : 'inApp',
-                  })
-                }
-                className="mt-2 w-full rounded-lg px-3 py-2 text-sm"
-                style={{
-                  backgroundColor: 'rgba(0,0,0,0.2)',
-                  color: theme.textColor,
-                  border: `1px solid ${theme.textColor}44`,
-                }}
+        {showNightSettings && (
+          <section
+            className="rounded-3xl p-4 sm:p-6 md:p-7 backdrop-blur-md"
+            style={{
+              backgroundColor: 'rgba(5, 10, 16, 0.8)',
+              border: `1px solid ${theme.textColor}33`,
+            }}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p
+                  className="text-[11px] uppercase tracking-[0.18em] font-semibold"
+                  style={{ color: theme.textColor, opacity: 0.75 }}
+                >
+                  Night-Before Guardrail
+                </p>
+                <h2 className="mt-2 text-xl font-bold sm:text-2xl" style={{ color: theme.textColor }}>
+                  Night settings
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowNightSettings(false)}
+                className="ui-secondary-button min-h-10 px-4 text-sm"
+                style={{ color: theme.textColor, borderColor: `${theme.textColor}44` }}
               >
-                <option value="inApp">In-app reminder</option>
-                <option value="off">Off</option>
-              </select>
-            </label>
-          </div>
-
-          <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <button
-              type="button"
-              aria-pressed={nightGuardrailSettings.competitionTomorrow}
-              onClick={() =>
-                onNightGuardrailSettingsChange({
-                  ...nightGuardrailSettings,
-                  competitionTomorrow: !nightGuardrailSettings.competitionTomorrow,
-                })
-              }
-              className="rounded-xl px-4 py-3 text-sm text-left"
-              style={{
-                color: theme.textColor,
-                backgroundColor: nightGuardrailSettings.competitionTomorrow ? 'rgba(56, 189, 248, 0.18)' : 'rgba(2, 8, 12, 0.72)',
-                border: `1px solid ${nightGuardrailSettings.competitionTomorrow ? 'rgba(56, 189, 248, 0.8)' : `${theme.textColor}30`}`,
-              }}
-            >
-              Competition tomorrow: {nightGuardrailSettings.competitionTomorrow ? 'On' : 'Off'}
-            </button>
-            <button
-              type="button"
-              aria-pressed={nightGuardrailSettings.includeBreathingRoutine}
-              onClick={() =>
-                onNightGuardrailSettingsChange({
-                  ...nightGuardrailSettings,
-                  includeBreathingRoutine: !nightGuardrailSettings.includeBreathingRoutine,
-                })
-              }
-              className="rounded-xl px-4 py-3 text-sm text-left"
-              style={{
-                color: theme.textColor,
-                backgroundColor: nightGuardrailSettings.includeBreathingRoutine ? 'rgba(52, 211, 153, 0.16)' : 'rgba(2, 8, 12, 0.72)',
-                border: `1px solid ${nightGuardrailSettings.includeBreathingRoutine ? 'rgba(52, 211, 153, 0.72)' : `${theme.textColor}30`}`,
-              }}
-            >
-              Short breathing + gaze routine: {nightGuardrailSettings.includeBreathingRoutine ? 'On' : 'Off'}
-            </button>
-          </div>
-
-          {isNightGuardrailActive && (
-            <div
-              className="mt-4 rounded-2xl p-4"
-              style={{
-                backgroundColor: 'rgba(6, 12, 18, 0.9)',
-                border: '1px solid rgba(148, 163, 184, 0.45)',
-              }}
-            >
-              <p className="text-xs uppercase tracking-[0.15em]" style={{ color: theme.textColor, opacity: 0.68 }}>
-                Low-stimulation option
-              </p>
-              <p className="mt-2 text-sm leading-relaxed sm:text-base" style={{ color: theme.textColor, opacity: 0.86 }}>
-                Tonight is set as a competition eve. Use a calm readiness check with dimmed visuals and reduced motion.
-              </p>
-              <p className="mt-1 text-xs" style={{ color: theme.textColor, opacity: 0.68 }}>
-                Includes optional short breathing + gaze routine before the round.
-              </p>
-              <JungleButton onClick={handleStartLowStimulusSession} className="mt-4 w-full sm:w-auto px-6 py-3 text-base">
-                Start low-stimulation session
-              </JungleButton>
+                Close
+              </button>
             </div>
-          )}
-        </section>
+            <NightSettingsPanel
+              settings={nightGuardrailSettings}
+              onSettingsChange={onNightGuardrailSettingsChange}
+              isNightGuardrailActive={false}
+            />
+          </section>
+        )}
 
         <section
           ref={onboardingSectionRef}
@@ -547,7 +472,7 @@ export const StartScreen = ({
                 style={{ backgroundColor: 'rgba(2, 8, 12, 0.7)', border: `1px solid ${theme.textColor}2c` }}
               >
                 <p className="text-[10px] uppercase tracking-[0.18em] opacity-60" style={{ color: theme.textColor }}>
-                  Weekly challenge
+                  Weekly consistency
                 </p>
                 <p className="mt-1 text-sm font-semibold" style={{ color: theme.textColor }}>
                   {weeklyChallenge.roundsDone}/{weeklyChallenge.roundsTarget} sessions
@@ -656,7 +581,7 @@ export const StartScreen = ({
               className="w-full sm:w-auto px-6 py-3 text-base font-bold"
               disabled={isFirstRun && (!persona || !goal)}
             >
-              {isFirstRun ? 'Run the 60-Second Test' : 'Run Benchmark Session'}
+              {isFirstRun ? 'Establish Baseline' : 'Run Benchmark Session'}
             </JungleButton>
             <button
               onClick={onOpenRunway}
@@ -876,36 +801,16 @@ export const StartScreen = ({
             border: `1px solid ${theme.targetColor}2a`,
           }}
         >
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="text-lg sm:text-xl font-bold" style={{ color: theme.textColor }}>
-              Readiness leaderboard snapshot
-            </h2>
-            <span className="text-[11px] uppercase tracking-[0.18em]" style={{ color: theme.textColor, opacity: 0.62 }}>
-              top quick tap score
-            </span>
-          </div>
-          <p className="mt-2 text-xs uppercase tracking-[0.12em]" style={{ color: theme.textColor, opacity: 0.56 }}>
-            Local sample ranking seeded from your current profile data.
+          <h2 className="text-lg sm:text-xl font-bold" style={{ color: theme.textColor }}>
+            Progress versus your own baseline
+          </h2>
+          <p className="mt-2 text-sm leading-relaxed" style={{ color: theme.textColor, opacity: 0.78 }}>
+            GameSpeed tracks reaction, visual search, control, decision, processing, and Prime consistency against
+            your first marks. There is no friend leaderboard and no national percentile until those exist as real data.
           </p>
-          <div className="mt-3 space-y-2">
-            {leaderboard.map((entry, index) => (
-              <div
-                key={entry.name}
-                className="rounded-xl px-3.5 py-2.5 flex items-center justify-between"
-                style={{
-                  backgroundColor: entry.isYou ? `${theme.targetColor}1f` : 'rgba(2, 8, 12, 0.6)',
-                  border: `1px solid ${entry.isYou ? `${theme.targetColor}66` : `${theme.textColor}22`}`,
-                }}
-              >
-                <p className="text-sm font-semibold" style={{ color: theme.textColor }}>
-                  {index + 1}. {entry.name}
-                </p>
-                <p className="text-sm font-bold tabular-nums" style={{ color: entry.isYou ? theme.targetColor : '#a5f3fc' }}>
-                  {entry.score}
-                </p>
-              </div>
-            ))}
-          </div>
+          <p className="mt-3 text-xs" style={{ color: theme.textColor, opacity: 0.62 }}>
+            Path: Trail → Canopy → Hunter → Predator → Apex, earned from completed Prime sessions.
+          </p>
         </section>
 
         <LandingProgression
@@ -945,6 +850,14 @@ export const StartScreen = ({
         <section className="flex flex-col gap-2 sm:flex-row sm:justify-center">
           <button
             type="button"
+            onClick={() => setShowNightSettings(true)}
+            className="ui-secondary-button min-h-12 px-6 text-sm sm:text-base"
+            style={{ color: theme.textColor, borderColor: `${theme.textColor}44` }}
+          >
+            Night settings
+          </button>
+          <button
+            type="button"
             onClick={onOpenCoachMode}
             className="ui-secondary-button min-h-12 px-6 text-sm sm:text-base"
             style={{ color: theme.textColor, borderColor: `${theme.targetColor}55` }}
@@ -965,7 +878,7 @@ export const StartScreen = ({
             className="ui-secondary-button min-h-12 px-6 text-sm sm:text-base"
             style={{ color: theme.textColor, borderColor: `${theme.textColor}44` }}
           >
-            Compare My Score
+            View my history
           </button>
           <button
             type="button"

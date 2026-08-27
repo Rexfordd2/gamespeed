@@ -3,14 +3,32 @@ import { SportType } from './sports';
 import { GameModeType, ModeAvailability } from '../types/game';
 import { resolveModeIconAsset } from './assetRegistry';
 
-export type ModeGameplayMechanicType = 'tap' | 'swipe' | 'hold' | 'sequence';
+export type ModeGameplayMechanicType =
+  | 'tap'
+  | 'swipe'
+  | 'hold'
+  | 'sequence'
+  | 'scan'
+  | 'inhibit'
+  | 'choice'
+  | 'comprehend';
 export type ModeScoringModel =
   | 'standardAccuracy'
   | 'benchmarkComposite'
   | 'directionalTiming'
   | 'stabilityLock'
-  | 'sequenceRecall';
-export type ModeTargetRendererKey = 'standardTarget' | 'sequenceTargets';
+  | 'sequenceRecall'
+  | 'scanSequence'
+  | 'inhibitionControl'
+  | 'choiceReaction'
+  | 'rapidComprehension';
+export type ModeTargetRendererKey =
+  | 'standardTarget'
+  | 'sequenceTargets'
+  | 'schulteGrid'
+  | 'goNoGoStimulus'
+  | 'choiceStimulus'
+  | 'comprehensionStimulus';
 export type ModeIconRef =
   | 'benchmarkStopwatch'
   | 'quickTapBolt'
@@ -20,6 +38,10 @@ export type ModeIconRef =
   | 'sequenceNodes'
   | 'peripheralRadar'
   | 'calmLotus'
+  | 'macawGrid'
+  | 'caimanHold'
+  | 'mongooseRead'
+  | 'chameleonRead'
   | 'defaultMode';
 export type ModeCueTemplateRef =
   | 'sequenceVocabularyFocus'
@@ -97,15 +119,35 @@ export interface RegisteredModeManifest {
 
 export const DEFAULT_MODE_MANIFEST_ID: GameModeType = 'quickTap';
 
-const gameplayMechanicTypes: ModeGameplayMechanicType[] = ['tap', 'swipe', 'hold', 'sequence'];
+const gameplayMechanicTypes: ModeGameplayMechanicType[] = [
+  'tap',
+  'swipe',
+  'hold',
+  'sequence',
+  'scan',
+  'inhibit',
+  'choice',
+  'comprehend',
+];
 const scoringModels: ModeScoringModel[] = [
   'standardAccuracy',
   'benchmarkComposite',
   'directionalTiming',
   'stabilityLock',
   'sequenceRecall',
+  'scanSequence',
+  'inhibitionControl',
+  'choiceReaction',
+  'rapidComprehension',
 ];
-const targetRendererKeys: ModeTargetRendererKey[] = ['standardTarget', 'sequenceTargets'];
+const targetRendererKeys: ModeTargetRendererKey[] = [
+  'standardTarget',
+  'sequenceTargets',
+  'schulteGrid',
+  'goNoGoStimulus',
+  'choiceStimulus',
+  'comprehensionStimulus',
+];
 const cueTemplateRefs: ModeCueTemplateRef[] = [
   'sequenceVocabularyFocus',
   'sequenceVocabularyTactical',
@@ -122,6 +164,10 @@ const iconRefs: ModeIconRef[] = [
   'sequenceNodes',
   'peripheralRadar',
   'calmLotus',
+  'macawGrid',
+  'caimanHold',
+  'mongooseRead',
+  'chameleonRead',
   'defaultMode',
 ];
 const modeDifficultyPresets: ModeDefaults['difficultyPreset'][] = [
@@ -163,6 +209,10 @@ const modeIconGlyphRegistry: Record<ModeIconRef, string> = {
   sequenceNodes: '⋯',
   peripheralRadar: '◌',
   calmLotus: '☯',
+  macawGrid: '▦',
+  caimanHold: '▬',
+  mongooseRead: '◈',
+  chameleonRead: '◐',
   defaultMode: '•',
 };
 
@@ -508,6 +558,84 @@ const modeManifestSeeds: ModeManifestSeed[] = [
       targetIntervalMs: 1150,
       targetLifespanSeconds: 2.6,
       difficultyPreset: 'baseline',
+    },
+  },
+  {
+    id: 'schulteScan',
+    displayName: 'Macaw Scan',
+    description: 'Dynamic visual-search grid. Find the next signal inside the noise without chasing the whole field.',
+    availability: 'playable',
+    category: 'drill',
+    supportedSports: 'all',
+    iconRef: 'macawGrid',
+    gameplayMechanicType: 'scan',
+    scoringModel: 'scanSequence',
+    targetRendererKey: 'schulteGrid',
+    defaults: {
+      maxTargets: 25,
+      targetIntervalMs: 1000,
+      targetLifespanSeconds: 60,
+      roundSeconds: 60,
+      difficultyPreset: 'tracking',
+    },
+  },
+  {
+    id: 'goNoGo',
+    displayName: 'Caiman Control',
+    description: 'Inhibitory-control drill. Strike the live cue. Hold the fake. Speed only counts when the moment is real.',
+    availability: 'playable',
+    category: 'drill',
+    supportedSports: 'all',
+    iconRef: 'caimanHold',
+    gameplayMechanicType: 'inhibit',
+    scoringModel: 'inhibitionControl',
+    targetRendererKey: 'goNoGoStimulus',
+    defaults: {
+      maxTargets: 1,
+      targetIntervalMs: 800,
+      targetLifespanSeconds: 0.9,
+      roundSeconds: 60,
+      difficultyPreset: 'speed',
+    },
+  },
+  {
+    id: 'choiceReaction',
+    displayName: 'Mongoose Read',
+    description:
+      'Choice-reaction drill. Read the cue, then select the matching response. Fast is only useful when the decision is right.',
+    availability: 'playable',
+    category: 'drill',
+    supportedSports: 'all',
+    iconRef: 'mongooseRead',
+    gameplayMechanicType: 'choice',
+    scoringModel: 'choiceReaction',
+    targetRendererKey: 'choiceStimulus',
+    defaults: {
+      maxTargets: 1,
+      targetIntervalMs: 800,
+      targetLifespanSeconds: 0.9,
+      roundSeconds: 60,
+      difficultyPreset: 'speed',
+    },
+  },
+  {
+    id: 'rapidComprehension',
+    displayName: 'Chameleon Read',
+    description:
+      'Rapid information-processing drill. Take the picture in, keep it after it changes, then answer from what you just saw.',
+    availability: 'playable',
+    category: 'drill',
+    supportedSports: 'all',
+    iconRef: 'chameleonRead',
+    gameplayMechanicType: 'comprehend',
+    scoringModel: 'rapidComprehension',
+    targetRendererKey: 'comprehensionStimulus',
+    defaults: {
+      maxTargets: 1,
+      targetIntervalMs: 800,
+      targetLifespanSeconds: 2.2,
+      roundSeconds: 60,
+      difficultyPreset: 'memory',
     },
   },
 ];

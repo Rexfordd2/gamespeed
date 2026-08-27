@@ -126,6 +126,10 @@ const getModeStartButton = (modeName: string) => {
 };
 
 const startMode = async (modeName: string) => {
+  const trainInstinct = screen.queryByRole('button', { name: /train an instinct/i });
+  if (trainInstinct) {
+    fireEvent.click(trainInstinct);
+  }
   fireEvent.click(getModeStartButton(modeName));
   await flushMicrotasks();
   expect(screen.getByRole('button', { name: /pause game/i })).toBeInTheDocument();
@@ -157,11 +161,15 @@ describe('App integration flow', () => {
         name: 'Replace the pre-game scroll in 60 seconds',
       }),
     ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Establish Baseline' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Soccer' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByText('1. Choose role')).toBeInTheDocument();
     expect(screen.queryByText('2. Choose one goal')).not.toBeInTheDocument();
     expect(screen.getAllByRole('heading', { name: 'Soccer Readiness Drills' }).length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: 'Unmute audio' })).toBeInTheDocument();
+    expect(screen.queryByText('Percentile')).not.toBeInTheDocument();
+    expect(screen.queryByText('National Class')).not.toBeInTheDocument();
+    expect(screen.queryByText('Kai')).not.toBeInTheDocument();
   });
 
   it('uses soccer as the default selected sport and persists sport choice', () => {
@@ -266,7 +274,8 @@ describe('App integration flow', () => {
     await advance(60_500);
 
     expect(screen.getByText('Results Dashboard')).toBeInTheDocument();
-    expect(screen.getByText('Percentile')).toBeInTheDocument();
+    expect(screen.getByText('Decision accuracy')).toBeInTheDocument();
+    expect(screen.queryByText('Percentile')).not.toBeInTheDocument();
     expect(screen.getByText('Recommended Next Mode')).toBeInTheDocument();
     expect(screen.getByText('Onboarding Checklist')).toBeInTheDocument();
     expect(screen.getByText('Save this progress')).toBeInTheDocument();
@@ -309,7 +318,7 @@ describe('App integration flow', () => {
       expect(screen.getAllByText(modeName).length).toBeGreaterThan(0);
 
       fireEvent.click(screen.getByRole('button', { name: 'Main Menu' }));
-      expect(screen.getAllByRole('heading', { name: 'Soccer Readiness Drills' }).length).toBeGreaterThan(0);
+      expect(screen.getByRole('button', { name: 'Prime Me' })).toBeInTheDocument();
     }
   });
 
@@ -378,6 +387,14 @@ describe('App integration flow', () => {
 
     expect(screen.getByRole('heading', { name: /How GameSpeed Scoring Works/i })).toBeInTheDocument();
     expect(screen.getByText(/Methodology and caveats/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'How your scores work' })).toBeInTheDocument();
+    expect(screen.getByText('Your last session')).toBeInTheDocument();
+    expect(screen.queryByText('4.1')).not.toBeInTheDocument();
+    expect(screen.queryByText('+11%')).not.toBeInTheDocument();
+    expect(screen.queryByText('62%')).not.toBeInTheDocument();
+    expect(screen.queryByText('D. Reynolds')).not.toBeInTheDocument();
+    expect(screen.queryByText(/n=148/i)).not.toBeInTheDocument();
+    expect(screen.getAllByText(/Not a real testimonial/i).length).toBeGreaterThan(0);
   });
 
   it('renders sport-specific runway copy for the selected sport', () => {
@@ -507,7 +524,8 @@ describe('App integration flow', () => {
     expect(screen.getByText('Final Score')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Main Menu' }));
-    expect(screen.getAllByRole('heading', { name: 'Soccer Readiness Drills' }).length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: 'Prime Me' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Soccer Readiness Drills' })).not.toBeInTheDocument();
   });
 
   it('toggles audio safely without crashing the UI', async () => {

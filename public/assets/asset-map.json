@@ -21,7 +21,11 @@
     "holdTrack",
     "sequenceMemory",
     "peripheralPulse",
-    "calmFocus"
+    "calmFocus",
+    "schulteScan",
+    "goNoGo",
+    "choiceReaction",
+    "rapidComprehension"
   ],
   "groups": {
     "sportIcons": [
@@ -129,6 +133,34 @@
         "id": "calm-focus",
         "file": "mode-icons/calm-focus.svg",
         "fallbackGlyph": "☯",
+        "required": false,
+        "dimensions": "256x256"
+      },
+      {
+        "id": "schulte-scan",
+        "file": "mode-icons/schulte-scan.svg",
+        "fallbackGlyph": "▦",
+        "required": false,
+        "dimensions": "256x256"
+      },
+      {
+        "id": "go-no-go",
+        "file": "mode-icons/go-no-go.svg",
+        "fallbackGlyph": "▬",
+        "required": false,
+        "dimensions": "256x256"
+      },
+      {
+        "id": "mongoose-read",
+        "file": "mode-icons/mongoose-read.svg",
+        "fallbackGlyph": "◈",
+        "required": false,
+        "dimensions": "256x256"
+      },
+      {
+        "id": "chameleon-read",
+        "file": "mode-icons/chameleon-read.svg",
+        "fallbackGlyph": "◐",
         "required": false,
         "dimensions": "256x256"
       }
@@ -404,7 +436,11 @@
       "holdTrack": "hold-track",
       "sequenceMemory": "sequence-memory",
       "peripheralPulse": "peripheral-pulse",
-      "calmFocus": "calm-focus"
+      "calmFocus": "calm-focus",
+      "schulteScan": "schulte-scan",
+      "goNoGo": "go-no-go",
+      "choiceReaction": "mongoose-read",
+      "rapidComprehension": "chameleon-read"
     },
     "modeToAudioCues": {
       "reactionBenchmark": [],
@@ -426,7 +462,11 @@
         "mode:sequence-fail"
       ],
       "peripheralPulse": [],
-      "calmFocus": []
+      "calmFocus": [],
+      "schulteScan": [],
+      "goNoGo": [],
+      "choiceReaction": [],
+      "rapidComprehension": []
     }
   },
   "supportedFormats": {

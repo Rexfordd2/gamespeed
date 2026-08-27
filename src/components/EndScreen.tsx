@@ -7,13 +7,13 @@ import { motion } from 'framer-motion';
 import { gameModes } from '../utils/gameModes';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  PercentileBadge,
   RoundProgressDelta,
+  SelfRankBadge,
   buildShareScoreCardText,
-  estimatePercentileForRound,
+  estimateSelfRankPct,
   getDailyStreak,
   getModeLabel,
-  getPercentileBadge,
+  getSelfRankBadge,
   getRecentHistory,
   getWeeklyChallenge,
 } from '../utils/progression';
@@ -148,9 +148,8 @@ export const EndScreen = ({
   const dailyStreak = getDailyStreak(stats);
   const weeklyChallenge = getWeeklyChallenge(stats);
   const latestRound = getLastRoundForResult(stats, result);
-  const percentileBadge: PercentileBadge = latestRound
-    ? getPercentileBadge(estimatePercentileForRound(latestRound, stats))
-    : getPercentileBadge(Math.max(5, Math.min(99, Math.round(accuracy * 0.8))));
+  const selfRankPct = latestRound ? estimateSelfRankPct(latestRound, stats) : null;
+  const selfRankBadge: SelfRankBadge | null = selfRankPct === null ? null : getSelfRankBadge(selfRankPct);
 
   useEffect(() => {
     setChecklist(prev => ({
@@ -228,7 +227,7 @@ export const EndScreen = ({
     });
     const content = buildShareScoreCardText({
       round: latestRound,
-      badge: percentileBadge,
+      badge: selfRankBadge,
       dailyStreak,
       newPb: roundProgressDelta?.newPb ?? false,
     });
@@ -268,14 +267,26 @@ export const EndScreen = ({
                 <span>Final Score</span>: {result.score}
               </p>
             </div>
-            <div className="rounded-2xl px-3.5 py-3 text-right" style={{ backgroundColor: `${percentileBadge.tone}18`, border: `1px solid ${percentileBadge.tone}66` }}>
-              <p className="text-[10px] uppercase tracking-[0.16em] opacity-75" style={{ color: theme.textColor }}>Percentile</p>
-              <p className="text-3xl font-black tabular-nums" style={{ color: percentileBadge.tone }}>{readiness?.decisionAccuracyPct ?? accuracy}%</p>
+            <div
+              className="rounded-2xl px-3.5 py-3 text-right"
+              style={{
+                backgroundColor: `${selfRankBadge?.tone ?? theme.targetColor}18`,
+                border: `1px solid ${selfRankBadge?.tone ?? theme.targetColor}66`,
+              }}
+            >
+              <p className="text-[10px] uppercase tracking-[0.16em] opacity-75" style={{ color: theme.textColor }}>
+                Decision accuracy
+              </p>
+              <p className="text-3xl font-black tabular-nums" style={{ color: selfRankBadge?.tone ?? theme.targetColor }}>
+                {readiness?.decisionAccuracyPct ?? accuracy}%
+              </p>
               <p className="text-xs font-semibold mt-0.5" style={{ color: theme.textColor }}>
                 Late {readiness?.lateDecisionRatePct ?? 0}% | Streak {readiness?.streakQualityPct ?? result.bestStreak}
               </p>
               <p className="text-xs mt-1" style={{ color: theme.textColor, opacity: 0.78 }}>
-                Band: {readiness?.neuralReadinessBand ?? 'build'}
+                {selfRankBadge
+                  ? `Vs your sessions: ${selfRankBadge.label}`
+                  : 'Need another session for a personal trend'}
               </p>
             </div>
           </div>
@@ -298,10 +309,190 @@ export const EndScreen = ({
           <div className="grid grid-cols-1 gap-3 text-center sm:grid-cols-3 sm:gap-2">
             <div><p className="text-2xl font-black tabular-nums" style={{ color: '#7dd3fc' }}>{dailyStreak}</p><p className="text-[10px] uppercase tracking-[0.13em] opacity-60 mt-1" style={{ color: theme.textColor }}>Daily streak</p></div>
             <div><p className="text-lg font-bold" style={{ color: '#a5f3fc' }}>{recommendedModeName}</p><p className="text-[10px] uppercase tracking-[0.13em] opacity-60 mt-1" style={{ color: theme.textColor }}>Recommended Next Mode</p></div>
-            <div><p className="text-2xl font-black tabular-nums" style={{ color: weeklyChallenge.completed ? '#4ade80' : '#facc15' }}>{weeklyChallenge.roundsDone}/{weeklyChallenge.roundsTarget}</p><p className="text-[10px] uppercase tracking-[0.13em] opacity-60 mt-1" style={{ color: theme.textColor }}>Weekly challenge</p></div>
+            <div><p className="text-2xl font-black tabular-nums" style={{ color: weeklyChallenge.completed ? '#4ade80' : '#facc15' }}>{weeklyChallenge.roundsDone}/{weeklyChallenge.roundsTarget}</p><p className="text-[10px] uppercase tracking-[0.13em] opacity-60 mt-1" style={{ color: theme.textColor }}>Weekly consistency</p></div>
           </div>
           {firstRunSelection && <p className="mt-3 text-xs text-center" style={{ color: theme.textColor, opacity: 0.72 }}>Built for {firstRunSelection.persona} focus: {GOAL_LABELS[firstRunSelection.goal]}.</p>}
         </div>
+
+        {result.schulteMetrics && (
+          <div className="mb-3 w-full rounded-2xl px-4 py-4 sm:mb-4 sm:px-5" style={{ backgroundColor: 'rgba(52, 211, 153, 0.08)', border: '1px solid rgba(52, 211, 153, 0.28)' }}>
+            <p className="mb-2 text-[10px] uppercase tracking-[0.16em] opacity-65" style={{ color: theme.textColor }}>
+              Macaw Scan
+            </p>
+            <p className="mb-3 text-xs" style={{ color: theme.textColor, opacity: 0.78 }}>
+              Search timing from this round only. Not a visual-processing diagnosis.
+            </p>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <div>
+                <p className="text-xl font-black tabular-nums" style={{ color: theme.targetColor }}>{result.schulteMetrics.boardsCompleted}</p>
+                <p className="text-[10px] uppercase tracking-[0.12em] opacity-60" style={{ color: theme.textColor }}>Boards</p>
+              </div>
+              <div>
+                <p className="text-xl font-black tabular-nums" style={{ color: theme.textColor }}>{result.schulteMetrics.correctSelections}</p>
+                <p className="text-[10px] uppercase tracking-[0.12em] opacity-60" style={{ color: theme.textColor }}>Hits</p>
+              </div>
+              <div>
+                <p className="text-xl font-black tabular-nums" style={{ color: theme.textColor }}>{result.schulteMetrics.errors}</p>
+                <p className="text-[10px] uppercase tracking-[0.12em] opacity-60" style={{ color: theme.textColor }}>Errors</p>
+              </div>
+              <div>
+                <p className="text-xl font-black tabular-nums" style={{ color: theme.textColor }}>{result.schulteMetrics.accuracyPct}%</p>
+                <p className="text-[10px] uppercase tracking-[0.12em] opacity-60" style={{ color: theme.textColor }}>Accuracy</p>
+              </div>
+              <div>
+                <p className="text-xl font-black tabular-nums" style={{ color: theme.textColor }}>
+                  {result.schulteMetrics.averageTransitionMs ?? '—'}
+                  {result.schulteMetrics.averageTransitionMs !== null ? 'ms' : ''}
+                </p>
+                <p className="text-[10px] uppercase tracking-[0.12em] opacity-60" style={{ color: theme.textColor }}>Avg cell time</p>
+              </div>
+              <div>
+                <p className="text-xl font-black tabular-nums" style={{ color: theme.textColor }}>
+                  {Math.round(result.schulteMetrics.completionTimeMs / 1000)}s
+                </p>
+                <p className="text-[10px] uppercase tracking-[0.12em] opacity-60" style={{ color: theme.textColor }}>Search time</p>
+              </div>
+              <div>
+                <p className="text-xl font-black tabular-nums" style={{ color: theme.textColor }}>{result.schulteMetrics.completionStatus}</p>
+                <p className="text-[10px] uppercase tracking-[0.12em] opacity-60" style={{ color: theme.textColor }}>Status</p>
+              </div>
+            </div>
+            <p className="mt-3 text-xs tabular-nums" style={{ color: theme.textColor, opacity: 0.75 }}>
+              Fastest {result.schulteMetrics.fastestTransitionMs ?? '—'}ms · Slowest {result.schulteMetrics.slowestTransitionMs ?? '—'}ms
+              {result.schulteMetrics.lateRoundSlowdownMs !== null
+                ? ` · Late-round ${result.schulteMetrics.lateRoundSlowdownMs > 0 ? '+' : ''}${result.schulteMetrics.lateRoundSlowdownMs}ms`
+                : ''}
+            </p>
+          </div>
+        )}
+
+        {result.goNoGoMetrics && (
+          <div className="mb-3 w-full rounded-2xl px-4 py-4 sm:mb-4 sm:px-5" style={{ backgroundColor: 'rgba(74, 222, 128, 0.08)', border: '1px solid rgba(74, 222, 128, 0.28)' }}>
+            <p className="mb-2 text-[10px] uppercase tracking-[0.16em] opacity-65" style={{ color: theme.textColor }}>
+              Caiman Control
+            </p>
+            <p className="mb-3 text-xs" style={{ color: theme.textColor, opacity: 0.78 }}>
+              Still until the moment is real. Speed only counts when the cue is real.
+            </p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.14em] opacity-60" style={{ color: theme.textColor }}>Reaction</p>
+                <p className="mt-1 text-xl font-black tabular-nums" style={{ color: theme.targetColor }}>
+                  {result.goNoGoMetrics.correctGo}
+                </p>
+                <p className="text-[11px] opacity-70" style={{ color: theme.textColor }}>
+                  Hits · {result.goNoGoMetrics.averageGoReactionMs ?? '—'}
+                  {result.goNoGoMetrics.averageGoReactionMs !== null ? 'ms' : ''} · Missed {result.goNoGoMetrics.missedGo}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.14em] opacity-60" style={{ color: theme.textColor }}>Control</p>
+                <p className="mt-1 text-xl font-black tabular-nums" style={{ color: theme.textColor }}>
+                  {result.goNoGoMetrics.inhibitionAccuracyPct}%
+                </p>
+                <p className="text-[11px] opacity-70" style={{ color: theme.textColor }}>
+                  Holds {result.goNoGoMetrics.correctInhibitions} · Accuracy on no-go
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.14em] opacity-60" style={{ color: theme.textColor }}>False starts</p>
+                <p className="mt-1 text-xl font-black tabular-nums" style={{ color: '#fca5a5' }}>
+                  {result.goNoGoMetrics.falsePositives + result.goNoGoMetrics.prematureResponses}
+                </p>
+                <p className="text-[11px] opacity-70" style={{ color: theme.textColor }}>
+                  No-go taps {result.goNoGoMetrics.falsePositives} · Early {result.goNoGoMetrics.prematureResponses}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {result.rapidComprehensionMetrics && (
+          <div className="mb-3 w-full rounded-2xl px-4 py-4 sm:mb-4 sm:px-5" style={{ backgroundColor: 'rgba(74, 222, 128, 0.08)', border: '1px solid rgba(74, 222, 128, 0.28)' }}>
+            <p className="mb-2 text-[10px] uppercase tracking-[0.16em] opacity-65" style={{ color: theme.textColor }}>
+              Chameleon Read
+            </p>
+            <p className="mb-3 text-xs" style={{ color: theme.textColor, opacity: 0.78 }}>
+              Athletic information-processing drill. Not an IQ test. Not a medical cognitive assessment.
+            </p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.14em] opacity-60" style={{ color: theme.textColor }}>Speed</p>
+                <p className="mt-1 text-xl font-black tabular-nums" style={{ color: theme.targetColor }}>
+                  {result.rapidComprehensionMetrics.meanAnswerReactionMs ?? '—'}
+                  {result.rapidComprehensionMetrics.meanAnswerReactionMs !== null ? 'ms' : ''}
+                </p>
+                <p className="text-[11px] opacity-70" style={{ color: theme.textColor }}>
+                  Mean answer RT · {result.rapidComprehensionMetrics.correct} clean
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.14em] opacity-60" style={{ color: theme.textColor }}>Comprehend</p>
+                <p className="mt-1 text-xl font-black tabular-nums" style={{ color: theme.textColor }}>
+                  {result.rapidComprehensionMetrics.comprehensionAccuracyPct}%
+                </p>
+                <p className="text-[11px] opacity-70" style={{ color: theme.textColor }}>
+                  Wrong {result.rapidComprehensionMetrics.wrong} · Encoding misses {result.rapidComprehensionMetrics.encodingFailures}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.14em] opacity-60" style={{ color: theme.textColor }}>Difficulty</p>
+                <p className="mt-1 text-xl font-black tabular-nums" style={{ color: theme.textColor }}>
+                  {result.rapidComprehensionMetrics.difficultyReached}
+                </p>
+                <p className="text-[11px] opacity-70" style={{ color: theme.textColor }}>
+                  Decay {result.rapidComprehensionMetrics.performanceDecayMs ?? '—'}
+                  {result.rapidComprehensionMetrics.performanceDecayMs !== null ? 'ms' : ''}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {result.choiceReactionMetrics && (
+          <div className="mb-3 w-full rounded-2xl px-4 py-4 sm:mb-4 sm:px-5" style={{ backgroundColor: 'rgba(96, 165, 250, 0.08)', border: '1px solid rgba(96, 165, 250, 0.28)' }}>
+            <p className="mb-2 text-[10px] uppercase tracking-[0.16em] opacity-65" style={{ color: theme.textColor }}>
+              Mongoose Read
+            </p>
+            <p className="mb-3 text-xs" style={{ color: theme.textColor, opacity: 0.78 }}>
+              Read first. Move second. Fast is only useful when the decision is right.
+            </p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.14em] opacity-60" style={{ color: theme.textColor }}>Speed</p>
+                <p className="mt-1 text-xl font-black tabular-nums" style={{ color: theme.targetColor }}>
+                  {result.choiceReactionMetrics.meanChoiceReactionMs ?? '—'}
+                  {result.choiceReactionMetrics.meanChoiceReactionMs !== null ? 'ms' : ''}
+                </p>
+                <p className="text-[11px] opacity-70" style={{ color: theme.textColor }}>
+                  Mean choice RT · {result.choiceReactionMetrics.correct} clean
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.14em] opacity-60" style={{ color: theme.textColor }}>Decision</p>
+                <p className="mt-1 text-xl font-black tabular-nums" style={{ color: theme.textColor }}>
+                  {result.choiceReactionMetrics.decisionAccuracyPct}%
+                </p>
+                <p className="text-[11px] opacity-70" style={{ color: theme.textColor }}>
+                  Wrong {result.choiceReactionMetrics.wrongResponseCount} · Missed {result.choiceReactionMetrics.omissions}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.14em] opacity-60" style={{ color: theme.textColor }}>False starts</p>
+                <p className="mt-1 text-xl font-black tabular-nums" style={{ color: '#fca5a5' }}>
+                  {result.choiceReactionMetrics.falseStarts}
+                </p>
+                <p className="text-[11px] opacity-70" style={{ color: theme.textColor }}>
+                  Consistency {result.choiceReactionMetrics.consistencyPct ?? '—'}
+                  {result.choiceReactionMetrics.consistencyPct !== null ? '%' : ''}
+                  {result.choiceReactionMetrics.ruleSwitchCostMs !== null
+                    ? ` · Switch ${result.choiceReactionMetrics.ruleSwitchCostMs > 0 ? '+' : ''}${result.choiceReactionMetrics.ruleSwitchCostMs}ms`
+                    : ''}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {roundProgressDelta && (
           <div className="mb-3 w-full rounded-2xl px-4 py-4 sm:mb-4 sm:px-5" style={{ backgroundColor: 'rgba(74, 222, 128, 0.07)', border: '1px solid rgba(74, 222, 128, 0.26)' }}>
@@ -365,7 +556,7 @@ export const EndScreen = ({
         <motion.div className="flex w-full flex-col gap-2.5 sm:gap-3">
           <JungleButton onClick={handleStartRecommended} className="w-full py-4 text-lg font-bold uppercase">Start Today's Session: {recommendedModeName}</JungleButton>
           <JungleButton onClick={onPlayAgain} className="w-full py-4 text-lg font-bold uppercase">Replay</JungleButton>
-          <button type="button" onClick={onViewStats} className="ui-secondary-button w-full py-3" style={{ color: theme.targetColor, borderColor: `${theme.targetColor}55` }}>Compare My Score</button>
+          <button type="button" onClick={onViewStats} className="ui-secondary-button w-full py-3" style={{ color: theme.targetColor, borderColor: `${theme.targetColor}55` }}>View my history</button>
           <button type="button" onClick={onMainMenu} className="ui-secondary-button w-full py-3" style={{ color: theme.textColor, borderColor: `${theme.textColor}40` }}>Main Menu</button>
         </motion.div>
         <p className="mt-4 text-xs opacity-55" style={{ color: theme.textColor }}>Athlete profile: {playerName}</p>

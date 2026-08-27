@@ -1,0 +1,196 @@
+import { GameModeType } from '../types/game';
+import { PrimeProtocol, PrimeStep } from '../types/prime';
+import { isModePlayable } from '../utils/gameModes';
+import { getPhysicalCueModule } from './physicalCueModules';
+
+const drillStep = (
+  step: Omit<PrimeStep, 'kind'> & { modeId: GameModeType },
+): PrimeStep => ({
+  ...step,
+  kind: 'drill',
+  skippable: step.skippable ?? false,
+});
+
+export const GAMESPEED_PRIME_PROTOCOL_ID = 'gamespeed-prime-v1';
+
+/**
+ * Initial Prime protocol uses only existing playable modes.
+ * Durations follow the current 60-second round contract.
+ */
+export const gamespeedPrimeProtocol: PrimeProtocol = {
+  id: GAMESPEED_PRIME_PROTOCOL_ID,
+  name: 'GameSpeed Prime',
+  description: 'A short pre-performance sequence: settle, see, scan, react, control, process, decide, track, then a physical ready cue.',
+  estimatedSeconds: 520,
+  contexts: ['practice', 'game', 'lift', 'skill', 'recovery'],
+  steps: [
+    drillStep({
+      id: 'settle',
+      category: 'settle',
+      title: 'Settle',
+      experienceName: 'Crocodile Stillness',
+      modeId: 'calmFocus',
+      durationSeconds: 60,
+      intensity: 'low',
+      instruction: 'Slow the eyes. Tap only when the cue is clean. This is composure, not a sprint.',
+    }),
+    drillStep({
+      id: 'see',
+      category: 'see',
+      title: 'See',
+      experienceName: 'Owl Vision',
+      modeId: 'peripheralPulse',
+      durationSeconds: 60,
+      intensity: 'standard',
+      instruction: 'Keep the head quiet and pick up edge cues without chasing them.',
+    }),
+    drillStep({
+      id: 'scan',
+      category: 'scan',
+      title: 'Scan',
+      experienceName: 'Macaw Scan',
+      modeId: 'schulteScan',
+      durationSeconds: 60,
+      intensity: 'standard',
+      instruction: 'Find the signal inside the noise. Tap the next live cell in order — do not chase the whole grid.',
+    }),
+    drillStep({
+      id: 'react',
+      category: 'react',
+      title: 'React',
+      experienceName: 'Cobra Strike',
+      modeId: 'quickTap',
+      durationSeconds: 60,
+      intensity: 'high',
+      instruction: 'Answer the first clean cue. Fast, then reset.',
+    }),
+    drillStep({
+      id: 'control',
+      category: 'control',
+      title: 'Control',
+      experienceName: 'Caiman Control',
+      modeId: 'goNoGo',
+      durationSeconds: 60,
+      intensity: 'high',
+      instruction: 'Still until the moment is real. Strike the live cue. Hold the fake. Speed is useless if the response is wrong.',
+    }),
+    drillStep({
+      id: 'process',
+      category: 'process',
+      title: 'Process',
+      experienceName: 'Chameleon Read',
+      modeId: 'rapidComprehension',
+      durationSeconds: 60,
+      intensity: 'high',
+      instruction:
+        'Adapt before the picture changes. Take the information in, hold it after it disappears, then answer from what you just saw.',
+    }),
+    drillStep({
+      id: 'decide',
+      category: 'decide',
+      title: 'Decide',
+      experienceName: 'Mongoose Read',
+      modeId: 'choiceReaction',
+      durationSeconds: 60,
+      intensity: 'high',
+      instruction: 'Read first. Move second. Classify the cue, then pick the matching response. Fast is only useful when the decision is right.',
+    }),
+    drillStep({
+      id: 'track',
+      category: 'track',
+      title: 'Track',
+      experienceName: 'Anaconda Lock',
+      modeId: 'holdTrack',
+      durationSeconds: 60,
+      intensity: 'standard',
+      instruction: 'Stay locked on the moving cue. Smooth pressure beats a hard stab.',
+    }),
+    {
+      id: 'move',
+      category: 'move',
+      kind: 'physicalCue',
+      title: 'Move',
+      experienceName: 'Jaguar Movement',
+      durationSeconds: 20,
+      intensity: 'standard',
+      skippable: true,
+      physicalCueModuleId: 'jaguar-movement',
+      instruction:
+        'GameSpeed shows the cue. You move. Create clear space, use stable footing, and stop if movement causes pain. Do not stare at the device while moving if that is unsafe. Nothing here is a movement score.',
+    },
+    {
+      id: 'summary',
+      category: 'summary',
+      kind: 'summary',
+      title: 'Summary',
+      experienceName: "You're Primed",
+      instruction: 'Review what this session actually captured.',
+    },
+  ],
+};
+
+export const primeProtocols: PrimeProtocol[] = [gamespeedPrimeProtocol];
+
+const registeredPrimeProtocols = new Map<string, PrimeProtocol>();
+let recipeProtocolLookup: ((id: string) => PrimeProtocol | null) | null = null;
+
+/** Register a compiled recipe protocol so the shared engine can look it up by id. */
+export const registerPrimeProtocol = (protocol: PrimeProtocol): void => {
+  if (protocol.id === GAMESPEED_PRIME_PROTOCOL_ID) {
+    return;
+  }
+  registeredPrimeProtocols.set(protocol.id, protocol);
+};
+
+export const setPrimeRecipeLookup = (lookup: (id: string) => PrimeProtocol | null): void => {
+  recipeProtocolLookup = lookup;
+};
+
+export const getPrimeProtocol = (id: string): PrimeProtocol =>
+  registeredPrimeProtocols.get(id) ??
+  primeProtocols.find(protocol => protocol.id === id) ??
+  recipeProtocolLookup?.(id) ??
+  gamespeedPrimeProtocol;
+
+export const getPrimeExecutableSteps = (protocol: PrimeProtocol): PrimeStep[] =>
+  protocol.steps.filter(step => step.kind !== 'summary');
+
+export const validatePrimeProtocol = (protocol: PrimeProtocol): string[] => {
+  const errors: string[] = [];
+  if (!protocol.id) errors.push('protocol id is required');
+  if (!protocol.name.trim()) errors.push('protocol name is required');
+  if (!protocol.steps.length) errors.push('protocol must include steps');
+  if (protocol.estimatedSeconds <= 0) errors.push('estimatedSeconds must be > 0');
+
+  const seen = new Set<string>();
+  const drillSteps = protocol.steps.filter(step => step.kind === 'drill');
+  if (drillSteps.length === 0) errors.push('protocol must include at least one drill step');
+
+  protocol.steps.forEach((step, index) => {
+    if (!step.id) errors.push(`step #${index} is missing id`);
+    if (step.id && seen.has(step.id)) errors.push(`duplicate step id: ${step.id}`);
+    if (step.id) seen.add(step.id);
+    if (step.kind === 'drill') {
+      if (!step.modeId) errors.push(`${step.id || `step#${index}`} drill is missing modeId`);
+      else if (!isModePlayable(step.modeId)) {
+        errors.push(`${step.id}: mode ${step.modeId} is not playable`);
+      }
+    }
+    if (step.kind === 'movement' && step.modeId) {
+      errors.push(`${step.id}: movement steps cannot bind a modeId yet`);
+    }
+    if (step.kind === 'physicalCue') {
+      if (step.modeId) {
+        errors.push(`${step.id}: physicalCue steps cannot bind a modeId`);
+      }
+      if (!getPhysicalCueModule(step.physicalCueModuleId)) {
+        errors.push(`${step.id}: physicalCue step needs a known physicalCueModuleId`);
+      }
+    }
+    if (step.durationSeconds !== undefined && step.durationSeconds <= 0) {
+      errors.push(`${step.id}: durationSeconds must be > 0`);
+    }
+  });
+
+  return errors;
+};

@@ -36,6 +36,8 @@ export const useAudio = () => {
   return ctx;
 };
 
+export const useOptionalAudio = () => useContext(AudioContext);
+
 interface AudioManagerProps {
   children: ReactNode;
 }

@@ -57,6 +57,22 @@ const DEFAULT_SPORT_COPY: Record<GameModeType, ModeSportCopyOverride> = {
     sportLabel: 'Calm precision cadence',
     sportDescription: 'Train steady, low-stimulation response quality and visual composure.',
   },
+  schulteScan: {
+    sportLabel: 'Visual search scan',
+    sportDescription: 'Find the next live signal in the grid without letting noise pull your eyes around.',
+  },
+  goNoGo: {
+    sportLabel: 'Strike or hold the cue',
+    sportDescription: 'Fire on the live cue and withhold on the fake. Fast is not enough if the read is wrong.',
+  },
+  choiceReaction: {
+    sportLabel: 'Read then respond',
+    sportDescription: 'Classify the cue and pick the matching action. Speed only counts when the decision is right.',
+  },
+  rapidComprehension: {
+    sportLabel: 'Take the picture, then answer',
+    sportDescription: 'Encode the live information, hold it after it changes, and answer from what you just saw.',
+  },
 };
 
 const modeSportOverrides: Partial<Record<SportType, Partial<Record<GameModeType, ModeSportCopyOverride>>>> = {
@@ -367,6 +383,86 @@ export const modeDescriptions: Record<GameModeType, ModeDescription> = {
       'Breathe out slowly before each response to reduce noise.',
       'Tap with smooth intent, not urgency.',
       'Use this mode on heavy stress days or pre-sleep sessions.',
+    ],
+  },
+  schulteScan: {
+    title: 'Macaw Scan',
+    description: 'Dynamic visual-search grid. Find the next signal inside the noise. Boards can stay still or reshuffle after clean hits.',
+    trainingFocus: 'Scanning speed and attentional control',
+    intensity: 'Medium',
+    rhythm: 'Ordered search under clock pressure',
+    whyThisMatters: 'Games hide the next cue in clutter. This mode trains finding the live signal without chasing every cell.',
+    evidenceStyle: {
+      cuePickup: 'Requires locating the next valid cell among competing labels.',
+      anticipation: 'Rewards knowing the sequence instead of hunting at random.',
+      decisionSpeed: 'Measures cell-to-cell transition time on every correct tap.',
+      gazeStability: 'Encourages a scan pattern instead of frantic eye jumps.',
+    },
+    tips: [
+      'Start at the last hit and search nearby before jumping the whole grid.',
+      'Wrong taps lock the grid briefly — reset instead of mashing.',
+      'When cells reshuffle, re-acquire the next signal. Do not chase old positions.',
+    ],
+  },
+  goNoGo: {
+    title: 'Caiman Control',
+    description: 'Inhibitory-control drill. Green is a strike. Red is a hold. Later boards tighten the ratio, timing, and visual similarity — never by making the window impossible.',
+    trainingFocus: 'Valid-cue response and invalid-cue suppression',
+    intensity: 'Medium-High',
+    rhythm: 'Still, then one clean commit',
+    whyThisMatters: 'Elite athletes do not simply react quickly. They react correctly. A false start is a different miss than a late live cue.',
+    evidenceStyle: {
+      cuePickup: 'Requires classifying GO vs NO-GO before the hand moves.',
+      anticipation: 'Punishes premature taps during the still interval.',
+      decisionSpeed: 'Measures GO reaction time only on valid strikes.',
+      gazeStability: 'Rewards staying quiet until the real cue appears.',
+    },
+    tips: [
+      'Do not tap the still interval. Wait for the live cue.',
+      'A red HOLD is a success if you never move.',
+      'False starts are counted separately from missed live cues.',
+    ],
+  },
+  choiceReaction: {
+    title: 'Mongoose Read',
+    description:
+      'Choice-reaction drill. Read the cue, then select the matching response — tap, swipe, or withhold. Rules are shown before the round, then taken away unless the difficulty keeps them visible.',
+    trainingFocus: 'Stimulus discrimination and motor selection',
+    intensity: 'High',
+    rhythm: 'Read first. Move second.',
+    whyThisMatters:
+      'Fast is only useful when the decision is right. This mode separates choice reaction time from decision accuracy so a lucky mash is not a win.',
+    evidenceStyle: {
+      cuePickup: 'Requires classifying the live cue against a rule map before moving.',
+      anticipation: 'Punishes false starts during the wait interval.',
+      decisionSpeed: 'Measures choice reaction time only on correct motor responses.',
+      gazeStability: 'Rewards staying quiet until the mapping is read.',
+    },
+    tips: [
+      'Study the rules during the briefing. They may disappear once the drill starts.',
+      'A wrong swipe is not the same miss as a late tap or a false start.',
+      'Red means no response. Moving on a no-go is a wrong decision, not a fast one.',
+    ],
+  },
+  rapidComprehension: {
+    title: 'Chameleon Read',
+    description:
+      'Athletic information-processing drill. A short picture is shown, then removed. Answer from what you just saw — relationships, sequences, rules, or locations. This is not an IQ test and not a medical cognitive assessment.',
+    trainingFocus: 'Rapid intake, retention, and response',
+    intensity: 'High',
+    rhythm: 'See it. Hold it. Answer it.',
+    whyThisMatters:
+      'Games change while you are still reading them. This drill trains taking information in fast, keeping it after the picture changes, and answering from the hold — not from trivia.',
+    evidenceStyle: {
+      cuePickup: 'Requires encoding a short visual or rule set before it disappears.',
+      anticipation: 'Punishes taps during encoding and the hold delay.',
+      decisionSpeed: 'Measures answer reaction time only after the question appears.',
+      gazeStability: 'Rewards staying on the picture until it is taken away.',
+    },
+    tips: [
+      'Read the picture. Do not mash before the question.',
+      'A late blank is an encoding miss, not a slow trivia miss.',
+      'Rules can switch later. Adapt before the picture changes.',
     ],
   },
 };

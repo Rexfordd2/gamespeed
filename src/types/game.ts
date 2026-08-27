@@ -1,14 +1,22 @@
 import type { SportType } from '../config/sports';
+import type { SchulteScanMetrics } from './schulte';
+import type { GoNoGoMetrics } from './goNoGo';
+import type { ChoiceReactionMetrics } from './choiceReaction';
+import type { ComprehensionMetrics } from './rapidComprehension';
 
-export type GameState = 'start' | 'playing' | 'end' | 'stats' | 'coach';
+export type GameState = 'start' | 'playing' | 'prime' | 'end' | 'stats' | 'coach';
 
 export type CueIntensity = 'minimal' | 'standard' | 'guided';
+
+export type TrainingContext = 'practice' | 'game' | 'lift' | 'skill' | 'recovery';
 
 export interface SessionOptions {
   lowStimulus?: boolean;
   includeRoutine?: boolean;
   cueIntensity?: CueIntensity;
   hapticsEnabled?: boolean;
+  trainingContext?: TrainingContext;
+  roundSecondsOverride?: number;
 }
 
 export type GameModeType =
@@ -19,7 +27,11 @@ export type GameModeType =
   | 'holdTrack'
   | 'sequenceMemory'
   | 'peripheralPulse'
-  | 'calmFocus';
+  | 'calmFocus'
+  | 'schulteScan'
+  | 'goNoGo'
+  | 'choiceReaction'
+  | 'rapidComprehension';
 
 export type ModeAvailability = 'playable' | 'comingSoon';
 
@@ -110,6 +122,14 @@ export interface GameResult {
   /** Benchmark mode only: composite 0–100 score combining accuracy (60%) and speed (40%). */
   benchmarkScore?: number;
   readinessMetrics?: ReadinessMetrics;
+  /** Macaw Scan / Schulte grid metrics. Omitted for other modes. */
+  schulteMetrics?: SchulteScanMetrics;
+  /** Caiman Control / GO-NO-GO metrics. Omitted for other modes. */
+  goNoGoMetrics?: GoNoGoMetrics;
+  /** Mongoose Read / choice-reaction metrics. Omitted for other modes. */
+  choiceReactionMetrics?: ChoiceReactionMetrics;
+  /** Chameleon Read / rapid-comprehension metrics. Omitted for other modes. */
+  rapidComprehensionMetrics?: ComprehensionMetrics;
 }
 
 // ---------- Persistent stats types ----------
@@ -134,6 +154,13 @@ export interface StoredRound {
     metricsVersion: number;
     runwayCompletionsCount?: number;
     sleepCorrelationState?: 'pending' | 'insufficient_data' | 'available';
+    primeSessionId?: string;
+    protocolId?: string;
+    primeStepId?: string;
+    schulteMetrics?: SchulteScanMetrics;
+    goNoGoMetrics?: GoNoGoMetrics;
+    choiceReactionMetrics?: ChoiceReactionMetrics;
+    rapidComprehensionMetrics?: ComprehensionMetrics;
   };
 }
 

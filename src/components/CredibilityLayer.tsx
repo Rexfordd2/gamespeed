@@ -34,8 +34,7 @@ export const CredibilityLayer = () => {
       </div>
 
       <p className="mt-2 text-sm leading-relaxed sm:text-base" style={{ color: theme.textColor, opacity: 0.82 }}>
-        Built for repeatable readiness, not hype metrics. Use these references as directional guidance until live cohort
-        reporting is published.
+        Built for repeatable session logs, not hype metrics. Numbers below describe what this app stores on your device.
       </p>
 
       <div className="mt-5 grid gap-3 md:grid-cols-3">
@@ -116,7 +115,7 @@ export const CredibilityLayer = () => {
             the same setup for the most reliable trend.
           </p>
           <p className="mt-2 text-xs uppercase tracking-[0.1em]" style={{ color: theme.textColor, opacity: 0.64 }}>
-            [Placeholder note: hardware-normalized benchmarking planned in future release]
+            [Device and browser latency are not normalized. Compare on the same setup.]
           </p>
 
           <h3 className="mt-4 text-base font-semibold sm:text-lg" style={{ color: theme.textColor }}>

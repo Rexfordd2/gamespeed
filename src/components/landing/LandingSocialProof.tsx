@@ -20,7 +20,7 @@ export const LandingSocialProof = ({ content }: LandingSocialProofProps) => {
         {content.benchmarkFraming}
       </p>
       <p className="mt-2 text-xs uppercase tracking-[0.1em]" style={{ color: theme.textColor, opacity: 0.62 }}>
-        Placeholder proof/testimonial data is clearly labeled in `src/content/credibilityContent.ts`.
+        Training notes only. No published outcome study and no friend leaderboard.
       </p>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-3">

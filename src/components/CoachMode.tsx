@@ -6,6 +6,8 @@ import { JungleButton } from './JungleButton';
 import { COACH_CHALLENGE_TEMPLATES } from '../utils/coachChallenges';
 import { getAthleteSummary, getCoachDashboardSummary, TrendDirection } from '../utils/coachSummary';
 import { localCoachRepository } from '../utils/coachStore';
+import { loadPrimeSessions } from '../utils/primePersistence';
+import { formatPrimeRecipeIdentity } from '../config/primeRecipes';
 
 interface CoachModeProps {
   onBack: () => void;
@@ -59,6 +61,10 @@ export const CoachMode = ({ onBack }: CoachModeProps) => {
     [store.athletes],
   );
   const dashboard = useMemo(() => getCoachDashboardSummary(sortedAthletes), [sortedAthletes]);
+  const recentPrimeRecipes = loadPrimeSessions()
+    .slice()
+    .sort((a, b) => b.ts - a.ts)
+    .slice(0, 5);
 
   const refresh = () => setStore(localCoachRepository.load());
 
@@ -278,6 +284,36 @@ export const CoachMode = ({ onBack }: CoachModeProps) => {
                           {item.athleteName} - {item.recentActivityType}
                         </span>
                         <span style={{ color: theme.textColor, opacity: 0.75 }}>{formatActivityAge(item.recentActivityTs)}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-2xl p-3.5" style={{ backgroundColor: 'rgba(2,8,12,0.72)' }}>
+                <p className="text-xs font-semibold uppercase tracking-[0.08em]" style={{ color: theme.textColor, opacity: 0.75 }}>
+                  Prime recipe identity
+                </p>
+                <div className="mt-2 space-y-1.5">
+                  {recentPrimeRecipes.length === 0 ? (
+                    <p className="text-sm" style={{ color: theme.textColor, opacity: 0.75 }}>
+                      No Prime sessions on this device yet.
+                    </p>
+                  ) : (
+                    recentPrimeRecipes.map(session => (
+                      <div key={`prime_${session.id}`} className="text-sm">
+                        <p style={{ color: theme.textColor }}>
+                          {formatPrimeRecipeIdentity({
+                            sport: session.sport,
+                            position: session.position,
+                            context: session.context,
+                            protocolId: session.protocolId,
+                            recipeId: session.recipeId,
+                          })}
+                        </p>
+                        <p className="font-mono text-[11px] opacity-65" style={{ color: theme.textColor }}>
+                          {session.recipeId ?? session.protocolId}
+                        </p>
                       </div>
                     ))
                   )}
