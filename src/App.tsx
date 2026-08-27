@@ -20,8 +20,19 @@ import {
   SessionOptions,
 } from './types/game';
 import { resolvePlayableMode } from './utils/gameModes';
-import { loadStats, recordRound } from './utils/sessionStats';
-import { createClientRoundId, syncRoundToCloud } from './utils/roundSync';
+import {
+  adoptAnonymousStatsForUser,
+  loadStats,
+  mergeStoredRounds,
+  recordRound,
+  setStatsStorageOwner,
+} from './utils/sessionStats';
+import {
+  createClientRoundId,
+  fetchCloudRounds,
+  syncRoundToCloud,
+  syncRoundsToCloud,
+} from './utils/roundSync';
 import { useAuth } from './context/AuthContext';
 import { RoundProgressDelta, getDailyStreak, getRoundProgressDelta } from './utils/progression';
 import { trackConversionEvent } from './lib/analytics';
@@ -155,6 +166,8 @@ export const App = () => {
   });
   const [totalRoundsCompleted, setTotalRoundsCompleted] = useState<number>(statsSnapshot.rounds.length);
   const [roundProgressDelta, setRoundProgressDelta] = useState<RoundProgressDelta | null>(null);
+  const [cloudSyncStatus, setCloudSyncStatus] = useState<'idle' | 'synced' | 'failed'>('idle');
+  const [screenTransitionKey, setScreenTransitionKey] = useState(0);
   const [gameResult, setGameResult] = useState<GameResult>({
     score: 0,
     misses: 0,
@@ -164,6 +177,7 @@ export const App = () => {
   });
   const hasTrackedReturnVisit = useRef(false);
   const hadAuthenticatedUser = useRef<boolean>(!!user);
+  const hydratedUserId = useRef<string | null>(null);
   const isNightGuardrailActive = shouldUseLowStimulusMode(nightGuardrailSettings, new Date(clockMs));
 
   const handleGameStart = (
@@ -215,6 +229,8 @@ export const App = () => {
     setSelectedMode(resolvePlayableMode(startMode));
     setActiveSessionOptions(nextSessionOptions);
     setFirstRunSelection(nextFirstRunSelection ?? null);
+    setCloudSyncStatus('idle');
+    setScreenTransitionKey(key => key + 1);
     setGameState('playing');
   };
 
@@ -233,6 +249,7 @@ export const App = () => {
     setLastRoundSelection(firstRunSelection);
     setTotalRoundsCompleted(nextStats.rounds.length);
     setShowPostFirstSessionChecklist(isFirstCompletedSession);
+    setScreenTransitionKey(key => key + 1);
     setGameState('end');
     setFirstRunSelection(null);
 
@@ -280,17 +297,29 @@ export const App = () => {
       void syncRoundToCloud({
         userId: user.id,
         round: storedRound,
+      }).then(result => {
+        if (result === 'failed') {
+          setCloudSyncStatus('failed');
+        } else if (result === 'synced') {
+          setCloudSyncStatus('synced');
+        }
       });
+    } else {
+      setCloudSyncStatus('idle');
     }
   };
 
   const handlePlayAgain = () => {
     setShowPostFirstSessionChecklist(false);
+    setCloudSyncStatus('idle');
+    setScreenTransitionKey(key => key + 1);
     setGameState('playing');
   };
 
   const handleMainMenu = () => {
     setShowPostFirstSessionChecklist(false);
+    setCloudSyncStatus('idle');
+    setScreenTransitionKey(key => key + 1);
     setActiveSessionOptions({
       lowStimulus: false,
       includeRoutine: false,
@@ -478,10 +507,64 @@ export const App = () => {
     hadAuthenticatedUser.current = signedInNow;
   }, [isFirstRunComplete, landingExperiment.id, selectedSport, totalRoundsCompleted, user]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const hydrateAccountHistory = async () => {
+      if (!user) {
+        hydratedUserId.current = null;
+        setStatsStorageOwner(null);
+        const anonymousStats = loadStats();
+        if (!cancelled) {
+          setStatsSnapshot(anonymousStats);
+          setTotalRoundsCompleted(anonymousStats.rounds.length);
+        }
+        return;
+      }
+
+      if (hydratedUserId.current === user.id) {
+        return;
+      }
+
+      setStatsStorageOwner(user.id);
+      const adoptedStats = adoptAnonymousStatsForUser(user.id);
+      if (!cancelled) {
+        setStatsSnapshot(adoptedStats);
+        setTotalRoundsCompleted(adoptedStats.rounds.length);
+      }
+
+      const uploadStatus = await syncRoundsToCloud(user.id, adoptedStats.rounds);
+      const cloudHistory = await fetchCloudRounds(user.id);
+      if (cancelled) {
+        return;
+      }
+
+      if (cloudHistory.status === 'failed') {
+        setCloudSyncStatus('failed');
+        hydratedUserId.current = user.id;
+        return;
+      }
+
+      const mergedStats = mergeStoredRounds(cloudHistory.rounds);
+      setStatsSnapshot(mergedStats);
+      setTotalRoundsCompleted(mergedStats.rounds.length);
+      if (uploadStatus === 'synced' || cloudHistory.status === 'synced') {
+        setCloudSyncStatus('synced');
+      }
+      hydratedUserId.current = user.id;
+    };
+
+    void hydrateAccountHistory();
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
   return (
     <ThemeProvider theme={jungleTheme}>
       <AudioManager>
         <AudioToggle />
+        <div key={screenTransitionKey} className="screen-mist-sweep">
         {gameState === 'start' && (
           <>
             {publicRoute === 'benchmark' ? (
@@ -546,6 +629,7 @@ export const App = () => {
             stats={statsSnapshot}
             roundProgressDelta={roundProgressDelta}
             playerName={profile?.display_name || user?.email?.split('@')[0] || 'You'}
+            cloudSyncStatus={cloudSyncStatus}
           />
         )}
         {gameState === 'stats' && (
@@ -556,6 +640,7 @@ export const App = () => {
           />
         )}
         {gameState === 'coach' && <CoachMode onBack={handleMainMenu} />}
+        </div>
       </AudioManager>
     </ThemeProvider>
   );

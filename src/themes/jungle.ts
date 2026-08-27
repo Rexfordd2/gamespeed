@@ -6,16 +6,16 @@ import { jungleAssetManifest, jungleVisualFallbacks } from './assetManifest';
 // Using it here keeps asset URLs consistent with the configured build base.
 export const jungleTheme: JungleThemeConfig = {
   name: 'jungle',
-  backgroundColor: '#06120f',
-  targetColor: '#4ade80',
-  textColor: '#ffffff',
+  backgroundColor: '#06120F',
+  targetColor: '#52F28C',
+  textColor: '#EAE9DF',
   icon: {
     type: 'image',
     path: jungleAssetManifest.icons.target,
     fallbackPath: jungleAssetManifest.icons.targetFallback ?? jungleVisualFallbacks.icon.target,
   },
   background: {
-    gradient: 'bg-gradient-to-b from-[#06120f] via-[#0b2d1f] to-[#03100c]',
+    gradient: 'bg-gradient-to-b from-[#020806] via-[#06120F] to-[#0B2118]',
     overlay: {
       top: jungleAssetManifest.backgrounds.overlays.top,
       left: jungleAssetManifest.backgrounds.overlays.left,
@@ -75,17 +75,17 @@ export const jungleTheme: JungleThemeConfig = {
       'hold-lock': {
         src: jungleAssetManifest.audio.mode.holdLock.src,
         fallbackSrc: jungleAssetManifest.audio.mode.holdLock.fallbackSrc,
-        fallbackEffect: 'hit',
+        fallbackEffect: 'growl',
       },
       'sequence-preview': {
         src: jungleAssetManifest.audio.mode.sequencePreview.src,
         fallbackSrc: jungleAssetManifest.audio.mode.sequencePreview.fallbackSrc,
-        fallbackEffect: 'hit',
+        fallbackEffect: 'hiss',
       },
       'sequence-input': {
         src: jungleAssetManifest.audio.mode.sequenceInput.src,
         fallbackSrc: jungleAssetManifest.audio.mode.sequenceInput.fallbackSrc,
-        fallbackEffect: 'hit',
+        fallbackEffect: 'hiss',
       },
       'sequence-success': {
         src: jungleAssetManifest.audio.mode.sequenceSuccess.src,
@@ -96,6 +96,21 @@ export const jungleTheme: JungleThemeConfig = {
         src: jungleAssetManifest.audio.mode.sequenceFail.src,
         fallbackSrc: jungleAssetManifest.audio.mode.sequenceFail.fallbackSrc,
         fallbackEffect: 'miss',
+      },
+      'instinct-hiss': {
+        src: jungleAssetManifest.audio.mode.instinctHiss.src,
+        fallbackSrc: jungleAssetManifest.audio.mode.instinctHiss.fallbackSrc,
+        fallbackEffect: 'hiss',
+      },
+      'instinct-growl': {
+        src: jungleAssetManifest.audio.mode.instinctGrowl.src,
+        fallbackSrc: jungleAssetManifest.audio.mode.instinctGrowl.fallbackSrc,
+        fallbackEffect: 'growl',
+      },
+      'instinct-water': {
+        src: jungleAssetManifest.audio.mode.instinctWater.src,
+        fallbackSrc: jungleAssetManifest.audio.mode.instinctWater.fallbackSrc,
+        fallbackEffect: 'waterThud',
       },
     },
     // Menu/system interaction cues can be added here.

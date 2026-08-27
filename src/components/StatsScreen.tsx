@@ -77,7 +77,7 @@ export const StatsScreen = ({ onClose, stats, playerName }: StatsScreenProps) =>
             </p>
           </div>
           <JungleButton onClick={onClose} className="min-h-11 px-4 py-2.5 text-sm font-semibold">
-            ← Menu
+            Menu
           </JungleButton>
         </div>
 

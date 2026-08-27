@@ -36,7 +36,7 @@ export interface ThemeAudio {
   ui: ThemeAudioCueMap;
 }
 
-export type ThemeAudioFallbackEffect = 'hit' | 'miss' | 'success';
+export type ThemeAudioFallbackEffect = 'hit' | 'miss' | 'success' | 'hiss' | 'growl' | 'waterThud';
 
 export interface ThemeAudioCue {
   src: string;

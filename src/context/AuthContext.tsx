@@ -36,8 +36,7 @@ interface AuthContextValue {
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
-
-const PROFILE_NOT_FOUND_CODE = 'PGRST116';
+const PROFILE_TABLE = 'gamespeed_profiles';
 
 const getAuthRedirectUrl = () => {
   if (typeof window === 'undefined') {
@@ -61,12 +60,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     setIsProfileLoading(true);
     const { data, error } = await supabase
-      .from('profiles')
+      .from(PROFILE_TABLE)
       .select('id, email, display_name, created_at, updated_at')
       .eq('id', user.id)
       .maybeSingle<UserProfile>();
 
-    if (error && error.code !== PROFILE_NOT_FOUND_CODE) {
+    if (error) {
       console.error('Failed to fetch profile:', error.message);
       setProfile(null);
       setIsProfileLoading(false);
@@ -166,7 +165,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
 
       const { data, error } = await supabase
-        .from('profiles')
+        .from(PROFILE_TABLE)
         .upsert(
           {
             id: user.id,

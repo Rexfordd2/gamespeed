@@ -78,8 +78,8 @@ describe('mode manifest registration', () => {
 
 describe('mode icon resolution', () => {
   it('resolves known icon glyphs', () => {
-    expect(resolveModeIcon('quickTap')).toBe('⚡');
-    expect(resolveModeIcon('swipeStrike')).toBe('↔');
+    expect(resolveModeIcon('quickTap')).toBe('▲');
+    expect(resolveModeIcon('swipeStrike')).toBe('≡');
   });
 
   it('falls back to default glyph for unknown icon refs', () => {

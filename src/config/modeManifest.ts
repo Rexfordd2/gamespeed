@@ -155,14 +155,14 @@ const sportModeCueKeySet = new Set<SportModeCueKey>(sportModeCueKeys);
 const modeAvailabilitySet = new Set<ModeAvailability>(modeAvailabilities);
 
 const modeIconGlyphRegistry: Record<ModeIconRef, string> = {
-  benchmarkStopwatch: '⏱',
-  quickTapBolt: '⚡',
-  multiTargetCluster: '◎',
-  swipeArrow: '↔',
-  holdFocus: '◉',
-  sequenceNodes: '⋯',
+  benchmarkStopwatch: '◎',
+  quickTapBolt: '▲',
+  multiTargetCluster: '◉',
+  swipeArrow: '≡',
+  holdFocus: '◍',
+  sequenceNodes: '▣',
   peripheralRadar: '◌',
-  calmLotus: '☯',
+  calmLotus: '◑',
   defaultMode: '•',
 };
 

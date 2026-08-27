@@ -1,4 +1,12 @@
-export type HapticCueType = 'hit' | 'miss' | 'streak' | 'start' | 'complete';
+export type HapticCueType =
+  | 'hit'
+  | 'miss'
+  | 'streak'
+  | 'start'
+  | 'complete'
+  | 'holdLock'
+  | 'sequenceSuccess'
+  | 'benchmarkComplete';
 
 type HapticTriggerOptions = {
   enabled: boolean;
@@ -11,6 +19,9 @@ const hapticPatterns: Record<HapticCueType, number | number[]> = {
   streak: [12, 18, 22],
   start: 14,
   complete: [18, 20, 28],
+  holdLock: [10, 16, 10, 16],
+  sequenceSuccess: [10, 14, 18, 22],
+  benchmarkComplete: [22, 18, 30, 18, 36],
 };
 
 const lowStimPatterns: Record<HapticCueType, number | number[]> = {
@@ -19,6 +30,9 @@ const lowStimPatterns: Record<HapticCueType, number | number[]> = {
   streak: [8, 16, 14],
   start: 8,
   complete: [10, 18, 16],
+  holdLock: [8, 12, 8],
+  sequenceSuccess: [8, 12, 16],
+  benchmarkComplete: [12, 14, 18],
 };
 
 export const isHapticsSupported = () =>

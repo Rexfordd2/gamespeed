@@ -5,12 +5,15 @@ create table if not exists public.user_rounds (
   round_ts timestamptz not null,
   mode text not null,
   mode_name text not null,
+  sport text,
   score integer not null check (score >= 0),
   misses integer not null check (misses >= 0),
   accuracy integer not null check (accuracy between 0 and 100),
   best_streak integer not null check (best_streak >= 0),
   median_reaction_time_ms integer,
   benchmark_score integer,
+  readiness_metrics jsonb,
+  meta jsonb,
   created_at timestamptz not null default timezone('utc', now()),
   unique (user_id, client_round_id)
 );
@@ -25,13 +28,14 @@ create policy "Users can insert own rounds"
 on public.user_rounds
 for insert
 to authenticated
-with check (auth.uid() = user_id);
+with check ((select auth.uid()) = user_id);
 
 drop policy if exists "Users can read own rounds" on public.user_rounds;
 create policy "Users can read own rounds"
 on public.user_rounds
 for select
 to authenticated
-using (auth.uid() = user_id);
+using ((select auth.uid()) = user_id);
 
+revoke all on public.user_rounds from anon, authenticated;
 grant select, insert on public.user_rounds to authenticated;

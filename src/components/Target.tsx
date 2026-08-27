@@ -10,6 +10,8 @@ interface TargetProps {
   target: TargetType;
   targetIconPath?: string;
   targetIconFallbackPath?: string;
+  chromeIconPath?: string;
+  targetStyle?: string;
   interactionMode: 'tap' | 'swipe' | 'hold';
   onActivate: (payload: {
     interactionMode: 'tap' | 'swipe' | 'hold';
@@ -41,6 +43,8 @@ export const Target = ({
   target,
   targetIconPath,
   targetIconFallbackPath,
+  chromeIconPath,
+  targetStyle,
   interactionMode,
   onActivate,
   onSwipeAttemptFail,
@@ -217,7 +221,32 @@ export const Target = ({
   };
 
   const directionHint = target.swipeDirection
-    ? { left: '←', right: '→', up: '↑', down: '↓' }[target.swipeDirection]
+    ? {
+        left: (
+          <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true">
+            <path d="M16 4 6 11l10 7" stroke="currentColor" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+            <path d="M15 7 8 11l7 4" stroke="currentColor" strokeWidth="1.5" fill="none" opacity="0.55" />
+          </svg>
+        ),
+        right: (
+          <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true">
+            <path d="M6 4l10 7-10 7" stroke="currentColor" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+            <path d="M7 7l7 4-7 4" stroke="currentColor" strokeWidth="1.5" fill="none" opacity="0.55" />
+          </svg>
+        ),
+        up: (
+          <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true">
+            <path d="M4 16 11 6l7 10" stroke="currentColor" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+            <path d="M7 15 11 9l4 6" stroke="currentColor" strokeWidth="1.5" fill="none" opacity="0.55" />
+          </svg>
+        ),
+        down: (
+          <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true">
+            <path d="M4 6l7 10 7-10" stroke="currentColor" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+            <path d="M7 7l4 6 4-6" stroke="currentColor" strokeWidth="1.5" fill="none" opacity="0.55" />
+          </svg>
+        ),
+      }[target.swipeDirection]
     : null;
 
   const holdPhase = holdVisualState?.phase ?? 'idle';
@@ -246,6 +275,7 @@ export const Target = ({
         role="button"
         aria-label={ariaLabel}
         tabIndex={0}
+        data-target-style={targetStyle}
         initial={{ scale: 0.76, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.78, opacity: 0 }}
@@ -453,14 +483,14 @@ export const Target = ({
               style={{
                 position: 'absolute',
                 color: '#dcfce7',
-                fontSize: `${Math.round(iconSize * 0.5)}px`,
-                fontWeight: 800,
                 lineHeight: 1,
                 textShadow: '0 0 10px rgba(22, 163, 74, 0.45)',
               }}
               aria-hidden="true"
             >
-              ✓
+              <svg width={Math.round(iconSize * 0.5)} height={Math.round(iconSize * 0.5)} viewBox="0 0 24 24" fill="none">
+                <path d="M5 12.5 9.5 17 19 7" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
             </motion.span>
           )}
           {interactionMode === 'swipe' && directionHint && !showSuccess && (
@@ -471,8 +501,6 @@ export const Target = ({
                 top: '4px',
                 right: '8px',
                 color: theme.targetColor,
-                fontSize: `${Math.round(iconSize * 0.42)}px`,
-                fontWeight: 800,
                 lineHeight: 1,
                 textShadow: `0 0 8px ${theme.targetColor}88`,
                 opacity: 0.92,
@@ -480,6 +508,22 @@ export const Target = ({
             >
               {directionHint}
             </span>
+          )}
+          {chromeIconPath && !showSuccess && (
+            <img
+              src={chromeIconPath}
+              alt=""
+              aria-hidden="true"
+              draggable={false}
+              style={{
+                position: 'absolute',
+                width: `${Math.round(iconSize * 1.35)}px`,
+                height: `${Math.round(iconSize * 1.35)}px`,
+                objectFit: 'contain',
+                pointerEvents: 'none',
+                opacity: 0.42,
+              }}
+            />
           )}
           {iconSrc ? (
             <img
@@ -496,6 +540,8 @@ export const Target = ({
                 transition: 'transform 0.09s ease, opacity 0.1s ease',
                 transform: showSuccess ? 'scale(0.9)' : isPressed ? 'scale(0.95)' : 'scale(1)',
                 opacity: showSuccess ? 0.88 : 1,
+                position: 'relative',
+                zIndex: 1,
               }}
             />
           ) : (

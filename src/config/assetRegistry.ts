@@ -28,6 +28,7 @@ type ContractorAssetMap = {
     sportToTargetSkin: Record<SportType, string>;
     modeToModeIcon: Record<GameModeType, string>;
     modeToAudioCues: Record<GameModeType, string[]>;
+    modeToInstinctTarget?: Partial<Record<GameModeType, string>>;
   };
 };
 
@@ -146,6 +147,32 @@ export const resolveModeIconAsset = (mode: GameModeType) => {
     path: entry?.file ? buildAssetPath(entry.file) : '',
     fallbackGlyph: entry?.fallbackGlyph ?? '•',
   };
+};
+
+const INSTINCT_TARGET_STYLE_IDS: Record<GameModeType, string> = {
+  reactionBenchmark: 'instinct-panther-eye',
+  quickTap: 'instinct-cobra-eye',
+  multiTarget: 'instinct-jaguar-spot',
+  swipeStrike: 'instinct-claw-slash',
+  holdTrack: 'instinct-coil-ring',
+  sequenceMemory: 'instinct-glyph-stone',
+  peripheralPulse: 'instinct-owl-iris',
+  calmFocus: 'instinct-water-eye',
+};
+
+export const resolveInstinctTargetPath = (mode: GameModeType) => {
+  // Prefer explicit asset-map reference; fall back to targetStyle-derived id from the instinct registry mapping.
+  const skinId = manifest.references.modeToInstinctTarget?.[mode] ?? INSTINCT_TARGET_STYLE_IDS[mode];
+  return resolvePathEntry(targetSkinsById[skinId ?? ''], 'icons/target-primate.svg');
+};
+
+export const resolveInstinctTargetFallbackPath = (mode: GameModeType) => {
+  const skinId = manifest.references.modeToInstinctTarget?.[mode];
+  const entry = skinId ? targetSkinsById[skinId] : undefined;
+  if (entry?.fallbackFile) {
+    return buildAssetPath(entry.fallbackFile);
+  }
+  return buildAssetPath('icons/target-primate.svg');
 };
 
 export const resolveHudBadgePath = (badgeId: string) =>
