@@ -7,6 +7,7 @@ import { deriveReadinessMetrics } from '../utils/readinessMetrics';
 import { clearStats, recordRound } from '../utils/sessionStats';
 import { TRAINING_CONTEXT_STORAGE_KEY } from '../utils/trainingContext';
 import { SPORT_SELECTION_STORAGE_KEY } from '../config/sports';
+import { ATHLETE_POSITION_STORAGE_KEY, clearAthletePositions } from '../config/athletePositions';
 import { clearPrimeSessions } from '../utils/primePersistence';
 
 vi.mock('framer-motion', async () => {
@@ -103,8 +104,10 @@ describe('first-time vs returning home', () => {
     vi.stubGlobal('confirm', vi.fn(() => true));
     clearStats();
     clearPrimeSessions();
+    clearAthletePositions();
     localStorage.removeItem(TRAINING_CONTEXT_STORAGE_KEY);
     localStorage.removeItem(SPORT_SELECTION_STORAGE_KEY);
+    localStorage.removeItem(ATHLETE_POSITION_STORAGE_KEY);
     localStorage.removeItem('gamespeed_first_run_complete_v1');
   });
 
@@ -181,20 +184,48 @@ describe('first-time vs returning home', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Game' }));
     expect(localStorage.getItem(TRAINING_CONTEXT_STORAGE_KEY)).toBe('game');
+    expect(screen.getByText('GAME PRIME')).toBeInTheDocument();
+    expect(screen.getByText('Owl Vision')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Prime Me' }));
-    expect(screen.getByRole('heading', { name: 'Settle' })).toBeInTheDocument();
-    expect(screen.getByText('Crocodile Stillness')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'See' })).toBeInTheDocument();
+    expect(screen.getByText('Owl Vision')).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Prime protocol engine is next' })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Begin' }));
     await flushMicrotasks();
     expect(screen.getByRole('button', { name: /pause game/i })).toBeInTheDocument();
-    expect(screen.getByText('Calm Focus')).toBeInTheDocument();
+    expect(screen.getByText('Peripheral Pulse')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /return to main menu/i }));
     expect(screen.getByRole('heading', { name: /Welcome back/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Prime Me' })).toBeInTheDocument();
+  });
+
+  it('shows sport, position, and context on the Prime card and changes the recipe', async () => {
+    seedDrillHistory();
+    renderApp();
+
+    expect(screen.getByText('PRACTICE PRIME')).toBeInTheDocument();
+    expect(screen.getByText('9 MIN')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Selected position General/i })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Selected sport Soccer/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Football' }));
+    fireEvent.click(screen.getByRole('button', { name: /Selected position General/i }));
+    fireEvent.click(screen.getByRole('button', { name: /WR\/TE/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Game' }));
+
+    expect(screen.getByText('FOOTBALL · WR')).toBeInTheDocument();
+    expect(screen.getByText('GAME PRIME')).toBeInTheDocument();
+    expect(screen.getByText('5 MIN')).toBeInTheDocument();
+    expect(screen.getByText('Owl Vision')).toBeInTheDocument();
+    expect(screen.queryByText('Crocodile Stillness')).not.toBeInTheDocument();
+    expect(screen.queryByText('Chameleon Read')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Prime Me' }));
+    expect(screen.getByRole('heading', { name: 'See' })).toBeInTheDocument();
+    expect(screen.getByText('Owl Vision')).toBeInTheDocument();
   });
 
   it('keeps existing modes reachable from Train an Instinct', async () => {

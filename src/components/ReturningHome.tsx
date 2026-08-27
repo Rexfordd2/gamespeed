@@ -16,7 +16,12 @@ import { SPORT_ORDER, SportType, getSportConfig, getSportPack } from '../config/
 import { getSportPackAssets } from '../config/sportPacks';
 import { NightGuardrailSettings } from '../utils/nightGuardrail';
 import { getModeUnlockMap } from '../utils/progression';
-import { getPrimePreview } from '../config/primePreview';
+import { getPrimeHomeCard } from '../config/primePreview';
+import {
+  getPositionsForSport,
+  loadAthletePosition,
+  saveAthletePosition,
+} from '../config/athletePositions';
 import {
   getDefensibleTodayStatus,
   getTimeOfDayGreeting,
@@ -132,15 +137,27 @@ export const ReturningHome = ({
   const hasBaseline = hasBaselineRound(stats);
   const greeting = getTimeOfDayGreeting();
   const hapticsAvailable = isHapticsSupported();
-  const primePreview = getPrimePreview();
 
   const [view, setView] = useState<ReturningHomeView>('dashboard');
   const [sportPickerOpen, setSportPickerOpen] = useState(false);
+  const [positionPickerOpen, setPositionPickerOpen] = useState(false);
   const [trainingContext, setTrainingContext] = useState<TrainingContext>(loadTrainingContext);
+  const [position, setPosition] = useState(() => loadAthletePosition(selectedSport));
   const [wentToBedOnTime, setWentToBedOnTime] = useState<SleepOnTimeAnswer>('yes');
   const [readiness, setReadiness] = useState<1 | 2 | 3 | 4 | 5>(3);
   const [latestCheckInLabel, setLatestCheckInLabel] = useState<string | null>(null);
   const [savedCheckInNotice, setSavedCheckInNotice] = useState<string | null>(null);
+  const positions = getPositionsForSport(selectedSport);
+  const selectedPosition = positions.find(option => option.id === position) ?? positions[0];
+  const primeCard = getPrimeHomeCard({
+    sport: selectedSport,
+    position,
+    context: trainingContext,
+  });
+
+  useEffect(() => {
+    setPosition(loadAthletePosition(selectedSport));
+  }, [selectedSport]);
 
   useEffect(() => {
     const latest = getLatestSleepCheckIn();
@@ -169,6 +186,7 @@ export const ReturningHome = ({
       cta: 'prime_me',
       source: 'returning_home',
       sport: selectedSport,
+      position,
       trainingContext,
       hasBaseline,
     });
@@ -177,6 +195,12 @@ export const ReturningHome = ({
       lowStimulus: isNightGuardrailActive,
       includeRoutine: false,
     });
+  };
+
+  const handlePositionChange = (nextPosition: string) => {
+    setPosition(nextPosition);
+    saveAthletePosition(selectedSport, nextPosition);
+    setPositionPickerOpen(false);
   };
 
   const handleRunBaseline = () => {
@@ -246,7 +270,10 @@ export const ReturningHome = ({
               type="button"
               aria-expanded={sportPickerOpen}
               aria-label={`Selected sport ${sportConfig.displayName}. Change sport`}
-              onClick={() => setSportPickerOpen(open => !open)}
+              onClick={() => {
+                setPositionPickerOpen(false);
+                setSportPickerOpen(open => !open);
+              }}
               className="inline-flex min-h-10 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold"
               style={{
                 color: theme.textColor,
@@ -256,6 +283,23 @@ export const ReturningHome = ({
             >
               <SportChipIcon sport={selectedSport} />
               {sportConfig.displayName}
+            </button>
+            <button
+              type="button"
+              aria-expanded={positionPickerOpen}
+              aria-label={`Selected position ${selectedPosition.label}. Change position`}
+              onClick={() => {
+                setSportPickerOpen(false);
+                setPositionPickerOpen(open => !open);
+              }}
+              className="inline-flex min-h-10 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold"
+              style={{
+                color: theme.textColor,
+                backgroundColor: `${theme.textColor}14`,
+                border: `1px solid ${theme.textColor}44`,
+              }}
+            >
+              {selectedPosition.shortLabel}
             </button>
             <button
               type="button"
@@ -286,6 +330,7 @@ export const ReturningHome = ({
                     onClick={() => {
                       onSportChange(sport);
                       setSportPickerOpen(false);
+                      setPositionPickerOpen(false);
                     }}
                     className="rounded-xl px-3 py-2 text-left text-sm"
                     style={{
@@ -295,6 +340,42 @@ export const ReturningHome = ({
                     }}
                   >
                     {option.displayName}
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {positionPickerOpen && (
+          <section
+            className="rounded-2xl p-3"
+            style={{ backgroundColor: 'rgba(5, 12, 16, 0.88)', border: `1px solid ${theme.textColor}2b` }}
+            aria-label="Change position"
+          >
+            <p className="mb-2 px-1 text-[11px] uppercase tracking-[0.14em]" style={{ color: theme.textColor, opacity: 0.68 }}>
+              Position / role
+            </p>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {positions.map(option => {
+                const isSelected = position === option.id;
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    aria-pressed={isSelected}
+                    onClick={() => handlePositionChange(option.id)}
+                    className="rounded-xl px-3 py-2 text-left text-sm"
+                    style={{
+                      backgroundColor: isSelected ? `${sportConfig.accents.primary}24` : 'rgba(5, 12, 16, 0.66)',
+                      border: `1px solid ${isSelected ? `${sportConfig.accents.primary}cc` : `${theme.textColor}2b`}`,
+                      color: theme.textColor,
+                    }}
+                  >
+                    <span className="block font-semibold">{option.shortLabel}</span>
+                    {option.label !== option.shortLabel && (
+                      <span className="mt-0.5 block text-[11px] opacity-70">{option.label}</span>
+                    )}
                   </button>
                 );
               })}
@@ -440,16 +521,19 @@ export const ReturningHome = ({
 
             <section className="rounded-3xl p-4 sm:p-5" style={cardStyle} aria-label="GameSpeed Prime">
               <p className="text-[11px] uppercase tracking-[0.18em] font-semibold" style={{ color: sportConfig.accents.secondary }}>
-                {primePreview.durationLabel}
+                {primeCard.identityLine}
               </p>
               <h2 className="mt-1 text-xl font-extrabold sm:text-2xl" style={{ color: theme.textColor }}>
-                Prime Me
+                {primeCard.contextHeadline}
               </h2>
+              <p className="mt-1 text-2xl font-extrabold tabular-nums sm:text-3xl" style={{ color: theme.targetColor }}>
+                {primeCard.minutesLabel}
+              </p>
               <p className="mt-2 text-sm" style={{ color: theme.textColor, opacity: 0.78 }}>
-                {TRAINING_CONTEXT_LABELS[trainingContext]} {primePreview.sequenceBlurb}
+                {primeCard.sequenceBlurb}
               </p>
               <ol className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
-                {primePreview.phases.map((phase, index) => (
+                {primeCard.phases.map((phase, index) => (
                   <li
                     key={phase.id}
                     className="rounded-2xl px-3 py-2.5"

@@ -8,7 +8,7 @@ import {
   PrimeStep,
   PrimeStepResult,
 } from '../types/prime';
-import { getPrimeProtocol } from '../config/primeProtocols';
+import { getPrimeProtocol, registerPrimeProtocol } from '../config/primeProtocols';
 
 const makeSessionId = () => {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -37,6 +37,8 @@ export const createPrimeSession = ({
   protocol,
   context,
   sport,
+  position = 'general',
+  recipeId,
   lowStimulus = false,
   now = Date.now(),
   sessionId = makeSessionId(),
@@ -44,6 +46,8 @@ export const createPrimeSession = ({
   protocol: PrimeProtocol;
   context: PrimeContext;
   sport: SportType;
+  position?: string;
+  recipeId?: string;
   lowStimulus?: boolean;
   now?: number;
   sessionId?: string;
@@ -52,12 +56,15 @@ export const createPrimeSession = ({
     throw new PrimeEngineError('protocol has no steps');
   }
 
+  registerPrimeProtocol(protocol);
   const firstStep = protocol.steps[0];
   return {
     sessionId,
     protocolId: protocol.id,
+    recipeId: recipeId ?? protocol.id,
     context,
     sport,
+    position,
     stepIndex: 0,
     phase: firstStep.kind === 'summary' ? 'summary' : 'transition',
     startedAt: now,

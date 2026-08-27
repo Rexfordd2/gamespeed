@@ -2,7 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CueIntensity, GameResult, SessionOptions } from '../../types/game';
 import { PrimeContext, PrimeEngineState, PrimeSessionRecord, PrimeSummaryMetrics } from '../../types/prime';
 import { SportType } from '../../config/sports';
-import { getPrimeExecutableSteps, getPrimeProtocol, resolvePrimeProtocol } from '../../config/primeProtocols';
+import { getPrimeExecutableSteps, getPrimeProtocol, GAMESPEED_PRIME_PROTOCOL_ID } from '../../config/primeProtocols';
+import { makePrimeRecipeId, resolvePrimeProtocol } from '../../config/primeRecipes';
+import { loadAthletePosition } from '../../config/athletePositions';
 import {
   cancelPrimeSession,
   completeCurrentPrimeStep,
@@ -72,8 +74,10 @@ const persistEngineSession = (
     ts: endedAt,
     protocolId: protocol.id,
     protocolName: protocol.name,
+    recipeId: state.recipeId,
     context: state.context,
     sport: state.sport,
+    position: state.position,
     status,
     startedAt: state.startedAt,
     endedAt,
@@ -96,13 +100,22 @@ export const PrimeSession = ({
   onComplete,
   onCancel,
 }: PrimeSessionProps) => {
-  const protocol = useMemo(() => resolvePrimeProtocol(), []);
+  const [position] = useState(() => loadAthletePosition(selectedSport));
+  const protocol = useMemo(
+    () => resolvePrimeProtocol({ sport: selectedSport, position, context }),
+    [selectedSport, position, context],
+  );
   const reducedMotion = usePrefersReducedMotion();
   const [engine, setEngine] = useState<PrimeEngineState>(() =>
     createPrimeSession({
       protocol,
       context,
       sport: selectedSport,
+      position,
+      recipeId:
+        protocol.id === GAMESPEED_PRIME_PROTOCOL_ID
+          ? makePrimeRecipeId(selectedSport, position, context)
+          : protocol.id,
       lowStimulus,
     }),
   );
@@ -205,7 +218,7 @@ export const PrimeSession = ({
   };
 
   if (engine.phase === 'summary' && summary) {
-    return <PrimeSummary protocolName={protocol.name} summary={summary} onDone={handleSummaryDone} />;
+    return <PrimeSummary protocolName={protocol.name} recipeIdentity={engine.recipeId} summary={summary} onDone={handleSummaryDone} />;
   }
 
   if (!step) {

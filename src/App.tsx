@@ -32,6 +32,7 @@ import { RoundProgressDelta, getDailyStreak, getRoundProgressDelta } from './uti
 import { trackConversionEvent } from './lib/analytics';
 import { getLandingExperimentAssignment } from './config/landingExperiment';
 import { SportType, loadSelectedSport, saveSelectedSport } from './config/sports';
+import { loadAthletePosition } from './config/athletePositions';
 import { loadTrainingContext } from './utils/trainingContext';
 import {
   NightGuardrailSettings,
@@ -245,6 +246,7 @@ export const App = () => {
     trackConversionEvent('prime_start', {
       source: 'returning_home',
       sport: selectedSport,
+      position: loadAthletePosition(selectedSport),
       trainingContext: context,
       lowStimulus: nextSessionOptions.lowStimulus,
       experimentVariant: landingExperiment.id,
@@ -294,7 +296,9 @@ export const App = () => {
     setStatsSnapshot(loadStats());
     trackConversionEvent('prime_complete', {
       protocolId: session.protocolId,
+      recipeId: session.recipeId,
       sport: session.sport,
+      position: session.position,
       trainingContext: session.context,
       durationMs: session.totalDurationMs,
       stepsCompleted: session.summary.stepsCompleted,

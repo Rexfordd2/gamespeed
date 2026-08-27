@@ -34,6 +34,21 @@ export interface PrimeStep {
   skippable?: boolean;
 }
 
+export type PrimeCapabilityId = Exclude<PrimeStepCategory, 'summary'>;
+
+export interface PrimeRecipeStep {
+  capability: PrimeCapabilityId;
+  durationSeconds?: number;
+  intensity?: PrimeStepIntensity;
+}
+
+export interface PrimeRecipe {
+  sport: SportType | 'all';
+  position: string;
+  context: PrimeContext;
+  steps: PrimeRecipeStep[];
+}
+
 export interface PrimeProtocol {
   id: string;
   name: string;
@@ -58,8 +73,10 @@ export interface PrimeStepResult {
 export interface PrimeEngineState {
   sessionId: string;
   protocolId: string;
+  recipeId: string;
   context: PrimeContext;
   sport: SportType;
+  position: string;
   stepIndex: number;
   phase: PrimePhase;
   startedAt: number;
@@ -73,8 +90,10 @@ export interface PrimeSessionRecord {
   ts: number;
   protocolId: string;
   protocolName: string;
+  recipeId?: string;
   context: PrimeContext;
   sport: SportType;
+  position?: string;
   status: 'completed' | 'cancelled';
   startedAt: number;
   endedAt: number;

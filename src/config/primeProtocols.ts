@@ -129,10 +129,26 @@ export const gamespeedPrimeProtocol: PrimeProtocol = {
 
 export const primeProtocols: PrimeProtocol[] = [gamespeedPrimeProtocol];
 
-export const getPrimeProtocol = (id: string): PrimeProtocol =>
-  primeProtocols.find(protocol => protocol.id === id) ?? gamespeedPrimeProtocol;
+const registeredPrimeProtocols = new Map<string, PrimeProtocol>();
+let recipeProtocolLookup: ((id: string) => PrimeProtocol | null) | null = null;
 
-export const resolvePrimeProtocol = (): PrimeProtocol => gamespeedPrimeProtocol;
+/** Register a compiled recipe protocol so the shared engine can look it up by id. */
+export const registerPrimeProtocol = (protocol: PrimeProtocol): void => {
+  if (protocol.id === GAMESPEED_PRIME_PROTOCOL_ID) {
+    return;
+  }
+  registeredPrimeProtocols.set(protocol.id, protocol);
+};
+
+export const setPrimeRecipeLookup = (lookup: (id: string) => PrimeProtocol | null): void => {
+  recipeProtocolLookup = lookup;
+};
+
+export const getPrimeProtocol = (id: string): PrimeProtocol =>
+  registeredPrimeProtocols.get(id) ??
+  primeProtocols.find(protocol => protocol.id === id) ??
+  recipeProtocolLookup?.(id) ??
+  gamespeedPrimeProtocol;
 
 export const getPrimeExecutableSteps = (protocol: PrimeProtocol): PrimeStep[] =>
   protocol.steps.filter(step => step.kind !== 'summary');

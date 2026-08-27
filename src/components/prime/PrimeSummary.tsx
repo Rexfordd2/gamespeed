@@ -5,6 +5,7 @@ import { JungleButton } from '../JungleButton';
 
 interface PrimeSummaryProps {
   protocolName: string;
+  recipeIdentity?: string;
   summary: PrimeSummaryMetrics;
   onDone: () => void;
 }
@@ -28,7 +29,7 @@ const MetricCard = ({
   </div>
 );
 
-export const PrimeSummary = ({ protocolName, summary, onDone }: PrimeSummaryProps) => {
+export const PrimeSummary = ({ protocolName, recipeIdentity, summary, onDone }: PrimeSummaryProps) => {
   const { theme } = useTheme();
 
   return (
@@ -52,6 +53,11 @@ export const PrimeSummary = ({ protocolName, summary, onDone }: PrimeSummaryProp
           <p className="text-[11px] uppercase tracking-[0.18em] font-semibold" style={{ color: theme.targetColor }}>
             {protocolName}
           </p>
+          {recipeIdentity && (
+            <p className="mt-1 text-[11px] font-mono opacity-70" style={{ color: theme.textColor }}>
+              {recipeIdentity}
+            </p>
+          )}
           <h1 className="mt-2 text-3xl font-extrabold tracking-tight sm:text-4xl" style={{ color: theme.textColor }}>
             YOU&apos;RE PRIMED
           </h1>
