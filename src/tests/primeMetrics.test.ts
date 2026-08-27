@@ -69,8 +69,40 @@ describe('prime metrics', () => {
     expect(summary.strongestArea?.stepId).toBe('react');
     expect(summary.areaToRevisit?.stepId).toBe('see');
     expect(summary.vsPrevious).toBeNull();
+    expect(summary.physicalCue).toBeNull();
     expect(summary).not.toHaveProperty('readinessScore');
     expect(summary).not.toHaveProperty('neuralReadinessBand');
+  });
+
+  it('records physical-cue counts without inventing movement-quality scores', () => {
+    const summary = buildPrimeSummary({
+      protocol: gamespeedPrimeProtocol,
+      stepResults: [
+        completedStep('react', 'quickTap', 9, 1),
+        {
+          stepId: 'move',
+          status: 'completed',
+          durationMs: 12_000,
+          physicalCue: {
+            moduleId: 'jaguar-movement',
+            cueCount: 6,
+            presentedCueCount: 6,
+            cueIntervalMs: 2050,
+            athleteConfirmed: true,
+            durationMs: 12_000,
+          },
+        },
+      ],
+      totalDurationMs: 80_000,
+    });
+
+    expect(summary.physicalCue).toEqual({
+      cueCount: 6,
+      presentedCueCount: 6,
+      cueIntervalMs: 2050,
+      athleteConfirmed: true,
+    });
+    expect(JSON.stringify(summary.physicalCue)).not.toMatch(/quality|form|verified/i);
   });
 
   it('compares a completed Prime against the previous session for the same protocol', () => {

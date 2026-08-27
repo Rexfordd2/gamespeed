@@ -165,7 +165,7 @@ describe('prime session orchestration', () => {
     await completeCurrentDrill();
 
     expect(screen.getByRole('heading', { name: 'Move' })).toBeInTheDocument();
-    expect(screen.getByText('First-Step Plant')).toBeInTheDocument();
+    expect(screen.getByText('Jaguar Movement')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Skip' }));
 
     expect(screen.getByRole('heading', { name: "YOU'RE PRIMED" })).toBeInTheDocument();

@@ -104,6 +104,20 @@ export const PrimeSummary = ({ protocolName, recipeIdentity, summary, onDone }: 
                 textColor={theme.textColor}
               />
             )}
+            {summary.physicalCue && (
+              <MetricCard
+                label="Movement cues"
+                value={`${summary.physicalCue.presentedCueCount}/${summary.physicalCue.cueCount}`}
+                textColor={theme.textColor}
+              />
+            )}
+            {summary.physicalCue && (
+              <MetricCard
+                label="Cue interval"
+                value={`${summary.physicalCue.cueIntervalMs} ms`}
+                textColor={theme.textColor}
+              />
+            )}
           </div>
 
           {summary.strongestArea && (
@@ -120,6 +134,13 @@ export const PrimeSummary = ({ protocolName, recipeIdentity, summary, onDone }: 
             <p className="mt-3 text-xs" style={{ color: theme.textColor, opacity: 0.7 }}>
               vs your last Prime: {summary.vsPrevious.accuracyDeltaPct > 0 ? '+' : ''}
               {summary.vsPrevious.accuracyDeltaPct} accuracy pts
+            </p>
+          )}
+          {summary.physicalCue && (
+            <p className="mt-3 text-xs" style={{ color: theme.textColor, opacity: 0.7 }}>
+              {summary.physicalCue.athleteConfirmed
+                ? 'Athlete confirmed the movement set. No movement-quality score was recorded.'
+                : 'Movement cues were shown. No movement-quality score was recorded.'}
             </p>
           )}
           {summary.stepsSkipped > 0 && (

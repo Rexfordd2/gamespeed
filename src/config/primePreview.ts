@@ -29,7 +29,7 @@ export const getPrimePreview = (protocol: PrimeProtocol = resolvePrimeProtocol()
     .filter(step => step.kind === 'drill')
     .map(step => step.title.toLowerCase())
     .join(', ');
-  const hasMove = executable.some(step => step.kind === 'movement');
+  const hasMove = executable.some(step => step.kind === 'movement' || step.kind === 'physicalCue');
   return {
     durationLabel: formatPrimeDurationLabel(protocol.estimatedSeconds),
     minutesLabel: formatPrimeMinutesLabel(protocol.estimatedSeconds),

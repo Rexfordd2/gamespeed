@@ -1,9 +1,10 @@
 import { GameModeType, GameResult, TrainingContext } from './game';
 import { SportType } from '../config/sports';
+import { PhysicalCueMetrics } from './physicalCue';
 
 export type PrimeContext = TrainingContext;
 
-export type PrimeStepKind = 'drill' | 'movement' | 'summary';
+export type PrimeStepKind = 'drill' | 'movement' | 'physicalCue' | 'summary';
 
 export type PrimeStepCategory =
   | 'settle'
@@ -32,6 +33,7 @@ export interface PrimeStep {
   rounds?: number;
   intensity?: PrimeStepIntensity;
   skippable?: boolean;
+  physicalCueModuleId?: string;
 }
 
 export type PrimeCapabilityId = Exclude<PrimeStepCategory, 'summary'>;
@@ -68,6 +70,7 @@ export interface PrimeStepResult {
   modeId?: GameModeType;
   durationMs: number;
   gameResult?: GameResult;
+  physicalCue?: PhysicalCueMetrics;
 }
 
 export interface PrimeEngineState {
@@ -115,5 +118,11 @@ export interface PrimeSummaryMetrics {
   vsPrevious: {
     accuracyDeltaPct: number | null;
     durationDeltaSeconds: number | null;
+  } | null;
+  physicalCue?: {
+    cueCount: number;
+    presentedCueCount: number;
+    cueIntervalMs: number;
+    athleteConfirmed: boolean;
   } | null;
 }

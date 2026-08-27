@@ -20,6 +20,9 @@ import { getCompletedPrimeSessions, recordPrimeSession } from '../../utils/prime
 import { Game } from '../Game';
 import { PrimeStepTransition } from './PrimeStepTransition';
 import { PrimeSummary } from './PrimeSummary';
+import { PhysicalCueSession } from '../physical/PhysicalCueSession';
+import { getPhysicalCueModule } from '../../config/physicalCueModules';
+import { PhysicalCueMetrics } from '../../types/physicalCue';
 
 interface PrimeSessionProps {
   context: PrimeContext;
@@ -186,6 +189,15 @@ export const PrimeSession = ({
     setEngine(nextState);
   };
 
+  const handlePhysicalCueComplete = (metrics: PhysicalCueMetrics) => {
+    const nextState = completeCurrentPrimeStep(engine, Date.now(), undefined, metrics);
+    if (nextState.phase === 'summary') {
+      finishSession(nextState, 'completed');
+      return;
+    }
+    setEngine(nextState);
+  };
+
   const handleMovementComplete = () => {
     const nextState = completeCurrentPrimeStep(engine, Date.now());
     if (nextState.phase === 'summary') {
@@ -239,6 +251,23 @@ export const PrimeSession = ({
         hapticsEnabled={hapticsEnabled}
         roundSecondsOverride={step.durationSeconds}
         primeSession
+      />
+    );
+  }
+
+  if (engine.phase === 'running' && step.kind === 'physicalCue') {
+    const cueModule = getPhysicalCueModule(step.physicalCueModuleId);
+    if (!cueModule) {
+      return null;
+    }
+    return (
+      <PhysicalCueSession
+        module={cueModule}
+        hapticsEnabled={hapticsEnabled}
+        lowStimulus={lowStimulus || !!sessionOptions.lowStimulus}
+        reducedMotion={reducedMotion || lowStimulus}
+        onComplete={handlePhysicalCueComplete}
+        onCancel={handleCancelFromGame}
       />
     );
   }

@@ -8,6 +8,7 @@ import {
   PrimeStep,
   PrimeStepResult,
 } from '../types/prime';
+import { PhysicalCueMetrics } from '../types/physicalCue';
 import { getPrimeProtocol, registerPrimeProtocol } from '../config/primeProtocols';
 
 const makeSessionId = () => {
@@ -131,6 +132,7 @@ export const completeCurrentPrimeStep = (
   state: PrimeEngineState,
   now = Date.now(),
   gameResult?: GameResult,
+  physicalCue?: PhysicalCueMetrics,
 ): PrimeEngineState => {
   if (state.phase !== 'running') {
     throw new PrimeEngineError('can only complete a running step');
@@ -151,6 +153,7 @@ export const completeCurrentPrimeStep = (
       modeId: step.modeId,
       durationMs: Math.max(0, now - state.stepStartedAt),
       gameResult,
+      physicalCue,
     },
     now,
   );

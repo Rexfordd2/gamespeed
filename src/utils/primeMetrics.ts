@@ -67,6 +67,7 @@ export const buildPrimeSummary = ({
       : accuracies.reduce((worst, item) => (item.accuracyPct < worst.accuracyPct ? item : worst));
 
   const trackingStep = completed.find(result => result.modeId === 'holdTrack' && result.status === 'completed');
+  const physicalCueResult = [...stepResults].reverse().find(result => result.physicalCue);
   const previousSessionsForProtocol = previousSessions
     .filter(session => session.status === 'completed' && session.protocolId === protocol.id)
     .sort((a, b) => a.ts - b.ts);
@@ -103,5 +104,13 @@ export const buildPrimeSummary = ({
                 : roundToInt(averageAccuracyPct - previousAccuracy),
             durationDeltaSeconds: durationSeconds - previous.summary.totalDurationSeconds,
           },
+    physicalCue: physicalCueResult?.physicalCue
+      ? {
+          cueCount: physicalCueResult.physicalCue.cueCount,
+          presentedCueCount: physicalCueResult.physicalCue.presentedCueCount,
+          cueIntervalMs: physicalCueResult.physicalCue.cueIntervalMs,
+          athleteConfirmed: physicalCueResult.physicalCue.athleteConfirmed,
+        }
+      : null,
   };
 };

@@ -1,6 +1,7 @@
 import { GameModeType } from '../types/game';
 import { PrimeProtocol, PrimeStep } from '../types/prime';
 import { isModePlayable } from '../utils/gameModes';
+import { getPhysicalCueModule } from './physicalCueModules';
 
 const drillStep = (
   step: Omit<PrimeStep, 'kind'> & { modeId: GameModeType },
@@ -107,14 +108,15 @@ export const gamespeedPrimeProtocol: PrimeProtocol = {
     {
       id: 'move',
       category: 'move',
-      kind: 'movement',
+      kind: 'physicalCue',
       title: 'Move',
-      experienceName: 'First-Step Plant',
+      experienceName: 'Jaguar Movement',
       durationSeconds: 20,
-      intensity: 'low',
+      intensity: 'standard',
       skippable: true,
+      physicalCueModuleId: 'jaguar-movement',
       instruction:
-        'Stand tall. Eyes quiet. One easy athletic plant — no jump, no max effort. Link the last read to your body.',
+        'GameSpeed shows the cue. You move. Create clear space, use stable footing, and stop if movement causes pain. Do not stare at the device while moving if that is unsafe. Nothing here is a movement score.',
     },
     {
       id: 'summary',
@@ -176,6 +178,14 @@ export const validatePrimeProtocol = (protocol: PrimeProtocol): string[] => {
     }
     if (step.kind === 'movement' && step.modeId) {
       errors.push(`${step.id}: movement steps cannot bind a modeId yet`);
+    }
+    if (step.kind === 'physicalCue') {
+      if (step.modeId) {
+        errors.push(`${step.id}: physicalCue steps cannot bind a modeId`);
+      }
+      if (!getPhysicalCueModule(step.physicalCueModuleId)) {
+        errors.push(`${step.id}: physicalCue step needs a known physicalCueModuleId`);
+      }
     }
     if (step.durationSeconds !== undefined && step.durationSeconds <= 0) {
       errors.push(`${step.id}: durationSeconds must be > 0`);
