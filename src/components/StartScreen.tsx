@@ -19,7 +19,6 @@ import { gameModes } from '../utils/gameModes';
 import { NightGuardrailSettings } from '../utils/nightGuardrail';
 import {
   getDailyStreak,
-  getFriendLeaderboard,
   getModeUnlockMap,
   getProgressDisciplineNote,
   getWeeklyChallenge,
@@ -126,7 +125,6 @@ export const StartScreen = ({
   onOpenCoachMode,
   isFirstRun,
   stats,
-  playerName,
   nightGuardrailSettings,
   onNightGuardrailSettingsChange,
   showNightReminder,
@@ -143,7 +141,6 @@ export const StartScreen = ({
   const streakDays = getDailyStreak(stats);
   const weeklyChallenge = getWeeklyChallenge(stats);
   const unlockMap = getModeUnlockMap(stats);
-  const leaderboard = getFriendLeaderboard(stats, playerName).slice(0, 5);
   const disciplineNote = getProgressDisciplineNote(stats);
   const activePersona = persona ?? orderedPersonas[0];
   const hapticsAvailable = isHapticsSupported();
@@ -475,7 +472,7 @@ export const StartScreen = ({
                 style={{ backgroundColor: 'rgba(2, 8, 12, 0.7)', border: `1px solid ${theme.textColor}2c` }}
               >
                 <p className="text-[10px] uppercase tracking-[0.18em] opacity-60" style={{ color: theme.textColor }}>
-                  Weekly challenge
+                  Weekly consistency
                 </p>
                 <p className="mt-1 text-sm font-semibold" style={{ color: theme.textColor }}>
                   {weeklyChallenge.roundsDone}/{weeklyChallenge.roundsTarget} sessions
@@ -804,36 +801,16 @@ export const StartScreen = ({
             border: `1px solid ${theme.targetColor}2a`,
           }}
         >
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="text-lg sm:text-xl font-bold" style={{ color: theme.textColor }}>
-              Readiness leaderboard snapshot
-            </h2>
-            <span className="text-[11px] uppercase tracking-[0.18em]" style={{ color: theme.textColor, opacity: 0.62 }}>
-              top quick tap score
-            </span>
-          </div>
-          <p className="mt-2 text-xs uppercase tracking-[0.12em]" style={{ color: theme.textColor, opacity: 0.56 }}>
-            Local sample ranking seeded from your current profile data.
+          <h2 className="text-lg sm:text-xl font-bold" style={{ color: theme.textColor }}>
+            Progress versus your own baseline
+          </h2>
+          <p className="mt-2 text-sm leading-relaxed" style={{ color: theme.textColor, opacity: 0.78 }}>
+            GameSpeed tracks reaction, visual search, control, decision, processing, and Prime consistency against
+            your first marks. There is no friend leaderboard and no national percentile until those exist as real data.
           </p>
-          <div className="mt-3 space-y-2">
-            {leaderboard.map((entry, index) => (
-              <div
-                key={entry.name}
-                className="rounded-xl px-3.5 py-2.5 flex items-center justify-between"
-                style={{
-                  backgroundColor: entry.isYou ? `${theme.targetColor}1f` : 'rgba(2, 8, 12, 0.6)',
-                  border: `1px solid ${entry.isYou ? `${theme.targetColor}66` : `${theme.textColor}22`}`,
-                }}
-              >
-                <p className="text-sm font-semibold" style={{ color: theme.textColor }}>
-                  {index + 1}. {entry.name}
-                </p>
-                <p className="text-sm font-bold tabular-nums" style={{ color: entry.isYou ? theme.targetColor : '#a5f3fc' }}>
-                  {entry.score}
-                </p>
-              </div>
-            ))}
-          </div>
+          <p className="mt-3 text-xs" style={{ color: theme.textColor, opacity: 0.62 }}>
+            Path: Trail → Canopy → Hunter → Predator → Apex, earned from completed Prime sessions.
+          </p>
         </section>
 
         <LandingProgression
@@ -901,7 +878,7 @@ export const StartScreen = ({
             className="ui-secondary-button min-h-12 px-6 text-sm sm:text-base"
             style={{ color: theme.textColor, borderColor: `${theme.textColor}44` }}
           >
-            Compare My Score
+            View my history
           </button>
           <button
             type="button"

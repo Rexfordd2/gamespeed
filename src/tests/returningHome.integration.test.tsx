@@ -8,7 +8,7 @@ import { clearStats, recordRound } from '../utils/sessionStats';
 import { TRAINING_CONTEXT_STORAGE_KEY } from '../utils/trainingContext';
 import { SPORT_SELECTION_STORAGE_KEY } from '../config/sports';
 import { ATHLETE_POSITION_STORAGE_KEY, clearAthletePositions } from '../config/athletePositions';
-import { clearPrimeSessions } from '../utils/primePersistence';
+import { clearPrimeSessions, recordPrimeSession } from '../utils/primePersistence';
 
 vi.mock('framer-motion', async () => {
   const ReactLib = await import('react');
@@ -142,6 +142,9 @@ describe('first-time vs returning home', () => {
     expect(screen.queryByText('Kai')).not.toBeInTheDocument();
     expect(screen.queryByText('224 ms')).not.toBeInTheDocument();
     expect(screen.queryByText('Top 18%')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Personal evolution')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Trail' })).toBeInTheDocument();
+    expect(screen.getByText(/path from training, not XP/i)).toBeInTheDocument();
   });
 
   it('shows an empty instinct profile instead of invented baseline numbers', () => {
@@ -248,5 +251,39 @@ describe('first-time vs returning home', () => {
     await flushMicrotasks();
     expect(screen.getByRole('button', { name: /pause game/i })).toBeInTheDocument();
     expect(screen.getByText('Multi Target')).toBeInTheDocument();
+  });
+
+  it('moves the rainforest path to Canopy after one completed Prime', () => {
+    seedDrillHistory();
+    recordPrimeSession({
+      id: 'prime-home-1',
+      ts: Date.now(),
+      protocolId: 'gamespeed-prime',
+      protocolName: 'GameSpeed Prime',
+      context: 'practice',
+      sport: 'soccer',
+      status: 'completed',
+      startedAt: Date.now() - 180_000,
+      endedAt: Date.now(),
+      totalDurationMs: 180_000,
+      stepResults: [],
+      summary: {
+        stepsCompleted: 5,
+        stepsSkipped: 0,
+        totalDurationSeconds: 180,
+        averageAccuracyPct: 80,
+        averageReactionMs: 260,
+        trackingAccuracyPct: 80,
+        consistencyPct: 70,
+        strongestArea: null,
+        areaToRevisit: null,
+        vsPrevious: null,
+      },
+    });
+    renderApp();
+
+    expect(screen.getByRole('heading', { name: 'Canopy' })).toBeInTheDocument();
+    expect(screen.getByText(/1 completed Prime/)).toBeInTheDocument();
+    expect(screen.getByText(/Next Hunter: 1\/7 Primes/)).toBeInTheDocument();
   });
 });

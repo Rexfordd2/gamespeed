@@ -16,6 +16,9 @@ import { SPORT_ORDER, SportType, getSportConfig, getSportPack } from '../config/
 import { getSportPackAssets } from '../config/sportPacks';
 import { NightGuardrailSettings } from '../utils/nightGuardrail';
 import { getModeUnlockMap } from '../utils/progression';
+import { getCompletedPrimeSessions } from '../utils/primePersistence';
+import { buildAthleteEvolution } from '../utils/athleteEvolution';
+import { PersonalEvolutionPanel } from './PersonalEvolutionPanel';
 import { getPrimeHomeCard } from '../config/primePreview';
 import {
   getPositionsForSport,
@@ -134,6 +137,7 @@ export const ReturningHome = ({
   const sportConfig = getSportConfig(selectedSport);
   const unlockMap = getModeUnlockMap(stats);
   const todayStatus = getDefensibleTodayStatus(stats);
+  const evolution = buildAthleteEvolution(stats, getCompletedPrimeSessions());
   const hasBaseline = hasBaselineRound(stats);
   const greeting = getTimeOfDayGreeting();
   const hapticsAvailable = isHapticsSupported();
@@ -555,6 +559,8 @@ export const ReturningHome = ({
                 Prime Me
               </JungleButton>
             </section>
+
+            <PersonalEvolutionPanel evolution={evolution} compact />
 
             <nav className="grid grid-cols-1 gap-2 sm:grid-cols-3" aria-label="Secondary training actions">
               <button

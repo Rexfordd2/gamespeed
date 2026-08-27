@@ -27,18 +27,18 @@ export const LandingHero = ({
   const activePersona = content.personas[persona];
   const scorePreview = [
     {
-      label: 'Reaction Score',
-      value: '224 ms',
+      label: 'Session length',
+      value: '60 sec',
       accent: 'from-cyan-300/80 to-emerald-300/80',
     },
     {
-      label: 'Percentile',
-      value: 'Top 18%',
+      label: 'Compared to',
+      value: 'Your last session',
       accent: 'from-violet-300/80 to-cyan-300/80',
     },
     {
-      label: 'Current Streak',
-      value: '9 days',
+      label: 'Streak',
+      value: 'From sessions you finish',
       accent: 'from-amber-200/80 to-orange-300/80',
     },
   ] as const;

@@ -27,16 +27,10 @@ export type WeeklyChallenge = {
   completed: boolean;
 };
 
-export type PercentileBadge = {
-  percentile: number;
+export type SelfRankBadge = {
+  rankPct: number;
   label: string;
   tone: string;
-};
-
-export type LeaderboardEntry = {
-  name: string;
-  score: number;
-  isYou?: boolean;
 };
 
 export type RoundProgressDelta = {
@@ -148,8 +142,8 @@ export const getWeeklyChallenge = (stats: GameStats, nowTs = Date.now()): Weekly
   const modesDone = uniqueModes.size;
 
   return {
-    title: 'Weekly Challenge',
-    subtitle: '12 sessions across 3 modes',
+    title: 'Weekly consistency',
+    subtitle: '12 sessions across 3 instincts',
     roundsDone,
     roundsTarget,
     modesDone,
@@ -183,45 +177,22 @@ export const getModeUnlockStatuses = (stats: GameStats): ModeUnlockStatus[] => {
 export const isModeUnlocked = (stats: GameStats, mode: GameModeType): boolean =>
   getModeUnlockStatuses(stats).find(status => status.mode === mode)?.unlocked ?? false;
 
-export const estimatePercentileForRound = (round: StoredRound, stats: GameStats): number => {
+export const estimateSelfRankPct = (round: StoredRound, stats: GameStats): number | null => {
   const modeRounds = stats.rounds.filter(item => item.mode === round.mode);
   if (modeRounds.length < 2) {
-    const fallback = Math.round(
-      Math.max(18, Math.min(97, round.accuracy * 0.55 + Math.min(round.score, 55) * 0.8)),
-    );
-    return fallback;
+    return null;
   }
   const currentSignal = roundSignal(round);
   const sorted = modeRounds.map(roundSignal).sort((a, b) => a - b);
   const betterOrEqual = sorted.filter(value => value <= currentSignal).length;
-  return Math.max(5, Math.min(99, Math.round((betterOrEqual / sorted.length) * 100)));
+  return Math.max(1, Math.min(99, Math.round((betterOrEqual / sorted.length) * 100)));
 };
 
-export const getPercentileBadge = (percentile: number): PercentileBadge => {
-  if (percentile >= 95) return { percentile, label: 'National Class', tone: '#4ade80' };
-  if (percentile >= 85) return { percentile, label: 'Elite', tone: '#22d3ee' };
-  if (percentile >= 70) return { percentile, label: 'Advanced', tone: '#a3e635' };
-  if (percentile >= 50) return { percentile, label: 'Rising', tone: '#facc15' };
-  return { percentile, label: 'Building', tone: '#fb923c' };
-};
-
-export const getFriendLeaderboard = (
-  stats: GameStats,
-  playerName = 'You',
-  activeMode?: GameModeType,
-): LeaderboardEntry[] => {
-  // Placeholder leaderboard shell until live multiplayer rankings are available.
-  const preferredMode = activeMode ?? 'quickTap';
-  const yourScore = stats.pbs[preferredMode]?.score ?? 0;
-  const seed = Math.max(18, yourScore);
-  const entries: LeaderboardEntry[] = [
-    { name: 'Kai', score: seed + 8 },
-    { name: 'Rhea', score: seed + 4 },
-    { name: playerName, score: yourScore, isYou: true },
-    { name: 'Milo', score: Math.max(0, seed - 3) },
-    { name: 'Jules', score: Math.max(0, seed - 7) },
-  ];
-  return entries.sort((a, b) => b.score - a.score);
+export const getSelfRankBadge = (rankPct: number): SelfRankBadge => {
+  if (rankPct >= 90) return { rankPct, label: 'Personal peak', tone: '#4ade80' };
+  if (rankPct >= 70) return { rankPct, label: 'Above your typical', tone: '#22d3ee' };
+  if (rankPct >= 50) return { rankPct, label: 'In range for you', tone: '#a3e635' };
+  return { rankPct, label: 'Below your typical', tone: '#fb923c' };
 };
 
 const toShareDate = (ts: number) =>
@@ -234,7 +205,7 @@ export const buildShareScoreCardText = ({
   newPb,
 }: {
   round: StoredRound;
-  badge: PercentileBadge;
+  badge: SelfRankBadge | null;
   dailyStreak: number;
   newPb: boolean;
 }) => {
@@ -242,7 +213,9 @@ export const buildShareScoreCardText = ({
   const lines = [
     `GameSpeed ${toShareDate(round.ts)}`,
     headline,
-    `Badge: ${badge.label} (${badge.percentile}th percentile)`,
+    badge
+      ? `Vs your own ${round.modeName} sessions: ${badge.label} (${badge.rankPct}%)`
+      : 'Vs your own sessions: need another round for a personal trend',
     `Best streak: ${round.bestStreak}`,
     dailyStreak > 0 ? `Daily streak: ${dailyStreak} day${dailyStreak === 1 ? '' : 's'}` : 'Daily streak: started',
     newPb ? 'Result: new personal best' : 'Result: session complete',

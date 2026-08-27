@@ -129,7 +129,7 @@ export const landingContent: LandingContent = {
         ],
       },
     },
-    benchmarkMicrocopy: 'Benchmark placeholder: sport/title percentile bands coming soon.',
+    benchmarkMicrocopy: 'Your first test becomes the baseline later sessions are compared against.',
     trustMicrocopy: 'No signup required for your first test',
     primaryCta: 'Run the 60-Second Test',
     secondaryCta: 'Watch Demo',
@@ -215,21 +215,21 @@ export const landingContent: LandingContent = {
     testimonials: socialProofTestimonials,
   },
   progression: {
-    heading: 'Progression That Retains Habits',
+    heading: 'Progress that stays honest',
     body:
-      'Daily streaks, leaderboard pressure, and milestone targets turn one-off reps into long-term gains.',
+      'GameSpeed measures you against your own baseline: completed Prime sessions, reaction marks, and cognitive instincts. No fake XP and no invented leaderboards.',
     hooks: [
       {
-        title: 'Streak engine',
-        body: 'Protect your training streak with at least one benchmark + one drill each day.',
+        title: 'Consistency',
+        body: 'Daily training streaks and weekly session volume come from rounds you actually finished.',
       },
       {
-        title: 'Leaderboard momentum',
-        body: 'Compete on benchmark consistency and weekly readiness improvement.',
+        title: 'Personal evolution',
+        body: 'Reaction, visual search, control, decision, and processing trends only appear after two real samples.',
       },
       {
-        title: 'Milestone path',
-        body: 'Unlock tier markers as your reaction score and accuracy bands climb.',
+        title: 'Rainforest path',
+        body: 'Trail, Canopy, Hunter, Predator, and Apex are earned from completed Prime work, not currency.',
       },
     ],
     cta: "Start Today's Session",
@@ -269,7 +269,7 @@ export const landingContent: LandingContent = {
   },
   footer: {
     version: 'v1.3 - Reaction Benchmark + 5 drills + session stats',
-    statsLinkLabel: 'Compare My Score',
+    statsLinkLabel: 'View my history',
     feedbackLabel: 'Send feedback',
     feedbackUrl: 'https://github.com/rexfordd2/gamespeed/issues',
   },

@@ -7,13 +7,13 @@ import { motion } from 'framer-motion';
 import { gameModes } from '../utils/gameModes';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  PercentileBadge,
   RoundProgressDelta,
+  SelfRankBadge,
   buildShareScoreCardText,
-  estimatePercentileForRound,
+  estimateSelfRankPct,
   getDailyStreak,
   getModeLabel,
-  getPercentileBadge,
+  getSelfRankBadge,
   getRecentHistory,
   getWeeklyChallenge,
 } from '../utils/progression';
@@ -148,9 +148,8 @@ export const EndScreen = ({
   const dailyStreak = getDailyStreak(stats);
   const weeklyChallenge = getWeeklyChallenge(stats);
   const latestRound = getLastRoundForResult(stats, result);
-  const percentileBadge: PercentileBadge = latestRound
-    ? getPercentileBadge(estimatePercentileForRound(latestRound, stats))
-    : getPercentileBadge(Math.max(5, Math.min(99, Math.round(accuracy * 0.8))));
+  const selfRankPct = latestRound ? estimateSelfRankPct(latestRound, stats) : null;
+  const selfRankBadge: SelfRankBadge | null = selfRankPct === null ? null : getSelfRankBadge(selfRankPct);
 
   useEffect(() => {
     setChecklist(prev => ({
@@ -228,7 +227,7 @@ export const EndScreen = ({
     });
     const content = buildShareScoreCardText({
       round: latestRound,
-      badge: percentileBadge,
+      badge: selfRankBadge,
       dailyStreak,
       newPb: roundProgressDelta?.newPb ?? false,
     });
@@ -268,14 +267,26 @@ export const EndScreen = ({
                 <span>Final Score</span>: {result.score}
               </p>
             </div>
-            <div className="rounded-2xl px-3.5 py-3 text-right" style={{ backgroundColor: `${percentileBadge.tone}18`, border: `1px solid ${percentileBadge.tone}66` }}>
-              <p className="text-[10px] uppercase tracking-[0.16em] opacity-75" style={{ color: theme.textColor }}>Percentile</p>
-              <p className="text-3xl font-black tabular-nums" style={{ color: percentileBadge.tone }}>{readiness?.decisionAccuracyPct ?? accuracy}%</p>
+            <div
+              className="rounded-2xl px-3.5 py-3 text-right"
+              style={{
+                backgroundColor: `${selfRankBadge?.tone ?? theme.targetColor}18`,
+                border: `1px solid ${selfRankBadge?.tone ?? theme.targetColor}66`,
+              }}
+            >
+              <p className="text-[10px] uppercase tracking-[0.16em] opacity-75" style={{ color: theme.textColor }}>
+                Decision accuracy
+              </p>
+              <p className="text-3xl font-black tabular-nums" style={{ color: selfRankBadge?.tone ?? theme.targetColor }}>
+                {readiness?.decisionAccuracyPct ?? accuracy}%
+              </p>
               <p className="text-xs font-semibold mt-0.5" style={{ color: theme.textColor }}>
                 Late {readiness?.lateDecisionRatePct ?? 0}% | Streak {readiness?.streakQualityPct ?? result.bestStreak}
               </p>
               <p className="text-xs mt-1" style={{ color: theme.textColor, opacity: 0.78 }}>
-                Band: {readiness?.neuralReadinessBand ?? 'build'}
+                {selfRankBadge
+                  ? `Vs your sessions: ${selfRankBadge.label}`
+                  : 'Need another session for a personal trend'}
               </p>
             </div>
           </div>
@@ -298,7 +309,7 @@ export const EndScreen = ({
           <div className="grid grid-cols-1 gap-3 text-center sm:grid-cols-3 sm:gap-2">
             <div><p className="text-2xl font-black tabular-nums" style={{ color: '#7dd3fc' }}>{dailyStreak}</p><p className="text-[10px] uppercase tracking-[0.13em] opacity-60 mt-1" style={{ color: theme.textColor }}>Daily streak</p></div>
             <div><p className="text-lg font-bold" style={{ color: '#a5f3fc' }}>{recommendedModeName}</p><p className="text-[10px] uppercase tracking-[0.13em] opacity-60 mt-1" style={{ color: theme.textColor }}>Recommended Next Mode</p></div>
-            <div><p className="text-2xl font-black tabular-nums" style={{ color: weeklyChallenge.completed ? '#4ade80' : '#facc15' }}>{weeklyChallenge.roundsDone}/{weeklyChallenge.roundsTarget}</p><p className="text-[10px] uppercase tracking-[0.13em] opacity-60 mt-1" style={{ color: theme.textColor }}>Weekly challenge</p></div>
+            <div><p className="text-2xl font-black tabular-nums" style={{ color: weeklyChallenge.completed ? '#4ade80' : '#facc15' }}>{weeklyChallenge.roundsDone}/{weeklyChallenge.roundsTarget}</p><p className="text-[10px] uppercase tracking-[0.13em] opacity-60 mt-1" style={{ color: theme.textColor }}>Weekly consistency</p></div>
           </div>
           {firstRunSelection && <p className="mt-3 text-xs text-center" style={{ color: theme.textColor, opacity: 0.72 }}>Built for {firstRunSelection.persona} focus: {GOAL_LABELS[firstRunSelection.goal]}.</p>}
         </div>
@@ -545,7 +556,7 @@ export const EndScreen = ({
         <motion.div className="flex w-full flex-col gap-2.5 sm:gap-3">
           <JungleButton onClick={handleStartRecommended} className="w-full py-4 text-lg font-bold uppercase">Start Today's Session: {recommendedModeName}</JungleButton>
           <JungleButton onClick={onPlayAgain} className="w-full py-4 text-lg font-bold uppercase">Replay</JungleButton>
-          <button type="button" onClick={onViewStats} className="ui-secondary-button w-full py-3" style={{ color: theme.targetColor, borderColor: `${theme.targetColor}55` }}>Compare My Score</button>
+          <button type="button" onClick={onViewStats} className="ui-secondary-button w-full py-3" style={{ color: theme.targetColor, borderColor: `${theme.targetColor}55` }}>View my history</button>
           <button type="button" onClick={onMainMenu} className="ui-secondary-button w-full py-3" style={{ color: theme.textColor, borderColor: `${theme.textColor}40` }}>Main Menu</button>
         </motion.div>
         <p className="mt-4 text-xs opacity-55" style={{ color: theme.textColor }}>Athlete profile: {playerName}</p>

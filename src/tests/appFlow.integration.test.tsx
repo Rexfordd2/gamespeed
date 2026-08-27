@@ -271,7 +271,8 @@ describe('App integration flow', () => {
     await advance(60_500);
 
     expect(screen.getByText('Results Dashboard')).toBeInTheDocument();
-    expect(screen.getByText('Percentile')).toBeInTheDocument();
+    expect(screen.getByText('Decision accuracy')).toBeInTheDocument();
+    expect(screen.queryByText('Percentile')).not.toBeInTheDocument();
     expect(screen.getByText('Recommended Next Mode')).toBeInTheDocument();
     expect(screen.getByText('Onboarding Checklist')).toBeInTheDocument();
     expect(screen.getByText('Save this progress')).toBeInTheDocument();

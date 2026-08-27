@@ -2,6 +2,9 @@ import { PrimeSummaryMetrics } from '../../types/prime';
 import { useTheme } from '../../context/ThemeContext';
 import { JungleBackground } from '../JungleBackground';
 import { JungleButton } from '../JungleButton';
+import { loadStats } from '../../utils/sessionStats';
+import { getCompletedPrimeSessions } from '../../utils/primePersistence';
+import { buildAthleteEvolution } from '../../utils/athleteEvolution';
 
 interface PrimeSummaryProps {
   protocolName: string;
@@ -31,6 +34,7 @@ const MetricCard = ({
 
 export const PrimeSummary = ({ protocolName, recipeIdentity, summary, onDone }: PrimeSummaryProps) => {
   const { theme } = useTheme();
+  const evolution = buildAthleteEvolution(loadStats(), getCompletedPrimeSessions());
 
   return (
     <div
@@ -146,6 +150,14 @@ export const PrimeSummary = ({ protocolName, recipeIdentity, summary, onDone }: 
           {summary.stepsSkipped > 0 && (
             <p className="mt-2 text-xs" style={{ color: theme.textColor, opacity: 0.62 }}>
               {summary.stepsSkipped} step{summary.stepsSkipped === 1 ? '' : 's'} skipped
+            </p>
+          )}
+          <p className="mt-4 text-sm" style={{ color: theme.textColor, opacity: 0.86 }}>
+            Path: {evolution.path.current.label}. {evolution.path.progressLabel}
+          </p>
+          {evolution.earnedCount > 0 && (
+            <p className="mt-1 text-xs" style={{ color: theme.textColor, opacity: 0.7 }}>
+              {evolution.earnedCount} training mark{evolution.earnedCount === 1 ? '' : 's'} earned from completed work.
             </p>
           )}
 
