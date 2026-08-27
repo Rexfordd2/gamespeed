@@ -24,7 +24,8 @@
     "calmFocus",
     "schulteScan",
     "goNoGo",
-    "choiceReaction"
+    "choiceReaction",
+    "rapidComprehension"
   ],
   "groups": {
     "sportIcons": [
@@ -153,6 +154,13 @@
         "id": "mongoose-read",
         "file": "mode-icons/mongoose-read.svg",
         "fallbackGlyph": "◈",
+        "required": false,
+        "dimensions": "256x256"
+      },
+      {
+        "id": "chameleon-read",
+        "file": "mode-icons/chameleon-read.svg",
+        "fallbackGlyph": "◐",
         "required": false,
         "dimensions": "256x256"
       }
@@ -431,7 +439,8 @@
       "calmFocus": "calm-focus",
       "schulteScan": "schulte-scan",
       "goNoGo": "go-no-go",
-      "choiceReaction": "mongoose-read"
+      "choiceReaction": "mongoose-read",
+      "rapidComprehension": "chameleon-read"
     },
     "modeToAudioCues": {
       "reactionBenchmark": [],
@@ -456,7 +465,8 @@
       "calmFocus": [],
       "schulteScan": [],
       "goNoGo": [],
-      "choiceReaction": []
+      "choiceReaction": [],
+      "rapidComprehension": []
     }
   },
   "supportedFormats": {

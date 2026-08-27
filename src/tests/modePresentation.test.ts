@@ -50,4 +50,13 @@ describe('mode presentation copy', () => {
     expect(mongoose.whyThisMatters).toContain('decision accuracy');
     expect(mongoose.whyThisMatters).not.toMatch(/diagnos/i);
   });
+
+  it('returns Chameleon Read as an athletic processing drill, not an IQ test', () => {
+    const chameleon = getModePresentation('rapidComprehension', 'soccer');
+    expect(chameleon.title).toBe('Chameleon Read');
+    expect(chameleon.sportLabel).toBe('Take the picture, then answer');
+    expect(chameleon.description).toMatch(/information-processing drill/i);
+    expect(chameleon.description).toMatch(/not an IQ test/i);
+    expect(chameleon.whyThisMatters).not.toMatch(/diagnos/i);
+  });
 });

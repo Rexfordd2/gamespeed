@@ -150,6 +150,11 @@ describe('prime session orchestration', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Begin' }));
     await completeCurrentDrill();
 
+    expect(screen.getByRole('heading', { name: 'Process' })).toBeInTheDocument();
+    expect(screen.getByText('Chameleon Read')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Begin' }));
+    await completeCurrentDrill();
+
     expect(screen.getByRole('heading', { name: 'Decide' })).toBeInTheDocument();
     expect(screen.getByText('Mongoose Read')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Begin' }));
@@ -165,7 +170,7 @@ describe('prime session orchestration', () => {
 
     expect(screen.getByRole('heading', { name: "YOU'RE PRIMED" })).toBeInTheDocument();
     expect(screen.getByText(/Accuracy/i)).toBeInTheDocument();
-    expect(onPersistStep).toHaveBeenCalledTimes(7);
+    expect(onPersistStep).toHaveBeenCalledTimes(8);
     expect(onComplete).toHaveBeenCalledTimes(1);
     expect(onCancel).not.toHaveBeenCalled();
     expect(loadPrimeSessions()[0]?.status).toBe('completed');
@@ -175,6 +180,7 @@ describe('prime session orchestration', () => {
       'scan',
       'react',
       'control',
+      'process',
       'decide',
       'track',
       'move',

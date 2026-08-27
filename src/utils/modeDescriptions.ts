@@ -69,6 +69,10 @@ const DEFAULT_SPORT_COPY: Record<GameModeType, ModeSportCopyOverride> = {
     sportLabel: 'Read then respond',
     sportDescription: 'Classify the cue and pick the matching action. Speed only counts when the decision is right.',
   },
+  rapidComprehension: {
+    sportLabel: 'Take the picture, then answer',
+    sportDescription: 'Encode the live information, hold it after it changes, and answer from what you just saw.',
+  },
 };
 
 const modeSportOverrides: Partial<Record<SportType, Partial<Record<GameModeType, ModeSportCopyOverride>>>> = {
@@ -438,6 +442,27 @@ export const modeDescriptions: Record<GameModeType, ModeDescription> = {
       'Study the rules during the briefing. They may disappear once the drill starts.',
       'A wrong swipe is not the same miss as a late tap or a false start.',
       'Red means no response. Moving on a no-go is a wrong decision, not a fast one.',
+    ],
+  },
+  rapidComprehension: {
+    title: 'Chameleon Read',
+    description:
+      'Athletic information-processing drill. A short picture is shown, then removed. Answer from what you just saw — relationships, sequences, rules, or locations. This is not an IQ test and not a medical cognitive assessment.',
+    trainingFocus: 'Rapid intake, retention, and response',
+    intensity: 'High',
+    rhythm: 'See it. Hold it. Answer it.',
+    whyThisMatters:
+      'Games change while you are still reading them. This drill trains taking information in fast, keeping it after the picture changes, and answering from the hold — not from trivia.',
+    evidenceStyle: {
+      cuePickup: 'Requires encoding a short visual or rule set before it disappears.',
+      anticipation: 'Punishes taps during encoding and the hold delay.',
+      decisionSpeed: 'Measures answer reaction time only after the question appears.',
+      gazeStability: 'Rewards staying on the picture until it is taken away.',
+    },
+    tips: [
+      'Read the picture. Do not mash before the question.',
+      'A late blank is an encoding miss, not a slow trivia miss.',
+      'Rules can switch later. Adapt before the picture changes.',
     ],
   },
 };

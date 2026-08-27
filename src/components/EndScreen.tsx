@@ -396,6 +396,48 @@ export const EndScreen = ({
           </div>
         )}
 
+        {result.rapidComprehensionMetrics && (
+          <div className="mb-3 w-full rounded-2xl px-4 py-4 sm:mb-4 sm:px-5" style={{ backgroundColor: 'rgba(74, 222, 128, 0.08)', border: '1px solid rgba(74, 222, 128, 0.28)' }}>
+            <p className="mb-2 text-[10px] uppercase tracking-[0.16em] opacity-65" style={{ color: theme.textColor }}>
+              Chameleon Read
+            </p>
+            <p className="mb-3 text-xs" style={{ color: theme.textColor, opacity: 0.78 }}>
+              Athletic information-processing drill. Not an IQ test. Not a medical cognitive assessment.
+            </p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.14em] opacity-60" style={{ color: theme.textColor }}>Speed</p>
+                <p className="mt-1 text-xl font-black tabular-nums" style={{ color: theme.targetColor }}>
+                  {result.rapidComprehensionMetrics.meanAnswerReactionMs ?? '—'}
+                  {result.rapidComprehensionMetrics.meanAnswerReactionMs !== null ? 'ms' : ''}
+                </p>
+                <p className="text-[11px] opacity-70" style={{ color: theme.textColor }}>
+                  Mean answer RT · {result.rapidComprehensionMetrics.correct} clean
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.14em] opacity-60" style={{ color: theme.textColor }}>Comprehend</p>
+                <p className="mt-1 text-xl font-black tabular-nums" style={{ color: theme.textColor }}>
+                  {result.rapidComprehensionMetrics.comprehensionAccuracyPct}%
+                </p>
+                <p className="text-[11px] opacity-70" style={{ color: theme.textColor }}>
+                  Wrong {result.rapidComprehensionMetrics.wrong} · Encoding misses {result.rapidComprehensionMetrics.encodingFailures}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.14em] opacity-60" style={{ color: theme.textColor }}>Difficulty</p>
+                <p className="mt-1 text-xl font-black tabular-nums" style={{ color: theme.textColor }}>
+                  {result.rapidComprehensionMetrics.difficultyReached}
+                </p>
+                <p className="text-[11px] opacity-70" style={{ color: theme.textColor }}>
+                  Decay {result.rapidComprehensionMetrics.performanceDecayMs ?? '—'}
+                  {result.rapidComprehensionMetrics.performanceDecayMs !== null ? 'ms' : ''}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {result.choiceReactionMetrics && (
           <div className="mb-3 w-full rounded-2xl px-4 py-4 sm:mb-4 sm:px-5" style={{ backgroundColor: 'rgba(96, 165, 250, 0.08)', border: '1px solid rgba(96, 165, 250, 0.28)' }}>
             <p className="mb-2 text-[10px] uppercase tracking-[0.16em] opacity-65" style={{ color: theme.textColor }}>

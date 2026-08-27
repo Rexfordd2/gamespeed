@@ -234,4 +234,46 @@ describe('session stats backward compatibility', () => {
     expect(mongoose?.meta?.choiceReactionMetrics?.falseStarts).toBe(1);
     expect(tap?.meta?.choiceReactionMetrics).toBeUndefined();
   });
+
+  it('persists Chameleon Read comprehension metrics without rewriting other mode history', () => {
+    recordRound({
+      score: 12,
+      misses: 2,
+      bestStreak: 6,
+      mode: 'quickTap',
+      modeName: 'Quick Tap',
+    });
+    recordRound({
+      score: 8,
+      misses: 3,
+      bestStreak: 4,
+      mode: 'rapidComprehension',
+      modeName: 'Chameleon Read',
+      rapidComprehensionMetrics: {
+        comprehensionAccuracyPct: 73,
+        meanAnswerReactionMs: 410,
+        encodingFailures: 2,
+        wrong: 1,
+        correct: 8,
+        trialsResolved: 11,
+        difficultyReached: 2,
+        bestStreak: 4,
+        prematureResponses: 1,
+        performanceDecayMs: 45,
+        byFamily: {
+          objectRelationship: { attempts: 3, correct: 3, accuracyPct: 100, meanRtMs: 380 },
+          sequenceComprehension: { attempts: 3, correct: 2, accuracyPct: 67, meanRtMs: 420 },
+        },
+      },
+    });
+
+    const reloaded = loadStats();
+    const chameleon = reloaded.rounds.find(round => round.mode === 'rapidComprehension');
+    const tap = reloaded.rounds.find(round => round.mode === 'quickTap');
+    expect(chameleon?.meta?.rapidComprehensionMetrics?.comprehensionAccuracyPct).toBe(73);
+    expect(chameleon?.meta?.rapidComprehensionMetrics?.meanAnswerReactionMs).toBe(410);
+    expect(chameleon?.meta?.rapidComprehensionMetrics?.encodingFailures).toBe(2);
+    expect(chameleon?.meta?.rapidComprehensionMetrics?.difficultyReached).toBe(2);
+    expect(tap?.meta?.rapidComprehensionMetrics).toBeUndefined();
+  });
 });

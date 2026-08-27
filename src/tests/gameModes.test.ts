@@ -8,6 +8,7 @@ import { generateTargets as calmFocus } from '../modes/calmFocus';
 import { generateTargets as schulteScan } from '../modes/schulteScan';
 import { generateTargets as goNoGo } from '../modes/goNoGo';
 import { generateTargets as choiceReaction } from '../modes/choiceReaction';
+import { generateTargets as rapidComprehension } from '../modes/rapidComprehension';
 import {
   generateSequenceTargets,
   getSequenceLengthForSuccesses,
@@ -144,6 +145,7 @@ describe('gameModes registry', () => {
     expect(gameModes.schulteScan).toBeDefined();
     expect(gameModes.goNoGo).toBeDefined();
     expect(gameModes.choiceReaction).toBeDefined();
+    expect(gameModes.rapidComprehension).toBeDefined();
     expect(gameModes.quickTap.availability).toBe('playable');
     expect(gameModes.multiTarget.availability).toBe('playable');
     expect(gameModes.swipeStrike.availability).toBe('playable');
@@ -154,9 +156,11 @@ describe('gameModes registry', () => {
     expect(gameModes.schulteScan.availability).toBe('playable');
     expect(gameModes.goNoGo.availability).toBe('playable');
     expect(gameModes.choiceReaction.availability).toBe('playable');
+    expect(gameModes.rapidComprehension.availability).toBe('playable');
     expect(gameModes.schulteScan.name).toBe('Macaw Scan');
     expect(gameModes.goNoGo.name).toBe('Caiman Control');
     expect(gameModes.choiceReaction.name).toBe('Mongoose Read');
+    expect(gameModes.rapidComprehension.name).toBe('Chameleon Read');
   });
 
   it('every mode has a generateTargets function', () => {
@@ -357,6 +361,12 @@ describe('goNoGo.generateTargets', () => {
 describe('choiceReaction.generateTargets', () => {
   it('does not spawn floating targets — the trial engine owns timing', () => {
     expect(choiceReaction({ ...base, existingTargets: [] })).toEqual([]);
+  });
+});
+
+describe('rapidComprehension.generateTargets', () => {
+  it('does not spawn floating targets — the trial engine owns timing', () => {
+    expect(rapidComprehension({ ...base, existingTargets: [] })).toEqual([]);
   });
 });
 

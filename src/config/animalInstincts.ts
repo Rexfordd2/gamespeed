@@ -98,6 +98,14 @@ const instincts: AnimalInstinct[] = [
     ability: 'Read the cue, then pick the correct response',
     tagline: 'Read first. Move second.',
   },
+  {
+    modeId: 'rapidComprehension',
+    experienceName: 'Chameleon Read',
+    animal: 'Chameleon',
+    instinct: 'Adaptation + information processing',
+    ability: 'Rapid intake, retention, and response to changing information',
+    tagline: 'Adapt before the picture changes.',
+  },
 ];
 
 export const animalInstincts: Record<GameModeType, AnimalInstinct> = instincts.reduce(

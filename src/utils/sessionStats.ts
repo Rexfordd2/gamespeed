@@ -117,6 +117,10 @@ const normalizeRound = (rawRound: unknown): StoredRound | null => {
         value.meta?.choiceReactionMetrics && typeof value.meta.choiceReactionMetrics === 'object'
           ? value.meta.choiceReactionMetrics
           : undefined,
+      rapidComprehensionMetrics:
+        value.meta?.rapidComprehensionMetrics && typeof value.meta.rapidComprehensionMetrics === 'object'
+          ? value.meta.rapidComprehensionMetrics
+          : undefined,
     },
   };
 };
@@ -182,6 +186,7 @@ export const recordRound = (result: GameResult, options?: RecordRoundOptions): S
       schulteMetrics: result.schulteMetrics,
       goNoGoMetrics: result.goNoGoMetrics,
       choiceReactionMetrics: result.choiceReactionMetrics,
+      rapidComprehensionMetrics: result.rapidComprehensionMetrics,
     },
   };
 

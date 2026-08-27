@@ -11,6 +11,7 @@ export type PrimeStepCategory =
   | 'scan'
   | 'react'
   | 'control'
+  | 'process'
   | 'decide'
   | 'track'
   | 'move'

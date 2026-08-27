@@ -17,6 +17,11 @@ describe('gameplay cue mapping', () => {
     expect(volleyballHoldCues.focus).toContain('block cue lock');
     expect(volleyballHoldCues.microHudLabel).toBe('Stability lane');
   });
+
+  it('maps Chameleon Read to the process lane', () => {
+    const cues = getGameplayCueSet('soccer', 'rapidComprehension');
+    expect(cues.microHudLabel).toBe('Process lane');
+  });
 });
 
 describe('gameplay cue visibility timing rules', () => {

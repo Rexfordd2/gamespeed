@@ -2,6 +2,7 @@ import type { SportType } from '../config/sports';
 import type { SchulteScanMetrics } from './schulte';
 import type { GoNoGoMetrics } from './goNoGo';
 import type { ChoiceReactionMetrics } from './choiceReaction';
+import type { ComprehensionMetrics } from './rapidComprehension';
 
 export type GameState = 'start' | 'playing' | 'prime' | 'end' | 'stats' | 'coach';
 
@@ -29,7 +30,8 @@ export type GameModeType =
   | 'calmFocus'
   | 'schulteScan'
   | 'goNoGo'
-  | 'choiceReaction';
+  | 'choiceReaction'
+  | 'rapidComprehension';
 
 export type ModeAvailability = 'playable' | 'comingSoon';
 
@@ -126,6 +128,8 @@ export interface GameResult {
   goNoGoMetrics?: GoNoGoMetrics;
   /** Mongoose Read / choice-reaction metrics. Omitted for other modes. */
   choiceReactionMetrics?: ChoiceReactionMetrics;
+  /** Chameleon Read / rapid-comprehension metrics. Omitted for other modes. */
+  rapidComprehensionMetrics?: ComprehensionMetrics;
 }
 
 // ---------- Persistent stats types ----------
@@ -156,6 +160,7 @@ export interface StoredRound {
     schulteMetrics?: SchulteScanMetrics;
     goNoGoMetrics?: GoNoGoMetrics;
     choiceReactionMetrics?: ChoiceReactionMetrics;
+    rapidComprehensionMetrics?: ComprehensionMetrics;
   };
 }
 

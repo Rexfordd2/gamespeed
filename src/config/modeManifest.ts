@@ -3,7 +3,15 @@ import { SportType } from './sports';
 import { GameModeType, ModeAvailability } from '../types/game';
 import { resolveModeIconAsset } from './assetRegistry';
 
-export type ModeGameplayMechanicType = 'tap' | 'swipe' | 'hold' | 'sequence' | 'scan' | 'inhibit' | 'choice';
+export type ModeGameplayMechanicType =
+  | 'tap'
+  | 'swipe'
+  | 'hold'
+  | 'sequence'
+  | 'scan'
+  | 'inhibit'
+  | 'choice'
+  | 'comprehend';
 export type ModeScoringModel =
   | 'standardAccuracy'
   | 'benchmarkComposite'
@@ -12,13 +20,15 @@ export type ModeScoringModel =
   | 'sequenceRecall'
   | 'scanSequence'
   | 'inhibitionControl'
-  | 'choiceReaction';
+  | 'choiceReaction'
+  | 'rapidComprehension';
 export type ModeTargetRendererKey =
   | 'standardTarget'
   | 'sequenceTargets'
   | 'schulteGrid'
   | 'goNoGoStimulus'
-  | 'choiceStimulus';
+  | 'choiceStimulus'
+  | 'comprehensionStimulus';
 export type ModeIconRef =
   | 'benchmarkStopwatch'
   | 'quickTapBolt'
@@ -31,6 +41,7 @@ export type ModeIconRef =
   | 'macawGrid'
   | 'caimanHold'
   | 'mongooseRead'
+  | 'chameleonRead'
   | 'defaultMode';
 export type ModeCueTemplateRef =
   | 'sequenceVocabularyFocus'
@@ -116,6 +127,7 @@ const gameplayMechanicTypes: ModeGameplayMechanicType[] = [
   'scan',
   'inhibit',
   'choice',
+  'comprehend',
 ];
 const scoringModels: ModeScoringModel[] = [
   'standardAccuracy',
@@ -126,6 +138,7 @@ const scoringModels: ModeScoringModel[] = [
   'scanSequence',
   'inhibitionControl',
   'choiceReaction',
+  'rapidComprehension',
 ];
 const targetRendererKeys: ModeTargetRendererKey[] = [
   'standardTarget',
@@ -133,6 +146,7 @@ const targetRendererKeys: ModeTargetRendererKey[] = [
   'schulteGrid',
   'goNoGoStimulus',
   'choiceStimulus',
+  'comprehensionStimulus',
 ];
 const cueTemplateRefs: ModeCueTemplateRef[] = [
   'sequenceVocabularyFocus',
@@ -153,6 +167,7 @@ const iconRefs: ModeIconRef[] = [
   'macawGrid',
   'caimanHold',
   'mongooseRead',
+  'chameleonRead',
   'defaultMode',
 ];
 const modeDifficultyPresets: ModeDefaults['difficultyPreset'][] = [
@@ -197,6 +212,7 @@ const modeIconGlyphRegistry: Record<ModeIconRef, string> = {
   macawGrid: '▦',
   caimanHold: '▬',
   mongooseRead: '◈',
+  chameleonRead: '◐',
   defaultMode: '•',
 };
 
@@ -600,6 +616,26 @@ const modeManifestSeeds: ModeManifestSeed[] = [
       targetLifespanSeconds: 0.9,
       roundSeconds: 60,
       difficultyPreset: 'speed',
+    },
+  },
+  {
+    id: 'rapidComprehension',
+    displayName: 'Chameleon Read',
+    description:
+      'Rapid information-processing drill. Take the picture in, keep it after it changes, then answer from what you just saw.',
+    availability: 'playable',
+    category: 'drill',
+    supportedSports: 'all',
+    iconRef: 'chameleonRead',
+    gameplayMechanicType: 'comprehend',
+    scoringModel: 'rapidComprehension',
+    targetRendererKey: 'comprehensionStimulus',
+    defaults: {
+      maxTargets: 1,
+      targetIntervalMs: 800,
+      targetLifespanSeconds: 2.2,
+      roundSeconds: 60,
+      difficultyPreset: 'memory',
     },
   },
 ];

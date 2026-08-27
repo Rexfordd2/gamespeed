@@ -25,6 +25,7 @@ import { Target } from './Target';
 import { SchulteGridBoard } from './SchulteGridBoard';
 import { CaimanControlBoard } from './CaimanControlBoard';
 import { MongooseReadBoard } from './MongooseReadBoard';
+import { ChameleonReadBoard } from './ChameleonReadBoard';
 import { JungleButton } from './JungleButton';
 import { SportModeCueKey, getSportPackAssets } from '../config/sportPacks';
 import { GameplayCueOverlay } from './GameplayCueOverlay';
@@ -60,6 +61,15 @@ import {
   tickChoice,
 } from '../utils/choiceReactionEngine';
 import { getChoiceConfigForLadder } from '../modes/choiceReaction';
+import { ComprehensionOutcome, ComprehensionRoundState } from '../types/rapidComprehension';
+import {
+  createComprehensionRound,
+  deriveComprehensionMetrics,
+  respondComprehension,
+  shiftComprehensionPhase,
+  tickComprehension,
+} from '../utils/rapidComprehensionEngine';
+import { getComprehensionConfigForLadder, getComprehensionDifficultyReached } from '../modes/rapidComprehension';
 
 interface GameProps {
   mode?: GameModeType;
@@ -136,6 +146,7 @@ export const Game = ({
   const isSchulteMode = modeManifest.targetRendererKey === 'schulteGrid';
   const isGoNoGoMode = modeManifest.targetRendererKey === 'goNoGoStimulus';
   const isChoiceMode = modeManifest.targetRendererKey === 'choiceStimulus';
+  const isComprehensionMode = modeManifest.targetRendererKey === 'comprehensionStimulus';
   const modeAudioHooks = modeManifest.audioCueHooks;
   const sequencePhaseCues = modeAudioHooks.sequencePhase;
   const holdStartCue = modeAudioHooks.onHoldStart ?? 'hold-lock';
@@ -185,6 +196,7 @@ export const Game = ({
   const [schulteBoard, setSchulteBoard] = useState<SchulteBoard | null>(null);
   const [goNoGoRound, setGoNoGoRound] = useState<GoNoGoRoundState | null>(null);
   const [choiceRound, setChoiceRound] = useState<ChoiceRoundState | null>(null);
+  const [comprehensionRound, setComprehensionRound] = useState<ComprehensionRoundState | null>(null);
   const [, setBestStreak] = useState(0);
   const screenSizeRef = useRef({
     width: window.innerWidth,
@@ -242,6 +254,8 @@ export const Game = ({
   const goNoGoPhaseRemainingMsRef = useRef(0);
   const choiceRoundRef = useRef<ChoiceRoundState | null>(null);
   const choicePhaseRemainingMsRef = useRef(0);
+  const comprehensionRoundRef = useRef<ComprehensionRoundState | null>(null);
+  const comprehensionPhaseRemainingMsRef = useRef(0);
   const fireHaptic = useCallback(
     (cue: 'hit' | 'miss' | 'streak' | 'start' | 'complete') => {
       triggerHapticCue(cue, { enabled: hapticsEnabled, lowStimulus: lowStimulusMode });
@@ -291,6 +305,17 @@ export const Game = ({
       choiceRoundRef.current = round;
       choicePhaseRemainingMsRef.current = Math.max(0, round.phaseEndsAtMs - now);
       setChoiceRound(round);
+    },
+    [primeSession],
+  );
+
+  const beginComprehensionRound = useCallback(
+    (now: number) => {
+      const config = getComprehensionConfigForLadder(0, { prime: primeSession });
+      const round = createComprehensionRound(config, now);
+      comprehensionRoundRef.current = round;
+      comprehensionPhaseRemainingMsRef.current = Math.max(0, round.phaseEndsAtMs - now);
+      setComprehensionRound(round);
     },
     [primeSession],
   );
@@ -404,6 +429,60 @@ export const Game = ({
       }
       if (outcome === 'wrongResponse' && choiceRoundRef.current?.trial?.expected === 'nogo') {
         falseStartsRef.current += 1;
+      }
+    },
+    [fireHaptic, playEffect, triggerMissFeedback],
+  );
+
+  const applyComprehensionOutcome = useCallback(
+    (outcome: ComprehensionOutcome) => {
+      if (outcome === 'ignoredSpam') {
+        return;
+      }
+      if (outcome === 'premature') {
+        falseStartsRef.current += 1;
+        if (streakRef.current !== 0) {
+          streakRunsRef.current.push(streakRef.current);
+          streakRef.current = 0;
+          setStreak(0);
+        }
+        playEffect('miss');
+        fireHaptic('miss');
+        return;
+      }
+
+      attemptsRef.current += 1;
+      if (outcome === 'correct') {
+        playEffect('hit');
+        fireHaptic('hit');
+        scoreRef.current += 1;
+        setScore(prev => prev + 1);
+        const nextStreak = streakRef.current + 1;
+        streakRef.current = nextStreak;
+        setStreak(nextStreak);
+        if (nextStreak > bestStreakRef.current) {
+          bestStreakRef.current = nextStreak;
+          setBestStreak(nextStreak);
+        }
+        const latestRt = comprehensionRoundRef.current?.accumulator.answerReactionTimesMs.slice(-1)[0];
+        if (latestRt !== undefined) {
+          reactionTimesRef.current.push(latestRt);
+        }
+        return;
+      }
+
+      playEffect('miss');
+      fireHaptic('miss');
+      triggerMissFeedback();
+      missesRef.current += 1;
+      setMisses(prev => prev + 1);
+      if (streakRef.current !== 0) {
+        streakRunsRef.current.push(streakRef.current);
+        streakRef.current = 0;
+        setStreak(0);
+      }
+      if (outcome === 'encodingFailure') {
+        lateDecisionsRef.current += 1;
       }
     },
     [fireHaptic, playEffect, triggerMissFeedback],
@@ -683,6 +762,14 @@ export const Game = ({
         }
       }
 
+      let rapidComprehensionMetrics;
+      if (activeMode === 'rapidComprehension' && comprehensionRoundRef.current) {
+        rapidComprehensionMetrics = deriveComprehensionMetrics(comprehensionRoundRef.current.accumulator);
+        if (rapidComprehensionMetrics.meanAnswerReactionMs) {
+          medianReactionTimeMs = rapidComprehensionMetrics.meanAnswerReactionMs;
+        }
+      }
+
       onGameOver({
         score: scoreRef.current,
         misses: missesRef.current,
@@ -701,6 +788,7 @@ export const Game = ({
         schulteMetrics,
         goNoGoMetrics,
         choiceReactionMetrics,
+        rapidComprehensionMetrics,
       });
     },
     [activeMode, fireHaptic, onGameOver, playEffect, selectedSport],
@@ -749,6 +837,9 @@ export const Game = ({
     choiceRoundRef.current = null;
     choicePhaseRemainingMsRef.current = 0;
     setChoiceRound(null);
+    comprehensionRoundRef.current = null;
+    comprehensionPhaseRemainingMsRef.current = 0;
+    setComprehensionRound(null);
     if (swipeFeedbackTimeoutRef.current !== null) {
       window.clearTimeout(swipeFeedbackTimeoutRef.current);
       swipeFeedbackTimeoutRef.current = null;
@@ -791,7 +882,10 @@ export const Game = ({
     if (isChoiceMode) {
       beginChoiceRound(Date.now());
     }
-  }, [ROUND_SECONDS, activeMode, beginChoiceRound, beginGoNoGoRound, beginSchulteBoard, clearHoldTrackingState, fireHaptic, includeBreathingRoutine, isChoiceMode, isGoNoGoMode, isSchulteMode, lowStimulusMode]);
+    if (isComprehensionMode) {
+      beginComprehensionRound(Date.now());
+    }
+  }, [ROUND_SECONDS, activeMode, beginChoiceRound, beginComprehensionRound, beginGoNoGoRound, beginSchulteBoard, clearHoldTrackingState, fireHaptic, includeBreathingRoutine, isChoiceMode, isComprehensionMode, isGoNoGoMode, isSchulteMode, lowStimulusMode]);
 
   useEffect(() => {
     if (!isRoutineActive) {
@@ -904,6 +998,46 @@ export const Game = ({
           }
           if (ticked.outcome) {
             applyChoiceOutcome(ticked.outcome);
+          }
+        }
+        if (remainingMs <= 0) {
+          setTimeLeft(0);
+          finishGame('timeout');
+        }
+        return;
+      }
+
+      if (isComprehensionMode) {
+        const currentRound = comprehensionRoundRef.current;
+        if (currentRound) {
+          let prepared = currentRound;
+          if (currentRound.phase === 'feedback' && now >= currentRound.phaseEndsAtMs) {
+            const nextConfig = getComprehensionConfigForLadder(currentRound.accumulator.trialsResolved, {
+              prime: primeSession,
+            });
+            const difficultyReached = Math.max(
+              currentRound.accumulator.difficultyReached,
+              getComprehensionDifficultyReached(currentRound.accumulator.trialsResolved),
+            );
+            prepared = {
+              ...currentRound,
+              config: nextConfig,
+              accumulator: {
+                ...currentRound.accumulator,
+                lastConfig: nextConfig,
+                difficultyReached,
+              },
+            };
+          }
+          const ticked = tickComprehension(prepared, now);
+          const nextState = ticked.state;
+          comprehensionRoundRef.current = nextState;
+          comprehensionPhaseRemainingMsRef.current = Math.max(0, nextState.phaseEndsAtMs - now);
+          if (nextState !== currentRound) {
+            setComprehensionRound(nextState);
+          }
+          if (ticked.outcome) {
+            applyComprehensionOutcome(ticked.outcome);
           }
         }
         if (remainingMs <= 0) {
@@ -1131,10 +1265,12 @@ export const Game = ({
     finishGame,
     applyGoNoGoOutcome,
     applyChoiceOutcome,
+    applyComprehensionOutcome,
     primeSession,
     isHoldMode,
     isGoNoGoMode,
     isChoiceMode,
+    isComprehensionMode,
     isSchulteMode,
     isSequenceMode,
     isSwipeMode,
@@ -1499,6 +1635,18 @@ export const Game = ({
     applyChoiceOutcome(outcome);
   }, [applyChoiceOutcome]);
 
+  const handleComprehensionRespond = useCallback((choiceId: string) => {
+    if (isPausedRef.current || gameOverFiredRef.current) return;
+    const current = comprehensionRoundRef.current;
+    if (!current) return;
+    const now = Date.now();
+    const { state, outcome } = respondComprehension(current, now, choiceId);
+    comprehensionRoundRef.current = state;
+    comprehensionPhaseRemainingMsRef.current = Math.max(0, state.phaseEndsAtMs - now);
+    setComprehensionRound(state);
+    applyComprehensionOutcome(outcome);
+  }, [applyComprehensionOutcome]);
+
   const togglePause = useCallback(() => {
     if (gameOverFiredRef.current) return;
 
@@ -1528,6 +1676,12 @@ export const Game = ({
             choiceRoundRef.current.phaseEndsAtMs - Date.now(),
           );
         }
+        if (isComprehensionMode && comprehensionRoundRef.current) {
+          comprehensionPhaseRemainingMsRef.current = Math.max(
+            0,
+            comprehensionRoundRef.current.phaseEndsAtMs - Date.now(),
+          );
+        }
         setTimeLeft(Math.ceil(remainingMsRef.current / 1000));
       } else {
         roundEndsAtRef.current = Date.now() + remainingMsRef.current;
@@ -1552,11 +1706,20 @@ export const Game = ({
           choiceRoundRef.current = shifted;
           setChoiceRound(shifted);
         }
+        if (isComprehensionMode && comprehensionRoundRef.current) {
+          const shifted = shiftComprehensionPhase(
+            comprehensionRoundRef.current,
+            comprehensionPhaseRemainingMsRef.current,
+            Date.now(),
+          );
+          comprehensionRoundRef.current = shifted;
+          setComprehensionRound(shifted);
+        }
       }
 
       return nextPaused;
     });
-  }, [clearHoldTrackingState, clearHoldVisual, isChoiceMode, isGoNoGoMode, isSequenceMode]);
+  }, [clearHoldTrackingState, clearHoldVisual, isChoiceMode, isComprehensionMode, isGoNoGoMode, isSequenceMode]);
 
   const handleQuit = useCallback(() => {
     if (window.confirm('Quit this round and return to main menu?')) {
@@ -1908,7 +2071,17 @@ export const Game = ({
             </div>
           </div>
         )}
-        {isChoiceMode && choiceRound ? (
+        {isComprehensionMode && comprehensionRound ? (
+          <ChameleonReadBoard
+            round={comprehensionRound}
+            disabled={isPaused}
+            reducedMotion={lowStimulusMode}
+            lowStimulus={lowStimulusMode}
+            accentColor={theme.targetColor}
+            textColor={theme.textColor}
+            onRespond={handleComprehensionRespond}
+          />
+        ) : isChoiceMode && choiceRound ? (
           <MongooseReadBoard
             round={choiceRound}
             disabled={isPaused}

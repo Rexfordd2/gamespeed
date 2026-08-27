@@ -58,6 +58,7 @@ describe('prime protocol config', () => {
       'scan',
       'react',
       'control',
+      'process',
       'decide',
       'track',
       'move',
@@ -68,6 +69,7 @@ describe('prime protocol config', () => {
       'schulteScan',
       'quickTap',
       'goNoGo',
+      'rapidComprehension',
       'choiceReaction',
       'holdTrack',
       undefined,
@@ -117,6 +119,7 @@ describe('prime engine', () => {
       { id: 'scan', mode: 'schulteScan' },
       { id: 'react', mode: 'quickTap' },
       { id: 'control', mode: 'goNoGo' },
+      { id: 'process', mode: 'rapidComprehension' },
       { id: 'decide', mode: 'choiceReaction' },
       { id: 'track', mode: 'holdTrack' },
     ];
@@ -137,9 +140,9 @@ describe('prime engine', () => {
     now += 200;
     state = skipCurrentPrimeStep(state, now);
     expect(state.phase).toBe('summary');
-    expect(state.results).toHaveLength(8);
-    expect(state.results.filter(result => result.status === 'completed')).toHaveLength(7);
-    expect(state.results[7]).toMatchObject({ stepId: 'move', status: 'skipped' });
+    expect(state.results).toHaveLength(9);
+    expect(state.results.filter(result => result.status === 'completed')).toHaveLength(8);
+    expect(state.results[8]).toMatchObject({ stepId: 'move', status: 'skipped' });
     expect(getPrimeProgress(state, now).percent).toBe(100);
   });
 
@@ -168,8 +171,8 @@ describe('prime engine', () => {
     now += 1_000;
     state = startAndComplete(state, now, drillResult('calmFocus'));
     const progress = getPrimeProgress(state, now + 1_000);
-    expect(progress.executableStepCount).toBe(8);
-    expect(progress.percent).toBe(13);
+    expect(progress.executableStepCount).toBe(9);
+    expect(progress.percent).toBe(11);
     expect(progress.elapsedMs).toBe(2_000);
     expect(progress.phase).toBe('transition');
   });

@@ -64,7 +64,7 @@ const seedUnlockHistory = () => {
   }
 };
 
-describe('Macaw Scan integration', () => {
+describe('Chameleon Read integration', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.stubGlobal('Audio', MockAudio as unknown as typeof Audio);
@@ -78,7 +78,7 @@ describe('Macaw Scan integration', () => {
     vi.unstubAllGlobals();
   });
 
-  it('completes a static 3x3, scales to 4x4, and saves scan metrics', async () => {
+  it('shows a picture, asks after it changes, and saves comprehension metrics', async () => {
     render(
       <AuthProvider>
         <App />
@@ -86,7 +86,7 @@ describe('Macaw Scan integration', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Train an Instinct' }));
-    const modeHeading = screen.getByRole('heading', { name: 'Macaw Scan' });
+    const modeHeading = screen.getByRole('heading', { name: 'Chameleon Read' });
     let cursor: HTMLElement | null = modeHeading.parentElement;
     while (cursor && !cursor.querySelector('button')) {
       cursor = cursor.parentElement;
@@ -95,51 +95,63 @@ describe('Macaw Scan integration', () => {
       ? within(cursor).getByRole('button', { name: /start (today'?s session|readiness drill)/i })
       : null;
     if (!startButton) {
-      throw new Error('Could not find Macaw Scan start button');
+      throw new Error('Could not find Chameleon Read start button');
     }
     fireEvent.click(startButton);
     await flushMicrotasks();
 
-    expect(screen.getByRole('grid', { name: /Macaw Scan 3 by 3 grid/i })).toBeInTheDocument();
-    expect(screen.getByText(/Find the signal inside the noise/i)).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('gridcell', { name: 'Macaw Scan cell 9' }));
+    expect(screen.getByText('Adapt before the picture changes.')).toBeInTheDocument();
+    const encoding = screen.getByRole('application', { name: /Chameleon Read encoding/i });
+    const encodingName = encoding.getAttribute('aria-label') ?? '';
+    fireEvent.click(encoding);
     await flushMicrotasks();
-    expect(screen.getByLabelText('Current streak 0')).toBeInTheDocument();
 
-    await advance(220);
-    for (let value = 1; value <= 9; value += 1) {
-      fireEvent.click(screen.getByRole('gridcell', { name: `Macaw Scan cell ${value}` }));
-      await flushMicrotasks();
+    await advance(2_800);
+
+    const question = screen.getByRole('application', { name: /Chameleon Read question/i });
+    const questionName = question.getAttribute('aria-label') ?? '';
+    const moved = /([A-Za-z]+ [a-z]+) moved/.exec(encodingName)?.[1];
+    const before = /What came before ([A-F])\?/.exec(questionName)?.[1];
+
+    if (moved) {
+      fireEvent.click(screen.getByRole('button', { name: `Chameleon Read answer ${moved}` }));
+    } else if (before) {
+      const sequence = /([A-F](?: → [A-F])+)/.exec(encodingName)?.[1]?.split(' → ') ?? [];
+      const probeIndex = sequence.indexOf(before);
+      const predecessor = probeIndex > 0 ? sequence[probeIndex - 1] : sequence[0];
+      fireEvent.click(screen.getByRole('button', { name: `Chameleon Read answer ${predecessor}` }));
+    } else {
+      const firstAnswer = screen.getAllByRole('button', { name: /Chameleon Read answer /i })[0];
+      fireEvent.click(firstAnswer);
     }
-
-    expect(screen.getByRole('grid', { name: /Macaw Scan 4 by 4 grid/i })).toBeInTheDocument();
-    expect(screen.getByLabelText('Current streak 9')).toBeInTheDocument();
+    await flushMicrotasks();
 
     await advance(60_500);
-    expect(screen.getByText(/Search timing from this round only/i)).toBeInTheDocument();
-    expect(screen.getByText('Boards')).toBeInTheDocument();
-    expect(screen.getByText('Hits')).toBeInTheDocument();
-    expect(screen.getByText('Errors')).toBeInTheDocument();
-    const macawRound = loadStats().rounds.find(round => round.mode === 'schulteScan');
-    expect(macawRound?.meta?.schulteMetrics?.boardsCompleted).toBe(1);
-    expect(macawRound?.meta?.schulteMetrics?.correctSelections).toBe(9);
-    expect(macawRound?.meta?.schulteMetrics?.errors).toBe(1);
-    expect(macawRound?.score).toBe(9);
+    expect(screen.getByText('Speed')).toBeInTheDocument();
+    expect(screen.getByText('Comprehend')).toBeInTheDocument();
+    expect(screen.getByText(/Not an IQ test/i)).toBeInTheDocument();
+    expect(screen.getByText(/Not a medical cognitive assessment/i)).toBeInTheDocument();
+
+    const chameleonRound = loadStats().rounds.find(round => round.mode === 'rapidComprehension');
+    expect(chameleonRound?.meta?.rapidComprehensionMetrics).toBeDefined();
+    expect(chameleonRound?.meta?.rapidComprehensionMetrics?.encodingFailures).toBeGreaterThanOrEqual(0);
+    expect(chameleonRound?.meta?.rapidComprehensionMetrics?.comprehensionAccuracyPct).toBeGreaterThanOrEqual(0);
+    expect(chameleonRound?.meta?.rapidComprehensionMetrics?.prematureResponses ?? 0).toBeGreaterThanOrEqual(0);
   });
 
-  it('lists Macaw Scan in the Prime preview and keeps existing drills available', () => {
+  it('lists Chameleon Read in the Prime PROCESS step and keeps Chameleon Chain available', () => {
     render(
       <AuthProvider>
         <App />
       </AuthProvider>,
     );
     expect(screen.getByRole('button', { name: 'Prime Me' })).toBeInTheDocument();
-    expect(screen.getByText('Scan')).toBeInTheDocument();
-    expect(screen.getByText('Macaw Scan')).toBeInTheDocument();
+    expect(screen.getByText('Process')).toBeInTheDocument();
+    expect(screen.getAllByText('Chameleon Read').length).toBeGreaterThan(0);
     expect(screen.getByText(/sequence: settle, see, scan, react, control, process, decide, track/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Train an Instinct' }));
-    expect(screen.getByRole('heading', { name: 'Multi Target' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Macaw Scan' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Chameleon Read' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Sequence Memory' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Mongoose Read' })).toBeInTheDocument();
   });
 });

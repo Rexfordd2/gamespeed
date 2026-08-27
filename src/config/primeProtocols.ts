@@ -19,8 +19,8 @@ export const GAMESPEED_PRIME_PROTOCOL_ID = 'gamespeed-prime-v1';
 export const gamespeedPrimeProtocol: PrimeProtocol = {
   id: GAMESPEED_PRIME_PROTOCOL_ID,
   name: 'GameSpeed Prime',
-  description: 'A short pre-performance sequence: settle, see, scan, react, control, decide, track, then a physical ready cue.',
-  estimatedSeconds: 460,
+  description: 'A short pre-performance sequence: settle, see, scan, react, control, process, decide, track, then a physical ready cue.',
+  estimatedSeconds: 520,
   contexts: ['practice', 'game', 'lift', 'skill', 'recovery'],
   steps: [
     drillStep({
@@ -72,6 +72,17 @@ export const gamespeedPrimeProtocol: PrimeProtocol = {
       durationSeconds: 60,
       intensity: 'high',
       instruction: 'Still until the moment is real. Strike the live cue. Hold the fake. Speed is useless if the response is wrong.',
+    }),
+    drillStep({
+      id: 'process',
+      category: 'process',
+      title: 'Process',
+      experienceName: 'Chameleon Read',
+      modeId: 'rapidComprehension',
+      durationSeconds: 60,
+      intensity: 'high',
+      instruction:
+        'Adapt before the picture changes. Take the information in, hold it after it disappears, then answer from what you just saw.',
     }),
     drillStep({
       id: 'decide',
