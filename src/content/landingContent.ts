@@ -206,7 +206,7 @@ export const landingContent: LandingContent = {
     },
   },
   socialProof: {
-    heading: 'Proof and Benchmarks',
+    heading: 'How your scores work',
     benchmarkFraming:
       'Use your benchmark score as a personal baseline, then compare week-over-week trend lines instead of chasing random one-off highs.',
     // Placeholder-only values; source in `src/content/credibilityContent.ts`.

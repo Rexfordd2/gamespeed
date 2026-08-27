@@ -186,4 +186,11 @@ describe('prime session persistence', () => {
     );
     expect(loadPrimeSessions()).toEqual([]);
   });
+
+  it('returns no Prime sessions for garbage JSON', () => {
+    localStorage.setItem(PRIME_SESSIONS_STORAGE_KEY, '{broken');
+    expect(loadPrimeSessions()).toEqual([]);
+    localStorage.setItem(PRIME_SESSIONS_STORAGE_KEY, JSON.stringify({ version: 1, sessions: 'nope' }));
+    expect(loadPrimeSessions()).toEqual([]);
+  });
 });

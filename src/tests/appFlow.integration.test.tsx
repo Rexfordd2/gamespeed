@@ -167,6 +167,9 @@ describe('App integration flow', () => {
     expect(screen.queryByText('2. Choose one goal')).not.toBeInTheDocument();
     expect(screen.getAllByRole('heading', { name: 'Soccer Readiness Drills' }).length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: 'Unmute audio' })).toBeInTheDocument();
+    expect(screen.queryByText('Percentile')).not.toBeInTheDocument();
+    expect(screen.queryByText('National Class')).not.toBeInTheDocument();
+    expect(screen.queryByText('Kai')).not.toBeInTheDocument();
   });
 
   it('uses soccer as the default selected sport and persists sport choice', () => {
@@ -384,6 +387,14 @@ describe('App integration flow', () => {
 
     expect(screen.getByRole('heading', { name: /How GameSpeed Scoring Works/i })).toBeInTheDocument();
     expect(screen.getByText(/Methodology and caveats/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'How your scores work' })).toBeInTheDocument();
+    expect(screen.getByText('Your last session')).toBeInTheDocument();
+    expect(screen.queryByText('4.1')).not.toBeInTheDocument();
+    expect(screen.queryByText('+11%')).not.toBeInTheDocument();
+    expect(screen.queryByText('62%')).not.toBeInTheDocument();
+    expect(screen.queryByText('D. Reynolds')).not.toBeInTheDocument();
+    expect(screen.queryByText(/n=148/i)).not.toBeInTheDocument();
+    expect(screen.getAllByText(/Not a real testimonial/i).length).toBeGreaterThan(0);
   });
 
   it('renders sport-specific runway copy for the selected sport', () => {

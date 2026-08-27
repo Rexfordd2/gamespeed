@@ -33,98 +33,89 @@ export interface WorkflowStep {
   body: string;
 }
 
-// Placeholder-only launch content. Replace with verified production metrics/testimonials.
 export const socialProofStats: ProofStat[] = [
-  { label: 'Average sessions per week (active users)', value: '4.1' },
-  { label: 'Median readiness score lift after 14 days', value: '+11%' },
-  { label: 'Users hitting 7-day streak in first month', value: '62%' },
+  { label: 'Compared to', value: 'Your last session' },
+  { label: 'Signals stored', value: 'Speed, accuracy, streak' },
+  { label: 'Baseline length', value: '60 seconds' },
 ];
 
-// Placeholder testimonials for launch shell; replace with real, consented quotes.
 export const socialProofTestimonials: SocialTestimonial[] = [
   {
-    quote:
-      'I use GameSpeed before training. It gets my eyes and first step online in one minute.',
-    author: 'D. Reynolds',
-    role: 'Semi-Pro Football Midfielder',
+    quote: 'Treat the first benchmark on this device as your mark. Later sessions are only compared to you.',
+    author: 'Training note',
+    role: 'Personal baseline, not a published study',
   },
   {
-    quote:
-      'The benchmark gives me a quick read on whether I should warm up longer before queueing ranked.',
-    author: 'A. Kim',
-    role: 'Immortal-Level FPS Player',
+    quote: 'If reaction time jumps after a late night, that is a session log — not a medical finding.',
+    author: 'Training note',
+    role: 'Same-device comparison only',
   },
   {
-    quote:
-      'The mode mix is what works. Benchmark for baseline, then decision drills when my reads feel slow.',
-    author: 'J. Patel',
-    role: 'Performance Coach',
+    quote: 'Rotate scan, control, decide, and process instincts when you want breadth. Volume without those marks does not invent mastery.',
+    author: 'Training note',
+    role: 'Completed work only',
   },
 ];
 
 export const credibilityMetricCards: CredibilityMetricCard[] = [
   {
-    metric: 'Average weekly check-ins: 4.3 sessions',
-    evidence: '[Placeholder dataset, n=148 active users, Jan-Mar 2026]',
-    context:
-      'Users who complete a short benchmark before practice tend to keep more consistent warm-up habits.',
+    metric: 'Personal weekly volume',
+    evidence: 'Counted from rounds stored on this device',
+    context: 'There is no live user cohort yet. Weekly consistency is your completed sessions this week.',
   },
   {
-    metric: 'Median reaction improvement: -19 ms in 3 weeks',
-    evidence: '[Placeholder benchmark trend, n=92 users, mixed athlete + gamer sample]',
-    context: 'Most gains come from better repeatability, not one-off peak sessions.',
+    metric: 'Reaction trend',
+    evidence: 'Median reaction time versus your first baseline mark',
+    context: 'A trend is shown only after two baseline sessions. Faster or slower is vs you, not a population.',
   },
   {
-    metric: 'Accuracy stability: +7.6 percentage points',
-    evidence: '[Placeholder analysis, rounds 1-12 compared to rounds 37-48]',
-    context:
-      'Speed gains hold better when users rotate between benchmark and focused drills.',
+    metric: 'Accuracy stability',
+    evidence: 'Mode accuracy stored on completed rounds',
+    context: 'Use this to see whether your own hits stay clean. It is not a diagnosis or injury screen.',
   },
 ];
 
 export const scoreBands: ScoreBand[] = [
   {
-    band: 'Readiness Band A',
+    band: 'Faster session',
     range: '< 215 ms',
-    interpretation: 'High readiness. Keep intensity and protect consistency.',
+    interpretation: 'Quicker than many of your own marks on this device. Keep the protocol the same if you want a fair comparison.',
   },
   {
-    band: 'Readiness Band B',
+    band: 'Typical session',
     range: '215-250 ms',
-    interpretation: 'Solid baseline. Focus on cleaner first-cue execution.',
+    interpretation: 'In a common personal range. Use accuracy and misses before changing the plan.',
   },
   {
-    band: 'Readiness Band C',
+    band: 'Slower session',
     range: '251-290 ms',
-    interpretation: 'Needs ramp-up. Run one benchmark plus two control drills.',
+    interpretation: 'Slower than a sharp personal day. Run the same baseline again before treating it as a trend.',
   },
   {
-    band: 'Readiness Band D',
+    band: 'Soft session',
     range: '> 290 ms',
-    interpretation: 'Recovery state. Prioritize timing and visual reset work.',
+    interpretation: 'A slow log on this hardware. Prefer a calm control drill over stacking high-arousal reps.',
   },
 ];
 
-// Placeholder testimonials for tone/structure only.
 export const credibilityQuoteCards: CredibilityQuoteCard[] = [
   {
     role: 'Coach',
-    quote: 'I use the first benchmark to decide if today is a speed day or a control day.',
-    name: 'R. Ellis, Performance Coach',
-    note: '[Placeholder testimonial: role and quote style only]',
+    quote: 'Use the first benchmark to decide whether today is a speed day or a control day.',
+    name: 'Intended use',
+    note: 'Illustrative coaching note. Not a real testimonial.',
   },
   {
     role: 'Player',
-    quote:
-      'The score trend keeps me honest. If my baseline drops, I adjust before high-pressure reps.',
-    name: 'M. Torres, Club Athlete',
-    note: '[Placeholder testimonial: role and quote style only]',
+    quote: 'If today’s baseline is slower than yesterday, adjust the session instead of forcing peak reps.',
+    name: 'Intended use',
+    note: 'Illustrative athlete note. Not a real testimonial.',
   },
   {
     role: 'Gamer',
-    quote: 'One minute tells me if my aim is truly online or if I need more warm-up reps.',
-    name: 'K. Shah, Competitive FPS Player',
-    note: '[Placeholder testimonial: role and quote style only]',
+    quote: 'One minute tells you whether this device session is online before you queue.',
+    name: 'Intended use',
+    note: 'Illustrative competitor note. Not a real testimonial.',
   },
 ];
 
@@ -139,6 +130,6 @@ export const workflowSteps: WorkflowStep[] = [
   },
   {
     title: '3) Review and recalibrate',
-    body: 'Use score trend and miss profile to decide whether to increase pace, reinforce control, or reset recovery.',
+    body: 'Use score trend and miss profile to decide whether to increase pace, reinforce control, or run a calmer drill.',
   },
 ];

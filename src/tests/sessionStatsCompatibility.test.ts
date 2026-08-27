@@ -276,4 +276,27 @@ describe('session stats backward compatibility', () => {
     expect(chameleon?.meta?.rapidComprehensionMetrics?.difficultyReached).toBe(2);
     expect(tap?.meta?.rapidComprehensionMetrics).toBeUndefined();
   });
+
+  it('returns empty or sanitized stats for corrupted payloads without throwing', () => {
+    localStorage.setItem(STORAGE_KEY, '{not-json');
+    expect(loadStats().rounds).toEqual([]);
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify([1, 2, 3]));
+    expect(loadStats().rounds).toEqual([]);
+
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        version: 99,
+        rounds: [{ ts: 'bad', mode: 'not-a-mode', score: 'x' }, null, 12],
+        pbs: 'nope',
+      }),
+    );
+    const recovered = loadStats();
+    expect(recovered.version).toBe(2);
+    expect(recovered.rounds).toHaveLength(1);
+    expect(recovered.rounds[0].mode).toBe('quickTap');
+    expect(recovered.rounds[0].score).toBe(0);
+    expect(recovered.pbs).toEqual({});
+  });
 });

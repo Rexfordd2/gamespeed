@@ -116,6 +116,19 @@ describe('first-time vs returning home', () => {
     vi.unstubAllGlobals();
   });
 
+  it('keeps first-run landing when localStorage history is corrupted', () => {
+    localStorage.setItem('gamespeed_stats_v1', '{not-json');
+    localStorage.setItem('gamespeed_prime_sessions_v1', '["nope"]');
+    localStorage.setItem('gamespeed_first_run_complete_v1', '1');
+    renderApp();
+
+    expect(
+      screen.getByRole('heading', { name: 'Train Faster Reactions. Sharper Decisions. Better Game Speed.' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Prime Me' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Trail' })).not.toBeInTheDocument();
+  });
+
   it('keeps the first-run landing when there is no valid local history, even if the first-run flag is set', () => {
     localStorage.setItem('gamespeed_first_run_complete_v1', '1');
     renderApp();
