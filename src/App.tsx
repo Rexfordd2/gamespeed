@@ -49,6 +49,7 @@ import {
   shouldUseLowStimulusMode,
 } from './utils/nightGuardrail';
 import { getDefaultHapticsEnabled } from './utils/haptics';
+import { AthleteHouzeHandoff, readAthleteHouzeHandoff } from './utils/athleteHouzeHandoff';
 
 const FIRST_RUN_COMPLETE_STORAGE_KEY = 'gamespeed_first_run_complete_v1';
 const CUE_INTENSITY_STORAGE_KEY = 'gamespeed_cue_intensity_v1';
@@ -138,6 +139,10 @@ export const App = () => {
       ? 'home'
       : getPublicRouteFromLocation(window.location.pathname, window.location.search),
   );
+  const [handoff] = useState<AthleteHouzeHandoff | null>(() =>
+    typeof window === 'undefined' ? null : readAthleteHouzeHandoff(window.location.search),
+  );
+  const entrySource = handoff?.source ?? null;
   const [gameState, setGameState] = useState<GameState>('start');
   const [selectedMode, setSelectedMode] = useState<GameModeType>('quickTap');
   const [selectedSport, setSelectedSport] = useState<SportType>(loadSelectedSport);
@@ -212,6 +217,7 @@ export const App = () => {
       persona: nextFirstRunSelection?.persona ?? null,
       goal: nextFirstRunSelection?.goal ?? null,
       lowStimulus: nextSessionOptions.lowStimulus,
+      entrySource,
     });
 
     const startMode = shouldForceLowStimulus ? 'reactionBenchmark' : mode;
@@ -224,6 +230,7 @@ export const App = () => {
         experimentVariant: landingExperiment.id,
         persona: nextFirstRunSelection?.persona ?? null,
         goal: nextFirstRunSelection?.goal ?? null,
+        entrySource,
       });
     }
     setSelectedMode(resolvePlayableMode(startMode));
@@ -276,6 +283,7 @@ export const App = () => {
         experimentVariant: landingExperiment.id,
         persona: firstRunSelection?.persona ?? null,
         goal: firstRunSelection?.goal ?? null,
+        entrySource,
       });
       try {
         localStorage.setItem(FIRST_RUN_COMPLETE_STORAGE_KEY, '1');
@@ -630,6 +638,7 @@ export const App = () => {
             roundProgressDelta={roundProgressDelta}
             playerName={profile?.display_name || user?.email?.split('@')[0] || 'You'}
             cloudSyncStatus={cloudSyncStatus}
+            athleteHouzeReturnUrl={handoff?.returnUrl ?? null}
           />
         )}
         {gameState === 'stats' && (
