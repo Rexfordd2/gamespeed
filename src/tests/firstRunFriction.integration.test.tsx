@@ -338,7 +338,9 @@ describe('first-run friction contract', () => {
       const summary = screen.getByTestId('returning-summary');
       expect(getMain().firstElementChild).toBe(summary);
       expect(screen.queryByTestId('first-run-quickstart')).not.toBeInTheDocument();
-      expect(within(summary).getByTestId('returning-score')).toHaveTextContent('74');
+      expect(within(summary).getByTestId('returning-score')).toHaveTextContent(
+        String(lastRound().readinessMetrics?.readinessScore),
+      );
       expect(within(summary).getByText('Recommended session')).toBeInTheDocument();
       const recommendedName = getExperienceName('multiTarget');
       expect(within(summary).getByText(recommendedName)).toBeInTheDocument();
@@ -356,12 +358,17 @@ describe('first-run friction contract', () => {
       expect(screen.getAllByText(recommendedName).length).toBeGreaterThan(0);
     });
 
-    it('returns to the returning view after the first completion', async () => {
+    it('returns to the returning view with the same score and recommendation after the first completion', async () => {
       renderAppAt('/');
       await completeFirstBenchmark();
+      const completionScore = screen.getByTestId('result-score').textContent;
+      const recommendedName = getExperienceName('quickTap');
+
       fireEvent.click(screen.getByRole('button', { name: 'Main Menu' }));
-      expect(screen.getByTestId('returning-summary')).toBeInTheDocument();
       expect(screen.queryByTestId('first-run-quickstart')).not.toBeInTheDocument();
+      const summary = screen.getByTestId('returning-summary');
+      expect(within(summary).getByTestId('returning-score')).toHaveTextContent(completionScore!);
+      expect(within(summary).getByRole('button')).toHaveTextContent(`Start ${recommendedName}`);
     });
   });
 

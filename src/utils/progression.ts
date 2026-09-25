@@ -356,6 +356,7 @@ export const getLatestBenchmarkRound = (stats: GameStats): StoredRound | null =>
 export const getLatestGameSpeedScore = (stats: GameStats): number | null => {
   const recent = getRecentHistory(stats, 1)[0];
   if (!recent) return null;
+  if (typeof recent.readinessMetrics?.readinessScore === 'number') return recent.readinessMetrics.readinessScore;
   if (typeof recent.benchmarkScore === 'number') return recent.benchmarkScore;
   return recent.accuracy ?? null;
 };
