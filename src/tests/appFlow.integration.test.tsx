@@ -125,6 +125,20 @@ const getModeStartButton = (modeName: string) => {
   return modeButton;
 };
 
+const openMoreSettings = () => {
+  const toggle = screen.getByRole('button', { name: /more settings/i });
+  if (toggle.getAttribute('aria-expanded') !== 'true') {
+    fireEvent.click(toggle);
+  }
+};
+
+const startFirstBenchmark = async () => {
+  fireEvent.click(screen.getByRole('button', { name: 'Athlete' }));
+  fireEvent.click(screen.getByRole('button', { name: /First-step quickness/i }));
+  fireEvent.click(screen.getByRole('button', { name: 'Run 60-second baseline' }));
+  await flushMicrotasks();
+};
+
 const startMode = async (modeName: string) => {
   fireEvent.click(getModeStartButton(modeName));
   await flushMicrotasks();
@@ -141,8 +155,8 @@ describe('App integration flow', () => {
     MockAudio.reset();
     vi.stubGlobal('Audio', MockAudio as unknown as typeof Audio);
     vi.stubGlobal('confirm', vi.fn(() => true));
-    localStorage.removeItem(SPORT_SELECTION_STORAGE_KEY);
-    localStorage.removeItem(NIGHT_GUARDRAIL_STORAGE_KEY);
+    localStorage.clear();
+    sessionStorage.clear();
     localStorage.setItem(
       'gamespeed_instinct_intro_seen_v1',
       JSON.stringify({
@@ -169,19 +183,21 @@ describe('App integration flow', () => {
     renderApp();
 
     expect(
-      screen.getByRole('heading', {
-        name: 'Train the part of your game that moves before your muscles.',
-      }),
+      screen.getByRole('heading', { name: 'Measure how quickly you see, decide and react.' }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Soccer' })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByText('1. Choose role')).toBeInTheDocument();
-    expect(screen.queryByText('2. Choose one goal')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Athlete' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Gamer' })).toBeInTheDocument();
+    expect(screen.getByText('Pick one goal')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Run 60-second baseline' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /more settings/i })).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('button', { name: 'Soccer' })).not.toBeInTheDocument();
     expect(screen.getAllByRole('heading', { name: 'Choose Your Instinct' }).length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: 'Unmute audio' })).toBeInTheDocument();
   });
 
   it('uses soccer as the default selected sport and persists sport choice', () => {
     renderApp();
+    openMoreSettings();
     expect(screen.getByRole('button', { name: 'Soccer' })).toHaveAttribute('aria-pressed', 'true');
 
     fireEvent.click(screen.getByRole('button', { name: 'Boxing' }));
@@ -192,6 +208,7 @@ describe('App integration flow', () => {
     renderApp();
     expect(screen.getByText('Match your first touch/pass release to the first open lane cue.')).toBeInTheDocument();
 
+    openMoreSettings();
     fireEvent.click(screen.getByRole('button', { name: 'Boxing' }));
     expect(screen.getByText('Read incoming line and choose the right slip/roll/counter direction fast.')).toBeInTheDocument();
   });
@@ -241,10 +258,7 @@ describe('App integration flow', () => {
 
   it('runs first-run role-and-goal flow into immediate benchmark', async () => {
     renderApp();
-    fireEvent.click(screen.getByRole('button', { name: /Athlete/i }));
-    fireEvent.click(screen.getByRole('button', { name: /First-step quickness/i }));
-    fireEvent.click(screen.getAllByRole('button', { name: 'TEST MY REACTION' })[0]);
-    await flushMicrotasks();
+    await startFirstBenchmark();
 
     expect(screen.getByRole('button', { name: /pause game/i })).toBeInTheDocument();
     expect(screen.getByLabelText('Gameplay area')).toBeInTheDocument();
@@ -252,10 +266,7 @@ describe('App integration flow', () => {
 
   it('resets bfcache restores to start shell instead of resuming gameplay', async () => {
     renderApp();
-    fireEvent.click(screen.getByRole('button', { name: /Athlete/i }));
-    fireEvent.click(screen.getByRole('button', { name: /First-step quickness/i }));
-    fireEvent.click(screen.getAllByRole('button', { name: 'TEST MY REACTION' })[0]);
-    await flushMicrotasks();
+    await startFirstBenchmark();
 
     expect(screen.getByRole('button', { name: /pause game/i })).toBeInTheDocument();
 
@@ -266,27 +277,24 @@ describe('App integration flow', () => {
 
     expect(screen.queryByRole('button', { name: /pause game/i })).not.toBeInTheDocument();
     expect(
-      screen.getByRole('heading', {
-        name: 'Train the part of your game that moves before your muscles.',
-      }),
+      screen.getByRole('heading', { name: 'Measure how quickly you see, decide and react.' }),
     ).toBeInTheDocument();
   });
 
   it('reveals post-first-session dashboard, recommendation, checklist, and deferred signup', async () => {
     renderApp();
-    fireEvent.click(screen.getByRole('button', { name: /Athlete/i }));
-    fireEvent.click(screen.getByRole('button', { name: /First-step quickness/i }));
-    fireEvent.click(screen.getAllByRole('button', { name: 'TEST MY REACTION' })[0]);
-    await flushMicrotasks();
+    await startFirstBenchmark();
     await advance(1_000);
 
     await advance(62_000);
 
+    expect(screen.getByText('Recommended next session')).toBeInTheDocument();
+    expect(screen.getByTestId('result-interpretation')).toHaveTextContent('Baseline set.');
     expect(screen.getByText('Results Dashboard')).toBeInTheDocument();
     expect(screen.getByText('Instinct tier')).toBeInTheDocument();
     expect(screen.getByText('Recommended Next Instinct')).toBeInTheDocument();
     expect(screen.getByText('Onboarding Checklist')).toBeInTheDocument();
-    expect(screen.getByText('Save this progress')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Save my progress' })).toBeInTheDocument();
   });
 
   it('allows selecting a playable mode and starting gameplay', async () => {
@@ -399,6 +407,7 @@ describe('App integration flow', () => {
 
   it('renders sport-specific runway copy for the selected sport', () => {
     renderApp();
+    openMoreSettings();
     fireEvent.click(screen.getByRole('button', { name: 'Boxing' }));
     fireEvent.click(screen.getByRole('button', { name: 'Pre-Game Runway' }));
 

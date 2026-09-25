@@ -15,16 +15,19 @@ The redesign keeps the jungle aesthetic as flavor while shifting the message tow
 
 ## Implementation Structure
 
-Homepage orchestration lives in `src/components/StartScreen.tsx`, which now composes modular landing sections:
+Homepage orchestration lives in `src/components/StartScreen.tsx`, which composes:
 
-1. `LandingHero`
-2. `LandingDemoShell`
-3. `LandingWhyItMatters`
-4. Training section with `AuthPanel` + `GameModeSelector`
-5. `LandingSocialProof`
-6. `LandingProgression`
-7. `LandingFaq`
-8. `LandingFinalCta`
+1. Top section, one of:
+   - `start/FirstRunQuickstart`: explanation, Athlete/Gamer persona, one goal choice, "Run 60-second baseline". Nothing else sits above the first benchmark.
+   - `start/ReturningSummary`: GameSpeed Score, recommended session, one Start CTA.
+2. Night-before low-stimulation option (when the guardrail window is active)
+3. Returning-athlete progress details
+4. `GameModeSelector` (Choose Your Instinct)
+5. `start/MoreSettings`: sport pack, night-before guardrail, cue intensity, haptics. Collapsed on first run, open for returning athletes.
+6. Sleep check-in and leaderboard (after first completion only)
+7. `LandingDemoShell`, `LandingWhyItMatters`, `LandingProgression`, `LandingFaq`, `LandingFinalCta`
+
+The account prompt ("Save my progress") appears on the result screen after the first session, not on the homepage.
 
 Supporting content source:
 
@@ -36,15 +39,15 @@ This file centralizes all homepage copy and section data to make messaging itera
 
 ## 1) First-screen clarity and intent
 
-- Hero headline and supporting text position GameSpeed as a performance platform, not a generic warm-up.
-- Persona toggle (`Athlete` / `Gamer`) customizes the value narrative without changing core product framing.
-- Primary CTA uses specific action language: `Run the 60-Second Test`.
+- First-run headline: "Measure how quickly you see, decide and react."
+- Persona toggle (`Athlete` / `Gamer`) customizes the goal list and the value narrative below the fold.
+- Primary CTA uses specific action language: `Run 60-second baseline`.
 
 ## 2) Specific CTA and reduced friction
 
+- At most two decisions (persona when the experiment variant doesn't preselect one, then goal) before the benchmark starts.
 - Primary CTA routes directly to `reactionBenchmark` via existing `onStart` game flow.
-- Secondary CTA `Watch Demo` scrolls to an interactive first-run shell that explains exactly how a session works.
-- Demo shell includes a fast action path (`Run Benchmark Now`) for visitors ready to start immediately.
+- Below-the-fold CTAs (demo shell, final CTA) scroll back to the first-run section instead of starting a different flow.
 
 ## 3) Persona relevance paths
 

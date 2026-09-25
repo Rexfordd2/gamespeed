@@ -20,6 +20,13 @@ import { trackConversionEvent } from '../lib/analytics';
 import { getLandingExperimentAssignment } from '../config/landingExperiment';
 import { getAnimalInstinct, getExperienceName } from '../config/animalInstincts';
 import { buildPerformanceRead, getSubScoreVisibility } from '../utils/performanceRead';
+import {
+  GOAL_LABELS,
+  getPlainLanguageInterpretation,
+  getRecommendationReason,
+  getRecommendedMode,
+  saveRecommendedSession,
+} from '../utils/recommendedSession';
 
 interface EndScreenProps {
   result: GameResult;
@@ -36,6 +43,7 @@ interface EndScreenProps {
   roundProgressDelta: RoundProgressDelta | null;
   playerName: string;
   cloudSyncStatus?: 'idle' | 'synced' | 'failed';
+  athleteHouzeReturnUrl?: string | null;
 }
 
 type ChecklistState = {
@@ -46,30 +54,6 @@ type ChecklistState = {
 };
 
 const CHECKLIST_STORAGE_KEY = 'gamespeed_onboarding_checklist_v1';
-
-const GOAL_LABELS: Record<FirstRunSelection['goal'], string> = {
-  firstStepQuickness: 'first-step quickness',
-  peripheralAwareness: 'peripheral awareness',
-  gameSpeedDecisions: 'game-speed decisions',
-  rawReaction: 'raw reaction',
-  flickResponse: 'flick response',
-  focusUnderPressure: 'focus under pressure',
-};
-
-const GOAL_RECOMMENDATIONS: Record<FirstRunSelection['goal'], GameModeType> = {
-  firstStepQuickness: 'quickTap',
-  peripheralAwareness: 'multiTarget',
-  gameSpeedDecisions: 'sequenceMemory',
-  rawReaction: 'quickTap',
-  flickResponse: 'swipeStrike',
-  focusUnderPressure: 'holdTrack',
-};
-
-const getRecommendedMode = (selection: FirstRunSelection | null, accuracy: number): GameModeType => {
-  if (accuracy < 55) return 'quickTap';
-  if (!selection) return 'multiTarget';
-  return GOAL_RECOMMENDATIONS[selection.goal];
-};
 
 const getDefaultChecklist = (totalRoundsCompleted: number, isSignedIn: boolean): ChecklistState => ({
   baselineComplete: true,
@@ -135,14 +119,23 @@ export const EndScreen = ({
   roundProgressDelta,
   playerName,
   cloudSyncStatus = 'idle',
+  athleteHouzeReturnUrl = null,
 }: EndScreenProps) => {
   const { theme } = useTheme();
   const landingExperiment = useMemo(() => getLandingExperimentAssignment(), []);
   const totalAttempts = result.totalAttempts ?? result.score + result.misses;
   const accuracy = totalAttempts > 0 ? Math.round((result.score / totalAttempts) * 100) : 0;
   const readiness = result.readinessMetrics;
+  const gameSpeedScore = readiness?.readinessScore ?? accuracy;
   const recommendedMode = getRecommendedMode(firstRunSelection, accuracy);
   const recommendedModeName = getExperienceName(recommendedMode);
+  const recommendationReason = getRecommendationReason(firstRunSelection, accuracy);
+  const interpretation = getPlainLanguageInterpretation({
+    score: gameSpeedScore,
+    accuracy: readiness?.decisionAccuracyPct ?? accuracy,
+    medianReactionMs: readiness?.reactionTimeMs.median ?? result.medianReactionTimeMs,
+    isBaseline: showOnboardingChecklist && result.mode === 'reactionBenchmark',
+  });
   const performanceRead = useMemo(
     () => buildPerformanceRead({ result, stats, roundProgressDelta }),
     [result, roundProgressDelta, stats],
@@ -169,6 +162,10 @@ export const EndScreen = ({
       accountComplete: prev.accountComplete || isSignedIn,
     }));
   }, [isSignedIn, totalRoundsCompleted]);
+
+  useEffect(() => {
+    saveRecommendedSession(recommendedMode);
+  }, [recommendedMode]);
 
   useEffect(() => {
     try {
@@ -227,6 +224,15 @@ export const EndScreen = ({
     onStartMode(recommendedMode);
   };
 
+  const handleReturnToAthleteHouze = () => {
+    trackConversionEvent('handoff_return_click', {
+      source: 'athlete-houze',
+      firstCompletion: showOnboardingChecklist,
+      isSignedIn,
+      experimentVariant: landingExperiment.id,
+    });
+  };
+
   const handleCopyScoreCard = async () => {
     if (!latestRound) return;
     trackConversionEvent('share_score_click', {
@@ -262,22 +268,81 @@ export const EndScreen = ({
     >
       <JungleBackground />
       <div className="relative z-10 mx-auto flex min-h-[calc(100dvh-2rem)] w-full max-w-2xl flex-col items-center px-4 py-4 sm:px-6 sm:py-8">
-        <motion.div
+        <motion.section
+          aria-label="Your result"
+          data-testid="result-summary"
           initial={{ y: 10, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           className="mb-3 w-full rounded-3xl p-4 sm:mb-4 sm:p-6"
           style={{ background: 'linear-gradient(180deg, rgba(11,20,24,0.82), rgba(4,12,18,0.88))', border: `1px solid ${theme.targetColor}4c` }}
         >
-          <div className="flex items-start justify-between gap-3">
+          <div className="flex items-end justify-between gap-3">
             <div>
               <p className="text-[11px] uppercase tracking-[0.18em] opacity-65" style={{ color: theme.textColor }}>GameSpeed Score</p>
-              <p className="font-display mt-2 text-5xl leading-none font-black tabular-nums sm:text-7xl" style={{ color: theme.targetColor }}>{readiness?.readinessScore ?? accuracy}</p>
-              <p className="mt-2 text-sm font-semibold opacity-85" style={{ color: theme.textColor }}>{instinct.experienceName}</p>
-              <p className="mt-1 text-xs opacity-65" style={{ color: theme.textColor }}>{instinct.mechanicName}</p>
-              <p className="mt-2 text-sm font-semibold" style={{ color: theme.targetColor }}>{performanceRead.headline}</p>
-              <p className="mt-2 text-xs opacity-70 tabular-nums" style={{ color: theme.textColor }}>
+              <p className="font-display mt-2 text-5xl leading-none font-black tabular-nums sm:text-7xl" style={{ color: theme.targetColor }} data-testid="result-score">{gameSpeedScore}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-sm font-semibold opacity-85" style={{ color: theme.textColor }}>{instinct.experienceName}</p>
+              <p className="mt-1 text-xs opacity-70 tabular-nums" style={{ color: theme.textColor }}>
                 <span>Final Score</span>: {result.score}
               </p>
+            </div>
+          </div>
+          <p className="mt-3 text-sm leading-relaxed" style={{ color: theme.textColor, opacity: 0.92 }} data-testid="result-interpretation">
+            {interpretation}
+          </p>
+
+          <div className="mt-4 rounded-2xl px-3.5 py-3" style={{ backgroundColor: 'rgba(150, 255, 102, 0.08)', border: '1px solid rgba(150, 255, 102, 0.3)' }}>
+            <p className="text-[10px] uppercase tracking-[0.16em] opacity-65" style={{ color: theme.textColor }}>Recommended next session</p>
+            <p className="mt-1 text-lg font-bold" style={{ color: '#96FF66' }}>{recommendedModeName}</p>
+            <p className="mt-0.5 text-xs" style={{ color: theme.textColor, opacity: 0.75 }}>{recommendationReason}</p>
+          </div>
+
+          <JungleButton onClick={handleStartRecommended} className="mt-4 w-full py-4 text-lg font-bold uppercase">TRAIN: {recommendedModeName}</JungleButton>
+
+          {athleteHouzeReturnUrl && (
+            <div className="mt-3">
+              <a
+                href={athleteHouzeReturnUrl}
+                rel="noopener noreferrer"
+                onClick={handleReturnToAthleteHouze}
+                className="ui-secondary-button flex min-h-12 w-full items-center justify-center px-4 text-sm font-semibold"
+                style={{ color: theme.textColor, borderColor: `${theme.targetColor}66` }}
+              >
+                Return to Athlete Houze
+              </a>
+              <p className="mt-1.5 text-xs text-center" style={{ color: theme.textColor, opacity: 0.68 }}>
+                This round is saved in GameSpeed. Athlete Houze does not receive it automatically.
+              </p>
+            </div>
+          )}
+        </motion.section>
+
+        {showDeferredAccountPrompt && (
+          <section className="mb-3 w-full sm:mb-4" aria-label="Save my progress">
+            <h2 className="mb-1 text-xs uppercase tracking-[0.16em]" style={{ color: theme.targetColor }}>Save my progress</h2>
+            <p className="mb-2 text-xs" style={{ color: theme.textColor, opacity: 0.75 }}>
+              Your result is stored on this device. Add your email to keep it across devices.
+            </p>
+            <AuthPanel />
+          </section>
+        )}
+
+        {isSignedIn && cloudSyncStatus === 'synced' && (
+          <p className="mb-3 w-full text-center text-xs font-semibold sm:mb-4" role="status" style={{ color: '#4ade80' }}>
+            Progress saved to your GameSpeed account.
+          </p>
+        )}
+
+        <div
+          className="mb-3 w-full rounded-3xl p-4 sm:mb-4 sm:p-6"
+          style={{ backgroundColor: 'rgba(2, 8, 12, 0.72)', border: `1px solid ${theme.textColor}2a` }}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-[10px] uppercase tracking-[0.16em] opacity-65" style={{ color: theme.textColor }}>Result details</p>
+              <p className="mt-1 text-xs opacity-65" style={{ color: theme.textColor }}>{instinct.mechanicName}</p>
+              <p className="mt-2 text-sm font-semibold" style={{ color: theme.targetColor }}>{performanceRead.headline}</p>
             </div>
             <div className="rounded-2xl px-3.5 py-3 text-right" style={{ backgroundColor: `${percentileBadge.tone}18`, border: `1px solid ${percentileBadge.tone}66` }}>
               <p className="text-[10px] uppercase tracking-[0.16em] opacity-75" style={{ color: theme.textColor }}>Instinct tier</p>
@@ -324,7 +389,7 @@ export const EndScreen = ({
               </div>
             )}
           </div>
-        </motion.div>
+        </div>
 
         {cloudSyncStatus === 'failed' && (
           <div
@@ -423,16 +488,8 @@ export const EndScreen = ({
           </div>
         )}
 
-        {showDeferredAccountPrompt && (
-          <div className="mb-3 w-full sm:mb-4">
-            <p className="mb-2 text-xs uppercase tracking-[0.16em]" style={{ color: theme.targetColor }}>Save this progress</p>
-            <AuthPanel />
-          </div>
-        )}
-
-          <motion.div className="flex w-full flex-col gap-2.5 sm:gap-3">
-          <JungleButton onClick={handleStartRecommended} className="w-full py-4 text-lg font-bold uppercase">TRAIN: {recommendedModeName}</JungleButton>
-          <JungleButton onClick={onPlayAgain} className="w-full py-4 text-lg font-bold uppercase">Replay</JungleButton>
+        <motion.div className="flex w-full flex-col gap-2.5 sm:gap-3">
+          <button type="button" onClick={onPlayAgain} className="ui-secondary-button w-full py-3 font-bold uppercase" style={{ color: theme.textColor, borderColor: `${theme.targetColor}66` }}>Replay</button>
           <button type="button" onClick={onViewStats} className="ui-secondary-button w-full py-3" style={{ color: theme.targetColor, borderColor: `${theme.targetColor}55` }}>Compare My Score</button>
           <button type="button" onClick={onMainMenu} className="ui-secondary-button w-full py-3" style={{ color: theme.textColor, borderColor: `${theme.textColor}40` }}>Main Menu</button>
         </motion.div>

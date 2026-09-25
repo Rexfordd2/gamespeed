@@ -14,6 +14,10 @@ This app now emits conversion events for the landing page and first-run flow and
 - `return_visit`
 - `streak_start`
 - `landing_experiment_exposure`
+- `handoff_return_click` (athlete tapped "Return to Athlete Houze" on the result screen)
+
+`test_start`, `first_test_start`, and `first_test_completion` also carry `entrySource`
+(`athlete-houze` when the visit started from `?source=athlete-houze`, otherwise `null`).
 
 Each event includes:
 
@@ -29,6 +33,11 @@ Landing experiment assignments are defined in `src/config/landingExperiment.ts`:
 - **Variant A**: athlete-first framing (`single-focus`, athlete shown first)
 - **Variant B**: gamer-first framing (`single-focus`, gamer shown first)
 - **Variant C**: split hero with both visible (`split`)
+
+The variant decides whether the first-run persona is preselected. Variants A and B preselect a
+persona, so the athlete makes one decision (goal) before "Run 60-second baseline". Variant C
+preselects nothing, so the athlete makes two (persona, then goal). No variant may exceed two;
+`src/tests/firstRunFriction.integration.test.tsx` enforces this.
 
 Control assignment with:
 
@@ -72,6 +81,7 @@ Use conversion rates by segment, not just raw counts.
    - Landing conversion: `hero_cta_click -> first_test_start -> first_test_completion`
    - Results activation: `first_test_completion -> results_view -> share_score_click`
    - Monetization/signup proxy: `first_test_completion -> signup_after_first_session`
+   - Athlete Houze round trip: `first_test_start (entrySource=athlete-houze) -> first_test_completion -> handoff_return_click`
 2. Group by:
    - `experimentVariant`
    - `deviceType`

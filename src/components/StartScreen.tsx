@@ -5,16 +5,16 @@ import { CueIntensity, GameModeType, FirstRunSelection, GameStats, PlayerGoal, P
 import { JungleBackground } from './JungleBackground';
 import { GameModeSelector } from './GameModeSelector';
 import { JungleButton } from './JungleButton';
-import { LandingHero } from './landing/LandingHero';
 import { LandingDemoShell } from './landing/LandingDemoShell';
 import { LandingWhyItMatters } from './landing/LandingWhyItMatters';
 import { LandingProgression } from './landing/LandingProgression';
 import { LandingFaq } from './landing/LandingFaq';
 import { LandingFinalCta } from './landing/LandingFinalCta';
+import { FirstRunQuickstart, FIRST_RUN_CTA_LABEL } from './start/FirstRunQuickstart';
+import { ReturningSummary } from './start/ReturningSummary';
+import { MoreSettings } from './start/MoreSettings';
 import { landingContent } from '../content/landingContent';
-import { SPORT_ORDER, SportType, getSportConfig, getSportPack } from '../config/sports';
-import { getSportPackAssets } from '../config/sportPacks';
-import { gameModes } from '../utils/gameModes';
+import { SportType, getSportConfig } from '../config/sports';
 import { NightGuardrailSettings } from '../utils/nightGuardrail';
 import {
   getDailyStreak,
@@ -33,6 +33,7 @@ import { getLandingExperimentAssignment } from '../config/landingExperiment';
 import { trackConversionEvent } from '../lib/analytics';
 import { SleepOnTimeAnswer, getLatestSleepCheckIn, recordSleepCheckIn } from '../utils/sleepCheckIn';
 import { isHapticsSupported } from '../utils/haptics';
+import { loadRecommendedSession } from '../utils/recommendedSession';
 
 interface StartScreenProps {
   onStart: (
@@ -59,63 +60,6 @@ interface StartScreenProps {
   onDismissNightReminder: () => void;
   isNightGuardrailActive: boolean;
 }
-
-type GoalOption = {
-  id: PlayerGoal;
-  label: string;
-  hint: string;
-};
-
-const GOALS_BY_PERSONA: Record<PlayerPersona, GoalOption[]> = {
-  athlete: [
-    { id: 'firstStepQuickness', label: 'First-step quickness', hint: 'Explode into the first movement faster.' },
-    { id: 'peripheralAwareness', label: 'Peripheral awareness', hint: 'Read and react to wider visual cues.' },
-    { id: 'gameSpeedDecisions', label: 'Game-speed decisions', hint: 'Process cues and choose under time pressure.' },
-  ],
-  gamer: [
-    { id: 'rawReaction', label: 'Raw reaction', hint: 'Lower your response time on first cue.' },
-    { id: 'flickResponse', label: 'Flick response', hint: 'Improve snap movement and target acquisition.' },
-    { id: 'focusUnderPressure', label: 'Focus under pressure', hint: 'Stay accurate while pace ramps up.' },
-  ],
-};
-
-const PERSONA_LABELS: Record<PlayerPersona, string> = {
-  athlete: 'Athlete',
-  gamer: 'Gamer',
-};
-
-const SportOptionIcon = ({ sport }: { sport: SportType }) => {
-  const assets = getSportPackAssets(getSportPack(sport));
-  const [iconSrc, setIconSrc] = useState(assets.sportIcon);
-
-  useEffect(() => {
-    setIconSrc(assets.sportIcon);
-  }, [assets.sportIcon]);
-
-  if (!iconSrc) {
-    return (
-      <span aria-hidden="true" className="text-base leading-none">
-        ◉
-      </span>
-    );
-  }
-
-  return (
-    <img
-      src={iconSrc}
-      alt=""
-      aria-hidden="true"
-      className="h-4 w-4 object-contain"
-      onError={() => {
-        if (iconSrc !== assets.sportIconFallback) {
-          setIconSrc(assets.sportIconFallback);
-          return;
-        }
-        setIconSrc('');
-      }}
-    />
-  );
-};
 
 export const StartScreen = ({
   onStart,
@@ -156,13 +100,18 @@ export const StartScreen = ({
   const latestScore = getLatestGameSpeedScore(stats);
   const strongestPb = getStrongestPersonalBest(stats);
   const todaysInstinct = getTodaysInstinct(stats);
-  const recommendedMode = todaysInstinct?.mode ?? 'quickTap';
+  const storedRecommendation = useMemo(() => loadRecommendedSession(), []);
+  const recommendedMode: GameModeType = todaysInstinct?.mode ?? storedRecommendation ?? 'quickTap';
+  const recommendedReason =
+    todaysInstinct?.reason ??
+    (storedRecommendation
+      ? 'Picked from your last result.'
+      : 'A short reaction rep to keep your baseline moving.');
   const activePersona = persona ?? orderedPersonas[0];
   const hapticsAvailable = isHapticsSupported();
   const sportConfig = getSportConfig(selectedSport);
-  const cueVocabulary = sportConfig.cueVocabulary.join(' | ');
   const demoSectionRef = useRef<HTMLElement | null>(null);
-  const onboardingSectionRef = useRef<HTMLElement | null>(null);
+  const quickstartSectionRef = useRef<HTMLElement | null>(null);
   const instinctsSectionRef = useRef<HTMLElement | null>(null);
   const [wentToBedOnTime, setWentToBedOnTime] = useState<SleepOnTimeAnswer>('yes');
   const [readiness, setReadiness] = useState<1 | 2 | 3 | 4 | 5>(3);
@@ -189,19 +138,25 @@ export const StartScreen = ({
   }, [landingExperiment]);
 
   const handlePersonaSelect = (nextPersona: PlayerPersona) => {
+    if (nextPersona !== persona) {
+      setGoal(null);
+    }
     setPersona(nextPersona);
-    setGoal(null);
     trackConversionEvent('persona_selected', {
       persona: nextPersona,
       isFirstRun,
       experimentVariant: landingExperiment.id,
-      source: 'first_run_role_picker',
+      source: 'first_run_quickstart',
     });
+  };
+
+  const handleStartBenchmark = () => {
+    onStart('reactionBenchmark', undefined, { cueIntensity, hapticsEnabled });
   };
 
   const handleStartFirstTest = () => {
     if (!isFirstRun) {
-      onStart('reactionBenchmark', undefined, { cueIntensity, hapticsEnabled });
+      handleStartBenchmark();
       return;
     }
     if (!persona || !goal) {
@@ -218,20 +173,20 @@ export const StartScreen = ({
     onStart('reactionBenchmark', { persona, goal }, { cueIntensity, hapticsEnabled });
   };
 
-  const handlePrimaryCta = () => {
+  const scrollToQuickstart = () => {
+    quickstartSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const scrollToInstincts = () => {
     instinctsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  const handleSecondaryCta = () => {
-    if (!isFirstRun) {
-      onStart('reactionBenchmark', undefined, { cueIntensity, hapticsEnabled });
+  const handleBenchmarkCta = () => {
+    if (isFirstRun) {
+      scrollToQuickstart();
       return;
     }
-    if (persona && goal) {
-      handleStartFirstTest();
-      return;
-    }
-    onboardingSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    handleStartBenchmark();
   };
 
   const handleWatchDemo = () => {
@@ -258,6 +213,31 @@ export const StartScreen = ({
     });
   };
 
+  const handleStartRecommended = () => {
+    onStart(recommendedMode, undefined, { cueIntensity, hapticsEnabled });
+  };
+
+  const returningTop = isNightGuardrailActive
+    ? {
+        label: 'Low-stimulation readiness check',
+        reason: 'Competition eve: dimmed visuals, reduced motion, optional breathing routine.',
+        cta: 'Start low-stimulation session',
+        onStart: handleStartLowStimulusSession,
+      }
+    : isEmptyProfile
+      ? {
+          label: 'Panther Readiness baseline',
+          reason: 'Complete your first benchmark to establish a baseline.',
+          cta: FIRST_RUN_CTA_LABEL,
+          onStart: handleStartBenchmark,
+        }
+      : {
+          label: getExperienceName(recommendedMode),
+          reason: recommendedReason,
+          cta: `Start ${getExperienceName(recommendedMode)}`,
+          onStart: handleStartRecommended,
+        };
+
   return (
     <div
       className="relative w-full overflow-y-auto overflow-x-hidden px-4 sm:px-6"
@@ -283,19 +263,27 @@ export const StartScreen = ({
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.38, ease: 'easeOut' }}
       >
-        <LandingHero
-          content={landingContent.hero}
-          persona={activePersona}
-          onPersonaChange={handlePersonaSelect}
-          onPrimaryCta={handlePrimaryCta}
-          onSecondaryCta={handleSecondaryCta}
-        />
-
-        <section ref={demoSectionRef} aria-label="Demo section">
-          <LandingDemoShell content={landingContent.demo} onRunBenchmark={handlePrimaryCta} />
-        </section>
-
-        <LandingWhyItMatters content={landingContent.whyItMatters} persona={activePersona} />
+        {isFirstRun ? (
+          <FirstRunQuickstart
+            ref={quickstartSectionRef}
+            personaOrder={orderedPersonas}
+            persona={persona}
+            onPersonaSelect={handlePersonaSelect}
+            goal={goal}
+            onGoalSelect={setGoal}
+            onStart={handleStartFirstTest}
+            isNightGuardrailActive={isNightGuardrailActive}
+          />
+        ) : (
+          <ReturningSummary
+            playerName={playerName}
+            score={isEmptyProfile ? null : latestScore}
+            recommendedLabel={returningTop.label}
+            recommendedReason={returningTop.reason}
+            ctaLabel={returningTop.cta}
+            onStart={returningTop.onStart}
+          />
+        )}
 
         {showNightReminder && (
           <section
@@ -327,244 +315,39 @@ export const StartScreen = ({
           </section>
         )}
 
-        <section
-          className="rounded-3xl p-4 sm:p-6 md:p-7 backdrop-blur-md"
-          style={{
-            backgroundColor: 'rgba(6, 12, 18, 0.8)',
-            border: `1px solid ${sportConfig.accents.primary}66`,
-            boxShadow: `0 18px 48px ${sportConfig.accents.glow}`,
-          }}
-        >
-          <p
-            className="text-[11px] uppercase tracking-[0.18em] font-semibold"
-            style={{ color: sportConfig.accents.secondary }}
-          >
-            Sport pack
-          </p>
-          <h2 className="mt-2 text-xl font-extrabold sm:text-2xl" style={{ color: theme.textColor }}>
-            Pick your pre-performance context
-          </h2>
-          <p className="mt-2 text-sm leading-relaxed sm:text-base" style={{ color: theme.textColor, opacity: 0.82 }}>
-            {sportConfig.readinessCopy.heroTitle}
-          </p>
-          <p className="mt-1.5 text-xs sm:text-sm" style={{ color: theme.textColor, opacity: 0.72 }}>
-            {sportConfig.readinessCopy.heroBody}
-          </p>
-
-          <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
-            {SPORT_ORDER.map(sport => {
-              const option = getSportConfig(sport);
-              const isSelected = selectedSport === sport;
-              return (
-                <button
-                  key={sport}
-                  type="button"
-                  aria-pressed={isSelected}
-                  onClick={() => onSportChange(sport)}
-                  className="rounded-2xl px-3 py-2.5 text-left transition-transform hover:-translate-y-0.5"
-                  style={{
-                    backgroundColor: isSelected ? `${option.accents.primary}24` : 'rgba(5, 12, 16, 0.66)',
-                    border: `1px solid ${isSelected ? `${option.accents.primary}cc` : `${theme.textColor}2b`}`,
-                  }}
-                >
-                  <div className="flex items-center gap-2">
-                    <SportOptionIcon sport={sport} />
-                    <p className="text-sm font-semibold" style={{ color: theme.textColor }}>
-                      {option.displayName}
-                    </p>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-
-          <div
-            className="mt-4 rounded-2xl p-3 text-xs sm:text-sm"
+        {isNightGuardrailActive && isFirstRun && (
+          <section
+            className="rounded-2xl p-4"
             style={{
-              backgroundColor: 'rgba(3, 10, 14, 0.72)',
-              border: `1px solid ${sportConfig.accents.secondary}5f`,
+              backgroundColor: 'rgba(6, 12, 18, 0.9)',
+              border: '1px solid rgba(148, 163, 184, 0.45)',
             }}
           >
-            <p className="font-semibold" style={{ color: theme.textColor }}>
-              Cue vocabulary: <span style={{ color: sportConfig.accents.secondary }}>{cueVocabulary}</span>
+            <p className="text-xs uppercase tracking-[0.15em]" style={{ color: theme.textColor, opacity: 0.68 }}>
+              Low-stimulation option
             </p>
-            <p className="mt-1.5" style={{ color: theme.textColor, opacity: 0.78 }}>
-              Recommended first block:{' '}
-              {sportConfig.defaultRecommendedModes
-                .map(mode => gameModes[mode].name)
-                .join(' -> ')}
+            <p className="mt-2 text-sm leading-relaxed sm:text-base" style={{ color: theme.textColor, opacity: 0.86 }}>
+              Tonight is set as a competition eve. Use a calm readiness check with dimmed visuals and reduced motion.
             </p>
-          </div>
-        </section>
+            <p className="mt-1 text-xs" style={{ color: theme.textColor, opacity: 0.68 }}>
+              Includes optional short breathing + gaze routine before the round.
+            </p>
+            <JungleButton onClick={handleStartLowStimulusSession} className="mt-4 w-full sm:w-auto px-6 py-3 text-base">
+              Start low-stimulation session
+            </JungleButton>
+          </section>
+        )}
 
-        <section
-          className="rounded-3xl p-4 sm:p-6 md:p-7 backdrop-blur-md"
-          style={{
-            backgroundColor: 'rgba(5, 10, 16, 0.8)',
-            border: `1px solid ${theme.textColor}33`,
-          }}
-        >
-          <p
-            className="text-[11px] uppercase tracking-[0.18em] font-semibold"
-            style={{ color: theme.textColor, opacity: 0.75 }}
+        {isReturningAthlete && (
+          <section
+            aria-label="Progress details"
+            className="rounded-3xl p-4 sm:p-6 backdrop-blur-md"
+            style={{
+              backgroundColor: 'rgba(6, 12, 18, 0.76)',
+              border: `1px solid ${theme.textColor}2c`,
+            }}
           >
-            Night-Before Guardrail
-          </p>
-          <h2 className="mt-2 text-xl font-bold sm:text-2xl" style={{ color: theme.textColor }}>
-            Protect your final 2 hours before bed
-          </h2>
-          <p className="mt-2 text-sm sm:text-base" style={{ color: theme.textColor, opacity: 0.8 }}>
-            Set your bedtime and reminder preference. On competition nights, the app offers a lower-stimulation session.
-          </p>
-
-          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <label className="rounded-2xl p-3" style={{ backgroundColor: 'rgba(2, 8, 12, 0.72)', border: `1px solid ${theme.textColor}2d` }}>
-              <span className="text-xs uppercase tracking-[0.12em]" style={{ color: theme.textColor, opacity: 0.7 }}>
-                Target bedtime
-              </span>
-              <input
-                type="time"
-                value={nightGuardrailSettings.targetBedtime}
-                onChange={event =>
-                  onNightGuardrailSettingsChange({
-                    ...nightGuardrailSettings,
-                    targetBedtime: event.target.value,
-                  })
-                }
-                className="mt-2 w-full rounded-lg px-3 py-2 text-sm"
-                style={{
-                  backgroundColor: 'rgba(0,0,0,0.2)',
-                  color: theme.textColor,
-                  border: `1px solid ${theme.textColor}44`,
-                }}
-              />
-            </label>
-
-            <label className="rounded-2xl p-3" style={{ backgroundColor: 'rgba(2, 8, 12, 0.72)', border: `1px solid ${theme.textColor}2d` }}>
-              <span className="text-xs uppercase tracking-[0.12em]" style={{ color: theme.textColor, opacity: 0.7 }}>
-                Reminder preference
-              </span>
-              <select
-                value={nightGuardrailSettings.reminderPreference}
-                onChange={event =>
-                  onNightGuardrailSettingsChange({
-                    ...nightGuardrailSettings,
-                    reminderPreference: event.target.value === 'off' ? 'off' : 'inApp',
-                  })
-                }
-                className="mt-2 w-full rounded-lg px-3 py-2 text-sm"
-                style={{
-                  backgroundColor: 'rgba(0,0,0,0.2)',
-                  color: theme.textColor,
-                  border: `1px solid ${theme.textColor}44`,
-                }}
-              >
-                <option value="inApp">In-app reminder</option>
-                <option value="off">Off</option>
-              </select>
-            </label>
-          </div>
-
-          <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <button
-              type="button"
-              aria-pressed={nightGuardrailSettings.competitionTomorrow}
-              onClick={() =>
-                onNightGuardrailSettingsChange({
-                  ...nightGuardrailSettings,
-                  competitionTomorrow: !nightGuardrailSettings.competitionTomorrow,
-                })
-              }
-              className="rounded-xl px-4 py-3 text-sm text-left"
-              style={{
-                color: theme.textColor,
-                backgroundColor: nightGuardrailSettings.competitionTomorrow ? 'rgba(56, 189, 248, 0.18)' : 'rgba(2, 8, 12, 0.72)',
-                border: `1px solid ${nightGuardrailSettings.competitionTomorrow ? 'rgba(56, 189, 248, 0.8)' : `${theme.textColor}30`}`,
-              }}
-            >
-              Competition tomorrow: {nightGuardrailSettings.competitionTomorrow ? 'On' : 'Off'}
-            </button>
-            <button
-              type="button"
-              aria-pressed={nightGuardrailSettings.includeBreathingRoutine}
-              onClick={() =>
-                onNightGuardrailSettingsChange({
-                  ...nightGuardrailSettings,
-                  includeBreathingRoutine: !nightGuardrailSettings.includeBreathingRoutine,
-                })
-              }
-              className="rounded-xl px-4 py-3 text-sm text-left"
-              style={{
-                color: theme.textColor,
-                backgroundColor: nightGuardrailSettings.includeBreathingRoutine ? 'rgba(52, 211, 153, 0.16)' : 'rgba(2, 8, 12, 0.72)',
-                border: `1px solid ${nightGuardrailSettings.includeBreathingRoutine ? 'rgba(52, 211, 153, 0.72)' : `${theme.textColor}30`}`,
-              }}
-            >
-              Short breathing + gaze routine: {nightGuardrailSettings.includeBreathingRoutine ? 'On' : 'Off'}
-            </button>
-          </div>
-
-          {isNightGuardrailActive && (
-            <div
-              className="mt-4 rounded-2xl p-4"
-              style={{
-                backgroundColor: 'rgba(6, 12, 18, 0.9)',
-                border: '1px solid rgba(148, 163, 184, 0.45)',
-              }}
-            >
-              <p className="text-xs uppercase tracking-[0.15em]" style={{ color: theme.textColor, opacity: 0.68 }}>
-                Low-stimulation option
-              </p>
-              <p className="mt-2 text-sm leading-relaxed sm:text-base" style={{ color: theme.textColor, opacity: 0.86 }}>
-                Tonight is set as a competition eve. Use a calm readiness check with dimmed visuals and reduced motion.
-              </p>
-              <p className="mt-1 text-xs" style={{ color: theme.textColor, opacity: 0.68 }}>
-                Includes optional short breathing + gaze routine before the round.
-              </p>
-              <JungleButton onClick={handleStartLowStimulusSession} className="mt-4 w-full sm:w-auto px-6 py-3 text-base">
-                Start low-stimulation session
-              </JungleButton>
-            </div>
-          )}
-        </section>
-
-        <section
-          ref={onboardingSectionRef}
-          className="rounded-3xl p-4 sm:p-6 md:p-7 backdrop-blur-md"
-          style={{
-            backgroundColor: 'rgba(6, 12, 18, 0.76)',
-            border: `1px solid ${theme.targetColor}44`,
-            boxShadow: '0 20px 52px rgba(0, 0, 0, 0.4)',
-          }}
-        >
-          <h2 className="font-display text-2xl font-extrabold uppercase tracking-[0.04em] sm:text-3xl" style={{ color: theme.textColor }}>
-            {isFirstRun
-              ? 'Train the part of your game that moves before your muscles.'
-              : isEmptyProfile
-                ? 'YOUR INSTINCT PROFILE IS EMPTY'
-                : `Welcome back, ${playerName}`}
-          </h2>
-          <p className="mt-2 text-sm leading-relaxed sm:text-base" style={{ color: theme.textColor, opacity: 0.82 }}>
-            {isFirstRun
-              ? 'GameSpeed develops the visual and cognitive abilities athletes use to recognize, decide, and react.'
-              : isEmptyProfile
-                ? 'Complete your first Panther Readiness benchmark to establish a baseline.'
-                : `GameSpeed Score trajectory ready. Run ${sportConfig.displayName} readiness or jump into an instinct.`}
-          </p>
-
-          {isReturningAthlete && (
-            <div className="mt-5 grid grid-cols-2 gap-2.5 md:grid-cols-4">
-              <div
-                className="rounded-2xl px-3.5 py-3"
-                style={{ backgroundColor: 'rgba(2, 8, 12, 0.7)', border: `1px solid ${theme.targetColor}44` }}
-              >
-                <p className="text-[10px] uppercase tracking-[0.18em] opacity-60" style={{ color: theme.textColor }}>
-                  GameSpeed Score
-                </p>
-                <p className="mt-1 font-display text-3xl font-extrabold tabular-nums" style={{ color: theme.targetColor }}>
-                  {latestScore ?? '—'}
-                </p>
-              </div>
+            <div className="grid grid-cols-2 gap-2.5 md:grid-cols-5">
               <div
                 className="rounded-2xl px-3.5 py-3"
                 style={{ backgroundColor: 'rgba(2, 8, 12, 0.7)', border: `1px solid ${theme.textColor}2c` }}
@@ -584,27 +367,9 @@ export const StartScreen = ({
                   Personal best
                 </p>
                 <p className="mt-1 text-sm font-semibold" style={{ color: theme.textColor }}>
-                  {strongestPb
-                    ? `${getModeLabel(strongestPb.mode)} · ${strongestPb.accuracy}%`
-                    : '—'}
+                  {strongestPb ? `${getModeLabel(strongestPb.mode)} · ${strongestPb.accuracy}%` : '—'}
                 </p>
               </div>
-              <div
-                className="rounded-2xl px-3.5 py-3"
-                style={{ backgroundColor: 'rgba(2, 8, 12, 0.7)', border: `1px solid ${theme.textColor}2c` }}
-              >
-                <p className="text-[10px] uppercase tracking-[0.18em] opacity-60" style={{ color: theme.textColor }}>
-                  Recommended
-                </p>
-                <p className="mt-1 text-sm font-semibold" style={{ color: theme.targetColor }}>
-                  {getExperienceName(recommendedMode)}
-                </p>
-              </div>
-            </div>
-          )}
-
-          <div className="mt-5">
-            <div className="grid grid-cols-1 gap-2.5 md:grid-cols-3">
               <div
                 className="rounded-2xl px-3.5 py-3"
                 style={{ backgroundColor: 'rgba(2, 8, 12, 0.7)', border: `1px solid ${theme.textColor}2c` }}
@@ -632,7 +397,7 @@ export const StartScreen = ({
                 </p>
               </div>
               <div
-                className="rounded-2xl px-3.5 py-3"
+                className="col-span-2 rounded-2xl px-3.5 py-3 md:col-span-1"
                 style={{ backgroundColor: 'rgba(2, 8, 12, 0.7)', border: `1px solid ${theme.textColor}2c` }}
               >
                 <p className="text-[10px] uppercase tracking-[0.18em] opacity-60" style={{ color: theme.textColor }}>
@@ -643,126 +408,45 @@ export const StartScreen = ({
                 </p>
               </div>
             </div>
-          </div>
 
-          <div className="mt-5">
-            <p className="text-[11px] uppercase tracking-[0.18em] font-semibold" style={{ color: theme.targetColor }}>
-              1. Choose role
-            </p>
-            <div className="mt-2 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-              {orderedPersonas.map(option => {
-                const isSelected = persona === option;
-                return (
-                  <button
-                    key={option}
-                    type="button"
-                    onClick={() => handlePersonaSelect(option)}
-                    className="rounded-2xl p-3.5 text-left transition-transform hover:-translate-y-0.5"
-                    style={{
-                      backgroundColor: isSelected ? `${theme.targetColor}1f` : 'rgba(5, 12, 16, 0.7)',
-                      border: `1px solid ${isSelected ? `${theme.targetColor}cc` : `${theme.textColor}2b`}`,
-                    }}
-                  >
-                    <p className="text-sm sm:text-base font-semibold" style={{ color: theme.textColor }}>
-                      {PERSONA_LABELS[option]}
-                    </p>
-                    <p className="mt-1 text-xs sm:text-sm" style={{ color: theme.textColor, opacity: 0.72 }}>
-                      {option === 'athlete'
-                        ? 'Field / court / match play'
-                        : 'Competition prep profile'}
-                    </p>
-                  </button>
-                );
-              })}
+            <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
+              {!isNightGuardrailActive && (
+                <button
+                  type="button"
+                  onClick={handleStartBenchmark}
+                  className="ui-secondary-button w-full sm:w-auto px-5 py-3 text-sm"
+                  style={{ color: theme.textColor, borderColor: `${theme.targetColor}66` }}
+                >
+                  Re-run 60-second baseline
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={onOpenRunway}
+                className="ui-secondary-button w-full sm:w-auto px-5 py-3 text-sm"
+                style={{ color: theme.textColor, borderColor: `${sportConfig.accents.primary}66` }}
+              >
+                Start Pre-Game Runway (5-10 min)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  trackConversionEvent('hero_cta_click', {
+                    cta: 'explore_instincts',
+                    source: 'start_screen_secondary_demo_jump',
+                    isFirstRun,
+                    experimentVariant: landingExperiment.id,
+                  });
+                  scrollToInstincts();
+                }}
+                className="ui-secondary-button w-full sm:w-auto px-5 py-3 text-sm"
+                style={{ color: theme.textColor, borderColor: `${theme.textColor}44` }}
+              >
+                EXPLORE INSTINCTS
+              </button>
             </div>
-          </div>
-
-          {persona && (
-            <div className="mt-5">
-              <p className="text-[11px] uppercase tracking-[0.18em] font-semibold" style={{ color: theme.targetColor }}>
-                2. Choose one goal
-              </p>
-              <div className="mt-2 grid grid-cols-1 gap-2.5 md:grid-cols-3">
-                {GOALS_BY_PERSONA[persona].map(option => {
-                  const isSelected = goal === option.id;
-                  return (
-                    <button
-                      key={option.id}
-                      type="button"
-                      onClick={() => setGoal(option.id)}
-                      className="rounded-2xl p-3.5 text-left transition-transform hover:-translate-y-0.5"
-                      style={{
-                        backgroundColor: isSelected ? 'rgba(56, 189, 248, 0.16)' : 'rgba(5, 12, 16, 0.64)',
-                        border: `1px solid ${isSelected ? 'rgba(56, 189, 248, 0.85)' : `${theme.textColor}2b`}`,
-                      }}
-                    >
-                      <p className="text-sm font-semibold" style={{ color: theme.textColor }}>
-                        {option.label}
-                      </p>
-                      <p className="mt-1 text-xs leading-relaxed" style={{ color: theme.textColor, opacity: 0.72 }}>
-                        {option.hint}
-                      </p>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          <div
-            className="mt-4 rounded-2xl p-3 text-xs sm:text-sm"
-            style={{
-              backgroundColor: 'rgba(2, 8, 12, 0.72)',
-              border: `1px solid ${theme.textColor}2b`,
-              color: theme.textColor,
-              opacity: 0.85,
-            }}
-          >
-            {!persona
-              ? `Hint: pick the profile that best matches how you compete in ${sportConfig.displayName}.`
-              : !goal
-                ? 'Hint: choose one focus area now. You can switch goals after this readiness test.'
-                : 'Hint: replace scrolling with one clean 60-second rep. Stay smooth, then play.'}
-          </div>
-
-          <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
-            <JungleButton
-              onClick={handleStartFirstTest}
-              className="w-full sm:w-auto px-6 py-3 text-base font-bold"
-              disabled={isFirstRun && (!persona || !goal)}
-            >
-              {isFirstRun ? 'TEST MY REACTION' : isEmptyProfile ? 'RUN BASELINE' : 'BEGIN BENCHMARK'}
-            </JungleButton>
-            <button
-              onClick={onOpenRunway}
-              className="ui-secondary-button w-full sm:w-auto px-5 py-3 text-sm"
-              style={{
-                color: theme.textColor,
-                borderColor: `${sportConfig.accents.primary}66`,
-              }}
-            >
-              Start Pre-Game Runway (5-10 min)
-            </button>
-            <button
-              onClick={() => {
-                trackConversionEvent('hero_cta_click', {
-                  cta: 'explore_instincts',
-                  source: 'start_screen_secondary_demo_jump',
-                  isFirstRun,
-                  experimentVariant: landingExperiment.id,
-                });
-                handlePrimaryCta();
-              }}
-              className="ui-secondary-button w-full sm:w-auto px-5 py-3 text-sm"
-              style={{
-                color: theme.textColor,
-                borderColor: `${theme.textColor}44`,
-              }}
-            >
-              EXPLORE INSTINCTS
-            </button>
-          </div>
-        </section>
+          </section>
+        )}
 
         <section
           ref={instinctsSectionRef}
@@ -794,194 +478,165 @@ export const StartScreen = ({
                 stats={stats}
                 copy={landingContent.trainingModes.selector}
               />
-              <div
-                className="mt-4 rounded-2xl p-3"
+            </div>
+          )}
+        </section>
+
+        <MoreSettings
+          defaultOpen={!isFirstRun}
+          selectedSport={selectedSport}
+          onSportChange={onSportChange}
+          nightGuardrailSettings={nightGuardrailSettings}
+          onNightGuardrailSettingsChange={onNightGuardrailSettingsChange}
+          cueIntensity={cueIntensity}
+          onCueIntensityChange={onCueIntensityChange}
+          hapticsEnabled={hapticsEnabled}
+          onHapticsEnabledChange={onHapticsEnabledChange}
+          hapticsAvailable={hapticsAvailable}
+        />
+
+        {!isFirstRun && (
+          <section
+            className="rounded-3xl p-4 sm:p-6 backdrop-blur-md"
+            style={{
+              backgroundColor: 'rgba(6, 12, 18, 0.64)',
+              border: `1px solid ${theme.textColor}2d`,
+            }}
+          >
+            <h2 className="text-lg sm:text-xl font-bold" style={{ color: theme.textColor }}>
+              Sleep check-in
+            </h2>
+            <p className="mt-2 text-sm" style={{ color: theme.textColor, opacity: 0.78 }}>
+              Local only. Quick daily log to compare bedtime consistency with pre-performance readiness.
+            </p>
+            <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <button
+                type="button"
+                aria-pressed={wentToBedOnTime === 'yes'}
+                onClick={() => setWentToBedOnTime('yes')}
+                className="rounded-xl px-4 py-3 text-sm text-left"
                 style={{
-                  backgroundColor: 'rgba(2, 8, 12, 0.72)',
-                  border: `1px solid ${theme.textColor}2d`,
+                  color: theme.textColor,
+                  backgroundColor: wentToBedOnTime === 'yes' ? 'rgba(52, 211, 153, 0.16)' : 'rgba(2, 8, 12, 0.72)',
+                  border: `1px solid ${wentToBedOnTime === 'yes' ? 'rgba(52, 211, 153, 0.78)' : `${theme.textColor}30`}`,
                 }}
               >
-                <p className="text-[10px] uppercase tracking-[0.16em]" style={{ color: theme.textColor, opacity: 0.65 }}>
-                  Gameplay cue intensity
-                </p>
-                <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
-                  {(['minimal', 'standard', 'guided'] as CueIntensity[]).map(level => {
-                    const isActive = cueIntensity === level;
-                    return (
-                      <button
-                        key={level}
-                        type="button"
-                        aria-pressed={isActive}
-                        onClick={() => onCueIntensityChange(level)}
-                        className="rounded-xl px-3 py-2 text-sm text-left capitalize"
-                        style={{
-                          color: theme.textColor,
-                          backgroundColor: isActive ? `${theme.targetColor}22` : 'rgba(2, 8, 12, 0.76)',
-                          border: `1px solid ${isActive ? `${theme.targetColor}bb` : `${theme.textColor}2d`}`,
-                        }}
-                      >
-                        {level}
-                      </button>
-                    );
-                  })}
-                </div>
-                <div className="mt-3">
+                Went to bed on time: Yes
+              </button>
+              <button
+                type="button"
+                aria-pressed={wentToBedOnTime === 'no'}
+                onClick={() => setWentToBedOnTime('no')}
+                className="rounded-xl px-4 py-3 text-sm text-left"
+                style={{
+                  color: theme.textColor,
+                  backgroundColor: wentToBedOnTime === 'no' ? 'rgba(248, 113, 113, 0.17)' : 'rgba(2, 8, 12, 0.72)',
+                  border: `1px solid ${wentToBedOnTime === 'no' ? 'rgba(248, 113, 113, 0.76)' : `${theme.textColor}30`}`,
+                }}
+              >
+                Went to bed on time: No
+              </button>
+            </div>
+            <div className="mt-3">
+              <p className="text-xs uppercase tracking-[0.12em]" style={{ color: theme.textColor, opacity: 0.68 }}>
+                Readiness today (1-5)
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {[1, 2, 3, 4, 5].map(value => (
                   <button
+                    key={value}
                     type="button"
-                    aria-pressed={hapticsEnabled}
-                    onClick={() => onHapticsEnabledChange(!hapticsEnabled)}
-                    disabled={!hapticsAvailable}
-                    className="w-full rounded-xl px-3 py-2 text-sm text-left"
+                    aria-pressed={readiness === value}
+                    onClick={() => setReadiness(value as 1 | 2 | 3 | 4 | 5)}
+                    className="min-h-10 min-w-10 rounded-lg px-3 text-sm font-semibold"
                     style={{
                       color: theme.textColor,
-                      opacity: hapticsAvailable ? 1 : 0.58,
-                      backgroundColor: hapticsEnabled ? `${theme.targetColor}22` : 'rgba(2, 8, 12, 0.76)',
-                      border: `1px solid ${hapticsEnabled ? `${theme.targetColor}bb` : `${theme.textColor}2d`}`,
+                      backgroundColor: readiness === value ? `${theme.targetColor}2a` : 'rgba(2, 8, 12, 0.72)',
+                      border: `1px solid ${readiness === value ? `${theme.targetColor}cc` : `${theme.textColor}2f`}`,
                     }}
                   >
-                    Mobile haptics: {hapticsEnabled ? 'On' : 'Off'}
+                    {value}
                   </button>
-                  <p className="mt-1 text-[11px]" style={{ color: theme.textColor, opacity: 0.65 }}>
-                    {hapticsAvailable
-                      ? 'Adds vibration cues for hit, miss, and rhythm pacing on supported devices.'
-                      : 'Haptics unavailable on this device/browser.'}
-                  </p>
-                </div>
+                ))}
               </div>
             </div>
-          )}
-        </section>
+            <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
+              <JungleButton onClick={handleSleepCheckInSave} className="w-full sm:w-auto px-5 py-2.5 text-sm">
+                Save sleep and readiness
+              </JungleButton>
+              {savedCheckInNotice && (
+                <span className="text-xs" style={{ color: theme.textColor, opacity: 0.72 }}>
+                  {savedCheckInNotice}
+                </span>
+              )}
+            </div>
+            {latestCheckInLabel && (
+              <p className="mt-3 text-xs" style={{ color: theme.textColor, opacity: 0.68 }}>
+                Latest: {latestCheckInLabel}
+              </p>
+            )}
+          </section>
+        )}
 
-        <section
-          className="rounded-3xl p-4 sm:p-6 backdrop-blur-md"
-          style={{
-            backgroundColor: 'rgba(6, 12, 18, 0.64)',
-            border: `1px solid ${theme.textColor}2d`,
-          }}
-        >
-          <h2 className="text-lg sm:text-xl font-bold" style={{ color: theme.textColor }}>
-            Sleep check-in
-          </h2>
-          <p className="mt-2 text-sm" style={{ color: theme.textColor, opacity: 0.78 }}>
-            Local only. Quick daily log to compare bedtime consistency with pre-performance readiness.
-          </p>
-          <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <button
-              type="button"
-              aria-pressed={wentToBedOnTime === 'yes'}
-              onClick={() => setWentToBedOnTime('yes')}
-              className="rounded-xl px-4 py-3 text-sm text-left"
-              style={{
-                color: theme.textColor,
-                backgroundColor: wentToBedOnTime === 'yes' ? 'rgba(52, 211, 153, 0.16)' : 'rgba(2, 8, 12, 0.72)',
-                border: `1px solid ${wentToBedOnTime === 'yes' ? 'rgba(52, 211, 153, 0.78)' : `${theme.textColor}30`}`,
-              }}
-            >
-              Went to bed on time: Yes
-            </button>
-            <button
-              type="button"
-              aria-pressed={wentToBedOnTime === 'no'}
-              onClick={() => setWentToBedOnTime('no')}
-              className="rounded-xl px-4 py-3 text-sm text-left"
-              style={{
-                color: theme.textColor,
-                backgroundColor: wentToBedOnTime === 'no' ? 'rgba(248, 113, 113, 0.17)' : 'rgba(2, 8, 12, 0.72)',
-                border: `1px solid ${wentToBedOnTime === 'no' ? 'rgba(248, 113, 113, 0.76)' : `${theme.textColor}30`}`,
-              }}
-            >
-              Went to bed on time: No
-            </button>
-          </div>
-          <div className="mt-3">
-            <p className="text-xs uppercase tracking-[0.12em]" style={{ color: theme.textColor, opacity: 0.68 }}>
-              Readiness today (1-5)
+        {isReturningAthlete && (
+          <section
+            className="rounded-3xl p-4 sm:p-6 backdrop-blur-md"
+            style={{
+              backgroundColor: 'rgba(6, 12, 18, 0.64)',
+              border: `1px solid ${theme.targetColor}2a`,
+            }}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-lg sm:text-xl font-bold" style={{ color: theme.textColor }}>
+                Readiness leaderboard snapshot
+              </h2>
+              <span className="text-[11px] uppercase tracking-[0.18em]" style={{ color: theme.textColor, opacity: 0.62 }}>
+                top quick tap score
+              </span>
+            </div>
+            <p className="mt-2 text-xs uppercase tracking-[0.12em]" style={{ color: theme.textColor, opacity: 0.56 }}>
+              Local sample ranking seeded from your current profile data.
             </p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {[1, 2, 3, 4, 5].map(value => (
-                <button
-                  key={value}
-                  type="button"
-                  aria-pressed={readiness === value}
-                  onClick={() => setReadiness(value as 1 | 2 | 3 | 4 | 5)}
-                  className="min-h-10 min-w-10 rounded-lg px-3 text-sm font-semibold"
+            <div className="mt-3 space-y-2">
+              {leaderboard.map((entry, index) => (
+                <div
+                  key={entry.name}
+                  className="rounded-xl px-3.5 py-2.5 flex items-center justify-between"
                   style={{
-                    color: theme.textColor,
-                    backgroundColor: readiness === value ? `${theme.targetColor}2a` : 'rgba(2, 8, 12, 0.72)',
-                    border: `1px solid ${readiness === value ? `${theme.targetColor}cc` : `${theme.textColor}2f`}`,
+                    backgroundColor: entry.isYou ? `${theme.targetColor}1f` : 'rgba(2, 8, 12, 0.6)',
+                    border: `1px solid ${entry.isYou ? `${theme.targetColor}66` : `${theme.textColor}22`}`,
                   }}
                 >
-                  {value}
-                </button>
+                  <p className="text-sm font-semibold" style={{ color: theme.textColor }}>
+                    {index + 1}. {entry.name}
+                  </p>
+                  <p className="text-sm font-bold tabular-nums" style={{ color: entry.isYou ? theme.targetColor : '#a5f3fc' }}>
+                    {entry.score}
+                  </p>
+                </div>
               ))}
             </div>
-          </div>
-          <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
-            <JungleButton onClick={handleSleepCheckInSave} className="w-full sm:w-auto px-5 py-2.5 text-sm">
-              Save sleep and readiness
-            </JungleButton>
-            {savedCheckInNotice && (
-              <span className="text-xs" style={{ color: theme.textColor, opacity: 0.72 }}>
-                {savedCheckInNotice}
-              </span>
-            )}
-          </div>
-          {latestCheckInLabel && (
-            <p className="mt-3 text-xs" style={{ color: theme.textColor, opacity: 0.68 }}>
-              Latest: {latestCheckInLabel}
-            </p>
-          )}
+          </section>
+        )}
+
+        <section ref={demoSectionRef} aria-label="Demo section">
+          <LandingDemoShell content={landingContent.demo} onRunBenchmark={handleBenchmarkCta} />
         </section>
 
-        <section
-          className="rounded-3xl p-4 sm:p-6 backdrop-blur-md"
-          style={{
-            backgroundColor: 'rgba(6, 12, 18, 0.64)',
-            border: `1px solid ${theme.targetColor}2a`,
-          }}
-        >
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="text-lg sm:text-xl font-bold" style={{ color: theme.textColor }}>
-              Readiness leaderboard snapshot
-            </h2>
-            <span className="text-[11px] uppercase tracking-[0.18em]" style={{ color: theme.textColor, opacity: 0.62 }}>
-              top quick tap score
-            </span>
-          </div>
-          <p className="mt-2 text-xs uppercase tracking-[0.12em]" style={{ color: theme.textColor, opacity: 0.56 }}>
-            Local sample ranking seeded from your current profile data.
-          </p>
-          <div className="mt-3 space-y-2">
-            {leaderboard.map((entry, index) => (
-              <div
-                key={entry.name}
-                className="rounded-xl px-3.5 py-2.5 flex items-center justify-between"
-                style={{
-                  backgroundColor: entry.isYou ? `${theme.targetColor}1f` : 'rgba(2, 8, 12, 0.6)',
-                  border: `1px solid ${entry.isYou ? `${theme.targetColor}66` : `${theme.textColor}22`}`,
-                }}
-              >
-                <p className="text-sm font-semibold" style={{ color: theme.textColor }}>
-                  {index + 1}. {entry.name}
-                </p>
-                <p className="text-sm font-bold tabular-nums" style={{ color: entry.isYou ? theme.targetColor : '#a5f3fc' }}>
-                  {entry.score}
-                </p>
-              </div>
-            ))}
-          </div>
-        </section>
+        <LandingWhyItMatters content={landingContent.whyItMatters} persona={activePersona} />
 
         <LandingProgression
           content={landingContent.progression}
           onRunStarter={() =>
-            onStart(landingContent.progression.starterMode, undefined, { cueIntensity, hapticsEnabled })
+            isFirstRun
+              ? scrollToQuickstart()
+              : onStart(landingContent.progression.starterMode, undefined, { cueIntensity, hapticsEnabled })
           }
         />
         <LandingFaq content={landingContent.faq} />
         <LandingFinalCta
           content={landingContent.finalCta}
-          onPrimary={handlePrimaryCta}
+          onPrimary={handleBenchmarkCta}
           onSecondary={handleWatchDemo}
         />
 
