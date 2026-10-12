@@ -494,6 +494,29 @@ describe('App integration flow', () => {
     expect(screen.getByLabelText('Current streak 0')).toBeInTheDocument();
   });
 
+  it('pauses Quick Tap and discards the cue when the tab is hidden', async () => {
+    renderApp();
+    await startMode('Cobra Strike');
+    await advance(400);
+    expect(screen.getByTestId('quick-tap-task')).toHaveTextContent(/tap the target before it vanishes/i);
+
+    const original = Object.getOwnPropertyDescriptor(document, 'visibilityState');
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      get: () => 'hidden',
+    });
+    document.dispatchEvent(new Event('visibilitychange'));
+    await flushMicrotasks();
+
+    expect(screen.getByRole('heading', { name: 'Paused' })).toBeInTheDocument();
+    expect(screen.getByTestId('quick-tap-background-pause')).toHaveTextContent(/same-phone baseline/i);
+
+    if (original) {
+      Object.defineProperty(document, 'visibilityState', original);
+    }
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+
   it('supports pause and resume without time leaking while paused', async () => {
     renderApp();
     await startMode('Cobra Strike');

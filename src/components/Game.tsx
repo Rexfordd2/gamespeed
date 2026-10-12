@@ -1572,13 +1572,13 @@ export const Game = ({
           </div>
         </div>
         {activeMode === 'quickTap' && (
-          <div className="absolute inset-x-3 top-12 z-[14] pointer-events-none sm:top-14">
+          <div className="absolute inset-x-3 top-2 z-[20] pointer-events-none">
             <div
               data-testid="quick-tap-task"
               className="mx-auto max-w-md rounded-xl px-3 py-2 text-center"
               style={{
-                backgroundColor: 'rgba(4, 12, 12, 0.82)',
-                border: `1px solid ${theme.targetColor}88`,
+                backgroundColor: 'rgba(4, 12, 12, 0.94)',
+                border: `1px solid ${theme.targetColor}aa`,
                 color: theme.textColor,
               }}
             >
