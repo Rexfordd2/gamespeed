@@ -18,6 +18,7 @@ import {
   GameResult,
   CueIntensity,
   SessionOptions,
+  StoredRound,
 } from './types/game';
 import { resolvePlayableMode } from './utils/gameModes';
 import {
@@ -34,6 +35,14 @@ import {
   syncRoundsToCloud,
 } from './utils/roundSync';
 import { useAuth } from './context/AuthContext';
+import { isSupabaseConfigured } from './lib/supabase';
+import {
+  CloudSyncStatus,
+  StorageConsent,
+  quickTapSaveDecision,
+  readStorageConsent,
+  writeStorageConsent,
+} from './utils/quickTapBaseline';
 import { RoundProgressDelta, getDailyStreak, getRoundProgressDelta } from './utils/progression';
 import { trackConversionEvent } from './lib/analytics';
 import { getLandingExperimentAssignment } from './config/landingExperiment';
@@ -166,7 +175,12 @@ export const App = () => {
   });
   const [totalRoundsCompleted, setTotalRoundsCompleted] = useState<number>(statsSnapshot.rounds.length);
   const [roundProgressDelta, setRoundProgressDelta] = useState<RoundProgressDelta | null>(null);
-  const [cloudSyncStatus, setCloudSyncStatus] = useState<'idle' | 'synced' | 'failed'>('idle');
+  const [cloudSyncStatus, setCloudSyncStatus] = useState<CloudSyncStatus>('idle');
+  const [quickTapConsent, setQuickTapConsent] = useState<StorageConsent>(() => readStorageConsent());
+  const [quickTapClientRoundId, setQuickTapClientRoundId] = useState<string | undefined>();
+  const [quickTapSaved, setQuickTapSaved] = useState(true);
+  const pendingQuickTapRef = useRef<{ result: GameResult; clientRoundId: string } | null>(null);
+  const savedRoundRef = useRef<StoredRound | null>(null);
   const [screenTransitionKey, setScreenTransitionKey] = useState(0);
   const [gameResult, setGameResult] = useState<GameResult>({
     score: 0,
@@ -234,15 +248,41 @@ export const App = () => {
     setGameState('playing');
   };
 
-  const handleGameOver = (result: GameResult) => {
+  const publishRoundSync = (storedRound: StoredRound) => {
+    savedRoundRef.current = storedRound;
+    if (!user) {
+      setCloudSyncStatus('local-only');
+      return;
+    }
+    if (!isSupabaseConfigured) {
+      setCloudSyncStatus('unconfigured');
+      return;
+    }
+    void syncRoundToCloud({
+      userId: user.id,
+      round: storedRound,
+    }).then(syncResult => {
+      if (syncResult === 'failed') {
+        setCloudSyncStatus('failed');
+      } else if (syncResult === 'synced') {
+        setCloudSyncStatus('synced');
+      } else {
+        setCloudSyncStatus('unconfigured');
+      }
+    });
+  };
+
+  const commitRound = (result: GameResult, clientRoundId: string) => {
     const isFirstCompletedSession = !isFirstRunComplete;
     const previousStats = loadStats();
     const previousPb = previousStats.pbs[result.mode];
-    const clientRoundId = createClientRoundId();
     const storedRound = recordRound(result, { clientRoundId });
     const nextStats = loadStats();
     const previousStreak = getDailyStreak(previousStats);
     const nextStreak = getDailyStreak(nextStats);
+    pendingQuickTapRef.current = null;
+    setQuickTapSaved(true);
+    setQuickTapClientRoundId(storedRound.clientRoundId ?? clientRoundId);
     setGameResult(result);
     setRoundProgressDelta(getRoundProgressDelta(result, previousPb));
     setStatsSnapshot(nextStats);
@@ -293,20 +333,75 @@ export const App = () => {
       });
     }
 
-    if (user) {
-      void syncRoundToCloud({
-        userId: user.id,
-        round: storedRound,
-      }).then(result => {
-        if (result === 'failed') {
-          setCloudSyncStatus('failed');
-        } else if (result === 'synced') {
-          setCloudSyncStatus('synced');
-        }
-      });
-    } else {
-      setCloudSyncStatus('idle');
+    publishRoundSync(storedRound);
+  };
+
+  const presentUnsavedQuickTap = (result: GameResult, clientRoundId: string) => {
+    const previousStats = loadStats();
+    pendingQuickTapRef.current = { result, clientRoundId };
+    savedRoundRef.current = null;
+    setQuickTapSaved(false);
+    setQuickTapClientRoundId(clientRoundId);
+    setCloudSyncStatus('unsaved');
+    setGameResult(result);
+    setRoundProgressDelta(getRoundProgressDelta(result, previousStats.pbs[result.mode]));
+    setStatsSnapshot(previousStats);
+    setLastRoundSelection(firstRunSelection);
+    setShowPostFirstSessionChecklist(!isFirstRunComplete);
+    setScreenTransitionKey(key => key + 1);
+    setGameState('end');
+    setFirstRunSelection(null);
+    if (!isFirstRunComplete) {
+      setIsFirstRunComplete(true);
+      try {
+        localStorage.setItem(FIRST_RUN_COMPLETE_STORAGE_KEY, '1');
+      } catch {
+        // Ignore storage failures (private mode / quota).
+      }
     }
+  };
+
+  const handleGameOver = (result: GameResult) => {
+    const clientRoundId = createClientRoundId();
+    const holdForConsent =
+      result.mode === 'quickTap' && quickTapSaveDecision(quickTapConsent) === 'hold';
+    if (holdForConsent) {
+      presentUnsavedQuickTap(result, clientRoundId);
+      return;
+    }
+    commitRound(result, clientRoundId);
+  };
+
+  const handleSaveQuickTap = () => {
+    const pending = pendingQuickTapRef.current;
+    if (!pending) return;
+    writeStorageConsent('granted');
+    setQuickTapConsent('granted');
+    commitRound(pending.result, pending.clientRoundId);
+  };
+
+  const handleDeclineQuickTap = () => {
+    writeStorageConsent('declined');
+    setQuickTapConsent('declined');
+    setQuickTapSaved(false);
+    setCloudSyncStatus('unsaved');
+  };
+
+  const handleRetryCloudSync = () => {
+    const storedRound = savedRoundRef.current;
+    if (!storedRound || !user || !isSupabaseConfigured) return;
+    void syncRoundToCloud({
+      userId: user.id,
+      round: storedRound,
+    }).then(syncResult => {
+      if (syncResult === 'failed') {
+        setCloudSyncStatus('failed');
+      } else if (syncResult === 'synced') {
+        setCloudSyncStatus('synced');
+      } else {
+        setCloudSyncStatus('unconfigured');
+      }
+    });
   };
 
   const handlePlayAgain = () => {
@@ -630,6 +725,12 @@ export const App = () => {
             roundProgressDelta={roundProgressDelta}
             playerName={profile?.display_name || user?.email?.split('@')[0] || 'You'}
             cloudSyncStatus={cloudSyncStatus}
+            quickTapConsent={quickTapConsent}
+            quickTapSaved={quickTapSaved}
+            quickTapClientRoundId={quickTapClientRoundId}
+            onSaveQuickTap={handleSaveQuickTap}
+            onDeclineQuickTap={handleDeclineQuickTap}
+            onRetryCloudSync={handleRetryCloudSync}
           />
         )}
         {gameState === 'stats' && (

@@ -103,13 +103,15 @@ export interface GameResult {
   lateDecisions?: number;
   /** Captured streak runs used to derive consistency metrics. */
   streakRuns?: number[];
-  /** Benchmark mode only: raw reaction times (ms) per successful hit. */
+  /** Raw in-app tap or benchmark hit latencies (ms). Quick Tap and Reaction Benchmark persist these. */
   reactionTimesMs?: number[];
-  /** Benchmark mode only: median of reactionTimesMs, rounded to the nearest ms. */
+  /** Median of the scored latencies, rounded to the nearest ms. */
   medianReactionTimeMs?: number;
   /** Benchmark mode only: composite 0–100 score combining accuracy (60%) and speed (40%). */
   benchmarkScore?: number;
   readinessMetrics?: ReadinessMetrics;
+  /** Quick Tap only: how this round was timed and which trials were excluded. */
+  provenance?: RoundProvenance;
 }
 
 // ---------- Persistent stats types ----------
@@ -134,7 +136,22 @@ export interface StoredRound {
     metricsVersion: number;
     runwayCompletionsCount?: number;
     sleepCorrelationState?: 'pending' | 'insufficient_data' | 'available';
+    quickTap?: RoundProvenance;
   };
+}
+
+/** Device and scoring context stored with a Quick Tap round. No hardware offset is ever applied. */
+export interface RoundProvenance {
+  scoringMethod: string;
+  browserSummary: string;
+  viewport: { width: number; height: number };
+  deviceKey: string;
+  hardwareLatencyCorrectionMs: null;
+  validTrialCount: number;
+  accidentalTapCount: number;
+  backgroundDiscardCount: number;
+  unfinishedTrialCount: number;
+  comparabilityNote: string;
 }
 
 export interface ModePersonalBests {

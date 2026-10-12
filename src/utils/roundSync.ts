@@ -31,6 +31,58 @@ export const createClientRoundId = (): string => {
 
 export type CloudSyncResult = 'skipped' | 'synced' | 'failed';
 
+export const interpretUserRoundsWriteError = (
+  error: { code?: string } | null,
+): Exclude<CloudSyncResult, 'skipped'> => {
+  if (!error || error.code === DUPLICATE_KEY_ERROR_CODE) {
+    return 'synced';
+  }
+  return 'failed';
+};
+
+export interface CloudRoundRow {
+  client_round_id: string;
+  round_ts: string;
+  mode: string;
+  mode_name: string;
+  sport?: string | null;
+  score: number;
+  misses: number;
+  accuracy: number;
+  best_streak: number;
+  median_reaction_time_ms?: number | null;
+  benchmark_score?: number | null;
+  readiness_metrics?: StoredRound['readinessMetrics'] | null;
+  meta?: StoredRound['meta'] | null;
+}
+
+export const parseCloudRoundRow = (row: CloudRoundRow): StoredRound | null => {
+  if (!isGameModeType(row.mode)) {
+    return null;
+  }
+
+  const timestamp = Date.parse(row.round_ts);
+  if (!Number.isFinite(timestamp)) {
+    return null;
+  }
+
+  return {
+    ts: timestamp,
+    clientRoundId: row.client_round_id,
+    sport: row.sport && isSportType(row.sport) ? row.sport : DEFAULT_SPORT,
+    mode: row.mode,
+    modeName: row.mode_name,
+    score: row.score,
+    misses: row.misses,
+    accuracy: row.accuracy,
+    bestStreak: row.best_streak,
+    medianReactionTimeMs: row.median_reaction_time_ms ?? undefined,
+    benchmarkScore: row.benchmark_score ?? undefined,
+    readinessMetrics: row.readiness_metrics ?? undefined,
+    meta: row.meta ?? undefined,
+  };
+};
+
 const toCloudRow = (userId: string, round: StoredRound) => ({
   user_id: userId,
   client_round_id: round.clientRoundId,
@@ -54,13 +106,13 @@ export const syncRoundToCloud = async ({ userId, round }: SyncRoundParams): Prom
   }
 
   const { error } = await supabase.from('user_rounds').insert(toCloudRow(userId, round));
+  const status = interpretUserRoundsWriteError(error);
 
-  if (error && error.code !== DUPLICATE_KEY_ERROR_CODE) {
-    console.error('Failed to sync round to cloud:', error.message);
-    return 'failed';
+  if (status === 'failed') {
+    console.error('Failed to sync round to cloud:', error?.message ?? 'unknown error');
   }
 
-  return 'synced';
+  return status;
 };
 
 export const syncRoundsToCloud = async (
@@ -119,32 +171,8 @@ export const fetchCloudRounds = async (userId: string): Promise<FetchCloudRounds
   }
 
   const rounds: StoredRound[] = (data ?? []).flatMap(row => {
-    if (!isGameModeType(row.mode)) {
-      return [];
-    }
-
-    const timestamp = Date.parse(row.round_ts);
-    if (!Number.isFinite(timestamp)) {
-      return [];
-    }
-
-    return [
-      {
-        ts: timestamp,
-        clientRoundId: row.client_round_id,
-        sport: row.sport && isSportType(row.sport) ? row.sport : DEFAULT_SPORT,
-        mode: row.mode,
-        modeName: row.mode_name,
-        score: row.score,
-        misses: row.misses,
-        accuracy: row.accuracy,
-        bestStreak: row.best_streak,
-        medianReactionTimeMs: row.median_reaction_time_ms ?? undefined,
-        benchmarkScore: row.benchmark_score ?? undefined,
-        readinessMetrics: row.readiness_metrics ?? undefined,
-        meta: row.meta ?? undefined,
-      },
-    ];
+    const parsed = parseCloudRoundRow(row);
+    return parsed ? [parsed] : [];
   });
 
   return { status: 'synced', rounds };

@@ -238,21 +238,23 @@ export const modeDescriptions: Record<GameModeType, ModeDescription> = {
   },
   quickTap: {
     title: 'Quick Tap',
-    description: 'Reaction-time sprint drill. Attack each cue before it vanishes.',
-    trainingFocus: 'Explosive first-step response',
+    description:
+      'One target at a time. Tap it before it disappears. The app records hit rate and in-app tap latency for a same-device baseline.',
+    trainingFocus: 'Single-cue tap practice',
     intensity: 'High',
     rhythm: 'Fast micro-bursts',
-    whyThisMatters: 'Many game actions are won by who commits first on a clean cue.',
+    whyThisMatters:
+      'Use two Quick Tap rounds on the same phone to compare your own tap latency and accuracy. This is not a lab reaction test.',
     evidenceStyle: {
-      cuePickup: 'Forces immediate pickup of short-lived visual cues.',
-      anticipation: 'Builds control by reacting only when the cue is visible.',
-      decisionSpeed: 'Trains fast commit speed once the cue is identified.',
-      gazeStability: 'Encourages quick center reset before the next stimulus.',
+      cuePickup: 'Shows whether the tap landed while the cue was still on screen.',
+      anticipation: 'Taps faster than 100 ms are excluded as accidental.',
+      decisionSpeed: 'Median tap latency is the time from cue appearance to the tap.',
+      gazeStability: 'A backgrounded tab pauses the round and discards the cue on screen.',
     },
     tips: [
-      'Targets live for only 1.5 seconds; react on first read.',
-      'Start from a neutral hand position to cut travel time.',
-      'Every miss drops your accuracy score, so stay composed.',
+      'Targets live for about 1.5 seconds.',
+      'Taps faster than 100 ms are treated as accidental and are not scored.',
+      'Leave the tab and the round pauses; that cue is not counted.',
     ],
   },
   multiTarget: {

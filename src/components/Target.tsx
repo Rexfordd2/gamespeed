@@ -3,6 +3,7 @@ import { Target as TargetType } from '../types/game';
 import { useTheme } from '../context/ThemeContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getSwipeDirection, isIntentionalSwipe } from '../utils/swipeDetection';
+import { quickTapTouchTargetPx } from '../utils/quickTapBaseline';
 import { HoldVisualPhase } from '../utils/holdTracking';
 import { SwipeTimingVerdict } from '../utils/modeMechanics';
 
@@ -83,7 +84,7 @@ export const Target = ({
     useMemo(() => {
       const isTouchDevice =
         typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches;
-      const size = isTouchDevice ? 84 : 70;
+      const size = quickTapTouchTargetPx(isTouchDevice);
       const stroke = size >= 84 ? 3.5 : 3;
       const radius = size / 2 - stroke - 1;
       const center = size / 2;
