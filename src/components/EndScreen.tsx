@@ -20,6 +20,8 @@ import { trackConversionEvent } from '../lib/analytics';
 import { getLandingExperimentAssignment } from '../config/landingExperiment';
 import { getAnimalInstinct, getExperienceName } from '../config/animalInstincts';
 import { buildPerformanceRead, getSubScoreVisibility } from '../utils/performanceRead';
+import { QuickTapBaselineCard } from './QuickTapBaselineCard';
+import { CloudSyncStatus, StorageConsent } from '../utils/quickTapBaseline';
 
 interface EndScreenProps {
   result: GameResult;
@@ -35,7 +37,13 @@ interface EndScreenProps {
   stats: GameStats;
   roundProgressDelta: RoundProgressDelta | null;
   playerName: string;
-  cloudSyncStatus?: 'idle' | 'synced' | 'failed';
+  cloudSyncStatus?: CloudSyncStatus;
+  quickTapConsent?: StorageConsent;
+  quickTapSaved?: boolean;
+  quickTapClientRoundId?: string;
+  onSaveQuickTap?: () => void;
+  onDeclineQuickTap?: () => void;
+  onRetryCloudSync?: () => void;
 }
 
 type ChecklistState = {
@@ -135,6 +143,12 @@ export const EndScreen = ({
   roundProgressDelta,
   playerName,
   cloudSyncStatus = 'idle',
+  quickTapConsent = 'unknown',
+  quickTapSaved = true,
+  quickTapClientRoundId,
+  onSaveQuickTap,
+  onDeclineQuickTap,
+  onRetryCloudSync,
 }: EndScreenProps) => {
   const { theme } = useTheme();
   const landingExperiment = useMemo(() => getLandingExperimentAssignment(), []);
@@ -149,6 +163,8 @@ export const EndScreen = ({
   );
   const subScores = getSubScoreVisibility(result.mode);
   const instinct = getAnimalInstinct(result.mode);
+  const isQuickTap = result.mode === 'quickTap';
+  const quickTapMedian = result.medianReactionTimeMs;
   const [checklist, setChecklist] = useState<ChecklistState>(() => loadChecklistState(totalRoundsCompleted, isSignedIn));
   const [shareStatus, setShareStatus] = useState<'idle' | 'copied' | 'error'>('idle');
   const hasTrackedSignupPrompt = useRef(false);
@@ -262,6 +278,20 @@ export const EndScreen = ({
     >
       <JungleBackground />
       <div className="relative z-10 mx-auto flex min-h-[calc(100dvh-2rem)] w-full max-w-2xl flex-col items-center px-4 py-4 sm:px-6 sm:py-8">
+        {isQuickTap && (
+          <QuickTapBaselineCard
+            result={result}
+            stats={stats}
+            saved={quickTapSaved}
+            clientRoundId={quickTapClientRoundId}
+            cloudSyncStatus={cloudSyncStatus}
+            isSignedIn={isSignedIn}
+            consent={quickTapConsent}
+            onSave={() => onSaveQuickTap?.()}
+            onDecline={() => onDeclineQuickTap?.()}
+            onRetrySync={() => onRetryCloudSync?.()}
+          />
+        )}
         <motion.div
           initial={{ y: 10, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -270,8 +300,11 @@ export const EndScreen = ({
         >
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-[11px] uppercase tracking-[0.18em] opacity-65" style={{ color: theme.textColor }}>GameSpeed Score</p>
-              <p className="font-display mt-2 text-5xl leading-none font-black tabular-nums sm:text-7xl" style={{ color: theme.targetColor }}>{readiness?.readinessScore ?? accuracy}</p>
+              <p className="text-[11px] uppercase tracking-[0.18em] opacity-65" style={{ color: theme.textColor }}>{isQuickTap ? 'Median tap latency' : 'GameSpeed Score'}</p>
+              <p className="font-display mt-2 text-5xl leading-none font-black tabular-nums sm:text-7xl" style={{ color: theme.targetColor }}>
+                {isQuickTap ? (quickTapMedian ?? '—') : (readiness?.readinessScore ?? accuracy)}
+                {isQuickTap && quickTapMedian !== undefined ? <span className="ml-1 text-2xl sm:text-3xl">ms</span> : null}
+              </p>
               <p className="mt-2 text-sm font-semibold opacity-85" style={{ color: theme.textColor }}>{instinct.experienceName}</p>
               <p className="mt-1 text-xs opacity-65" style={{ color: theme.textColor }}>{instinct.mechanicName}</p>
               <p className="mt-2 text-sm font-semibold" style={{ color: theme.targetColor }}>{performanceRead.headline}</p>
@@ -280,14 +313,26 @@ export const EndScreen = ({
               </p>
             </div>
             <div className="rounded-2xl px-3.5 py-3 text-right" style={{ backgroundColor: `${percentileBadge.tone}18`, border: `1px solid ${percentileBadge.tone}66` }}>
-              <p className="text-[10px] uppercase tracking-[0.16em] opacity-75" style={{ color: theme.textColor }}>Instinct tier</p>
-              <p className="font-display text-2xl font-black" style={{ color: percentileBadge.tone }}>{percentileBadge.label}</p>
-              <p className="text-xs font-semibold mt-0.5" style={{ color: theme.textColor }}>
-                Accuracy {readiness?.decisionAccuracyPct ?? accuracy}%
-              </p>
-              <p className="text-xs mt-1" style={{ color: theme.textColor, opacity: 0.78 }}>
-                Late {readiness?.lateDecisionRatePct ?? 0}% | Streak {readiness?.streakQualityPct ?? result.bestStreak}
-              </p>
+              {isQuickTap ? (
+                <>
+                  <p className="text-[10px] uppercase tracking-[0.16em] opacity-75" style={{ color: theme.textColor }}>This round</p>
+                  <p className="font-display text-2xl font-black tabular-nums" style={{ color: theme.textColor }}>{accuracy}%</p>
+                  <p className="text-xs font-semibold mt-0.5" style={{ color: theme.textColor }}>
+                    {result.score} hits · {result.misses} misses
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-[10px] uppercase tracking-[0.16em] opacity-75" style={{ color: theme.textColor }}>Instinct tier</p>
+                  <p className="font-display text-2xl font-black" style={{ color: percentileBadge.tone }}>{percentileBadge.label}</p>
+                  <p className="text-xs font-semibold mt-0.5" style={{ color: theme.textColor }}>
+                    Accuracy {readiness?.decisionAccuracyPct ?? accuracy}%
+                  </p>
+                  <p className="text-xs mt-1" style={{ color: theme.textColor, opacity: 0.78 }}>
+                    Late {readiness?.lateDecisionRatePct ?? 0}% | Streak {readiness?.streakQualityPct ?? result.bestStreak}
+                  </p>
+                </>
+              )}
             </div>
           </div>
 
@@ -295,8 +340,10 @@ export const EndScreen = ({
             <div className="rounded-xl border px-2 py-2 text-center" style={{ borderColor: `${theme.targetColor}33` }}>
               <p className="text-[9px] uppercase tracking-[0.12em] opacity-60" style={{ color: theme.textColor }}>Reaction</p>
               <p className="text-sm font-bold tabular-nums" style={{ color: theme.textColor }}>
-                {readiness?.reactionTimeMs.median ?? result.medianReactionTimeMs ?? '—'}
-                {(readiness?.reactionTimeMs.median ?? result.medianReactionTimeMs) ? 'ms' : ''}
+                {isQuickTap
+                  ? (quickTapMedian ?? '—')
+                  : (readiness?.reactionTimeMs.median ?? result.medianReactionTimeMs ?? '—')}
+                {(isQuickTap ? quickTapMedian : (readiness?.reactionTimeMs.median ?? result.medianReactionTimeMs)) ? 'ms' : ''}
               </p>
             </div>
             {subScores.vision && (
@@ -385,6 +432,7 @@ export const EndScreen = ({
           </div>
         )}
 
+        {!isQuickTap && (
         <div className="mb-3 w-full rounded-2xl px-4 py-4 sm:mb-4 sm:px-5" style={{ backgroundColor: 'rgba(2, 8, 12, 0.72)', border: `1px solid ${theme.textColor}2a` }}>
           <div className="flex items-center justify-between gap-3">
             <p className="text-[10px] uppercase tracking-[0.16em] opacity-65" style={{ color: theme.textColor }}>Shareable score card</p>
@@ -392,6 +440,7 @@ export const EndScreen = ({
           </div>
           {shareStatus !== 'idle' && <p className="mt-2 text-xs font-semibold" style={{ color: shareStatus === 'copied' ? '#4ade80' : '#f87171' }}>{shareStatus === 'copied' ? 'Score card copied to clipboard.' : 'Unable to copy right now.'}</p>}
         </div>
+        )}
 
         <div className="mb-3 w-full rounded-2xl px-4 py-4 sm:mb-4 sm:px-5" style={{ backgroundColor: 'rgba(2, 8, 12, 0.72)', border: `1px solid ${theme.textColor}24` }}>
           <p className="text-[10px] uppercase tracking-[0.16em] opacity-65 mb-2" style={{ color: theme.textColor }}>Session history</p>
@@ -399,7 +448,10 @@ export const EndScreen = ({
             {recentHistory.map(round => (
               <div key={`${round.ts}-${round.clientRoundId ?? 'local'}`} className="flex items-center justify-between text-xs">
                 <p style={{ color: theme.textColor, opacity: 0.85 }}>{getModeLabel(round.mode)} | {new Date(round.ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</p>
-                <p className="tabular-nums" style={{ color: theme.targetColor }}>{round.score} / {round.accuracy}%</p>
+                <p className="tabular-nums" style={{ color: theme.targetColor }}>
+                  {round.score} / {round.accuracy}%
+                  {round.medianReactionTimeMs !== undefined ? ` · ${round.medianReactionTimeMs} ms` : ''}
+                </p>
               </div>
             ))}
           </div>

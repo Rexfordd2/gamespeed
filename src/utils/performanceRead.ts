@@ -1,6 +1,7 @@
 import { GameModeType, GameResult, GameStats, ReadinessMetrics } from '../types/game';
 import { getAnimalInstinct } from '../config/animalInstincts';
 import { RoundProgressDelta } from './progression';
+import { QUICK_TAP_CLAIM_LIMIT, QUICK_TAP_TASK_COPY } from './quickTapBaseline';
 
 export interface PerformanceRead {
   headline: string;
@@ -51,6 +52,21 @@ export const buildPerformanceRead = ({
   stats: GameStats;
   roundProgressDelta: RoundProgressDelta | null;
 }): PerformanceRead => {
+  if (result.mode === 'quickTap') {
+    const median = result.medianReactionTimeMs;
+    return {
+      headline: 'Quick Tap practice round complete.',
+      whatThisTrains: `${QUICK_TAP_TASK_COPY} ${
+        median !== undefined
+          ? `This round's median tap latency is ${median} ms.`
+          : 'This round has no valid tap latency.'
+      }`,
+      coachRead:
+        'Retest on the same phone and browser. A higher practice score does not prove faster neural conduction, faster on-field reactions, higher football IQ, or improved recruiting potential.',
+      disclaimer: QUICK_TAP_CLAIM_LIMIT,
+    };
+  }
+
   const instinct = getAnimalInstinct(result.mode);
   const readiness = result.readinessMetrics;
   const comparison =

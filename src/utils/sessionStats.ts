@@ -1,8 +1,9 @@
 import { DEFAULT_SPORT, isSportType } from '../config/sports';
-import { GameResult, GameStats, StoredRound, GameModeType } from '../types/game';
+import { GameResult, GameStats, RoundProvenance, StoredRound, GameModeType } from '../types/game';
 import { loadRunwayAnalytics } from './runwayStats';
 import { loadSleepCheckIns } from './sleepCheckIn';
 import { deriveReadinessMetrics } from './readinessMetrics';
+import { QUICK_TAP_COMPARABILITY_NOTE, QUICK_TAP_SCORING_METHOD } from './quickTapBaseline';
 
 const STORAGE_KEY = 'gamespeed_stats_v1';
 const MAX_ROUNDS_PER_MODE = 20;
@@ -38,6 +39,37 @@ export const emptyStats = (): GameStats => ({
 
 const toNumberOr = (value: unknown, fallback = 0): number =>
   typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+
+const normalizeQuickTapProvenance = (raw: unknown): RoundProvenance | undefined => {
+  if (typeof raw !== 'object' || raw === null) return undefined;
+  const value = raw as Partial<RoundProvenance>;
+  if (typeof value.deviceKey !== 'string' || value.deviceKey.length === 0) return undefined;
+  const viewport = value.viewport;
+  return {
+    scoringMethod:
+      typeof value.scoringMethod === 'string' && value.scoringMethod.length > 0
+        ? value.scoringMethod
+        : QUICK_TAP_SCORING_METHOD,
+    browserSummary:
+      typeof value.browserSummary === 'string' && value.browserSummary.length > 0
+        ? value.browserSummary
+        : 'Unknown browser',
+    viewport: {
+      width: toNumberOr(viewport?.width, 0),
+      height: toNumberOr(viewport?.height, 0),
+    },
+    deviceKey: value.deviceKey,
+    hardwareLatencyCorrectionMs: null,
+    validTrialCount: toNumberOr(value.validTrialCount, 0),
+    accidentalTapCount: toNumberOr(value.accidentalTapCount, 0),
+    backgroundDiscardCount: toNumberOr(value.backgroundDiscardCount, 0),
+    unfinishedTrialCount: toNumberOr(value.unfinishedTrialCount, 0),
+    comparabilityNote:
+      typeof value.comparabilityNote === 'string' && value.comparabilityNote.length > 0
+        ? value.comparabilityNote
+        : QUICK_TAP_COMPARABILITY_NOTE,
+  };
+};
 
 const normalizeRound = (rawRound: unknown): StoredRound | null => {
   if (typeof rawRound !== 'object' || rawRound === null) return null;
@@ -88,6 +120,7 @@ const normalizeRound = (rawRound: unknown): StoredRound | null => {
         value.meta?.runwayCompletionsCount ?? readinessMetrics.runwayCompletionsCount,
       sleepCorrelationState:
         value.meta?.sleepCorrelationState ?? readinessMetrics.sleepCheckInCorrelation,
+      quickTap: normalizeQuickTapProvenance(value.meta?.quickTap),
     },
   };
 };
@@ -219,6 +252,10 @@ export const adoptAnonymousStatsForUser = (userId: string): GameStats => {
 
 export const recordRound = (result: GameResult, options?: RecordRoundOptions): StoredRound => {
   const stats = loadStats();
+  if (options?.clientRoundId) {
+    const existing = stats.rounds.find(round => round.clientRoundId === options.clientRoundId);
+    if (existing) return existing;
+  }
   const totalAttempts = Math.max(
     result.score + result.misses,
     result.totalAttempts ?? result.score + result.misses,
@@ -256,6 +293,7 @@ export const recordRound = (result: GameResult, options?: RecordRoundOptions): S
       metricsVersion: 1,
       runwayCompletionsCount,
       sleepCorrelationState: readinessMetrics.sleepCheckInCorrelation,
+      quickTap: result.mode === 'quickTap' ? result.provenance : undefined,
     },
   };
 

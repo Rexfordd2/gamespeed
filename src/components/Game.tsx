@@ -20,6 +20,12 @@ import { scaleMsByStreak, scaleSecondsByStreak } from '../utils/streakScaling';
 import { getSwipeCueLabel, getHoldTrackCueLabel, getSequenceCueLabels } from '../utils/modeCueLanguage';
 import { getSwipeTimingVerdict, getSwipeTimingWindow } from '../utils/modeMechanics';
 import { deriveReadinessMetrics } from '../utils/readinessMetrics';
+import {
+  QUICK_TAP_FIELD_INSTRUCTION,
+  captureRoundProvenance,
+  classifyQuickTapLatency,
+  medianTapLatencyMs,
+} from '../utils/quickTapBaseline';
 import { GameHeader } from './GameHeader';
 import { Target } from './Target';
 import { JungleButton } from './JungleButton';
@@ -133,6 +139,8 @@ export const Game = ({
   const [targets, setTargets] = useState<TargetType[]>([]);
   const [timeLeft, setTimeLeft] = useState(ROUND_SECONDS);
   const [isPaused, setIsPaused] = useState(false);
+  const [pauseReason, setPauseReason] = useState<'manual' | 'background' | null>(null);
+  const [excludedTapNote, setExcludedTapNote] = useState<string | null>(null);
   const [streak, setStreak] = useState(0);
   const [missFeedbackId, setMissFeedbackId] = useState(0);
   const [holdVisualByTarget, setHoldVisualByTarget] = useState<Record<string, HoldVisualState>>({});
@@ -180,6 +188,10 @@ export const Game = ({
     lastTickAt: 0,
   });
   const reactionTimesRef = useRef<number[]>([]);
+  const accidentalTapCountRef = useRef(0);
+  const backgroundDiscardCountRef = useRef(0);
+  const unfinishedTrialCountRef = useRef(0);
+  const excludedTapTimeoutRef = useRef<number | null>(null);
   const attemptsRef = useRef(0);
   const lateDecisionsRef = useRef(0);
   const falseStartsRef = useRef(0);
@@ -411,6 +423,9 @@ export const Game = ({
       if (streakCueTimeoutRef.current !== null) {
         window.clearTimeout(streakCueTimeoutRef.current);
       }
+      if (excludedTapTimeoutRef.current !== null) {
+        window.clearTimeout(excludedTapTimeoutRef.current);
+      }
     },
     [],
   );
@@ -448,6 +463,14 @@ export const Game = ({
         );
       }
 
+      if (activeMode === 'quickTap') {
+        const unfinished = targetsRef.current.length;
+        if (unfinished > 0) {
+          unfinishedTrialCountRef.current += unfinished;
+        }
+        medianReactionTimeMs = medianTapLatencyMs(reactionTimesRef.current);
+      }
+
       if (streakRef.current > 0) {
         streakRunsRef.current.push(streakRef.current);
       }
@@ -473,10 +496,24 @@ export const Game = ({
         lateDecisions: lateDecisionsRef.current,
         streakRuns: streakRunsRef.current,
         reactionTimesMs:
-          activeMode === 'reactionBenchmark' ? [...reactionTimesRef.current] : undefined,
+          activeMode === 'reactionBenchmark' || activeMode === 'quickTap'
+            ? [...reactionTimesRef.current]
+            : undefined,
         medianReactionTimeMs,
         benchmarkScore,
         readinessMetrics,
+        provenance:
+          activeMode === 'quickTap'
+            ? captureRoundProvenance({
+                userAgent: navigator.userAgent,
+                width: screenSizeRef.current.width,
+                height: screenSizeRef.current.height,
+                validTrialCount: reactionTimesRef.current.length,
+                accidentalTapCount: accidentalTapCountRef.current,
+                backgroundDiscardCount: backgroundDiscardCountRef.current,
+                unfinishedTrialCount: unfinishedTrialCountRef.current,
+              })
+            : undefined,
       });
     },
     [activeMode, fireHaptic, instinct.experienceName, onGameOver, playEffect, selectedSport],
@@ -502,6 +539,11 @@ export const Game = ({
     holdBreakUntilRef.current = {};
     clearHoldTrackingState();
     reactionTimesRef.current = [];
+    accidentalTapCountRef.current = 0;
+    backgroundDiscardCountRef.current = 0;
+    unfinishedTrialCountRef.current = 0;
+    setPauseReason(null);
+    setExcludedTapNote(null);
     sequenceOrderRef.current = [];
     sequenceSuccessesRef.current = 0;
     sequencePhaseEndsAtRef.current = 0;
@@ -1092,7 +1134,21 @@ export const Game = ({
         return;
       }
 
-      reactionTimesRef.current.push(Date.now() - hitTarget.createdAt);
+      const tapLatencyMs = Date.now() - hitTarget.createdAt;
+      if (activeMode === 'quickTap' && classifyQuickTapLatency(tapLatencyMs) === 'accidental') {
+        accidentalTapCountRef.current += 1;
+        setExcludedTapNote('Accidental tap ignored. Wait for the target, then tap.');
+        if (excludedTapTimeoutRef.current !== null) {
+          window.clearTimeout(excludedTapTimeoutRef.current);
+        }
+        excludedTapTimeoutRef.current = window.setTimeout(() => {
+          setExcludedTapNote(null);
+          excludedTapTimeoutRef.current = null;
+        }, 900);
+        return;
+      }
+
+      reactionTimesRef.current.push(tapLatencyMs);
       attemptsRef.current += 1;
       scoreRef.current += 1;
       setScore(prev => prev + 1);
@@ -1115,6 +1171,7 @@ export const Game = ({
       });
     },
     [
+      activeMode,
       isSequenceMode,
       isSwipeMode,
       fireHaptic,
@@ -1166,34 +1223,67 @@ export const Game = ({
     [activeMode, fireHaptic, playEffect, triggerMissFeedback],
   );
 
-  const togglePause = useCallback(() => {
-    if (gameOverFiredRef.current) return;
+  const beginPause = useCallback(
+    (reason: 'manual' | 'background') => {
+      if (gameOverFiredRef.current || isPausedRef.current) return;
+      if (reason === 'background' && isPrePlayActive) return;
 
-    setIsPaused(prev => {
-      const nextPaused = !prev;
-      isPausedRef.current = nextPaused;
-
-      if (nextPaused) {
-        const trackedTargetId = holdTrackingRef.current.targetId;
-        if (trackedTargetId) {
-          clearHoldVisual(trackedTargetId);
-        }
-        clearHoldTrackingState();
-        remainingMsRef.current = Math.max(0, roundEndsAtRef.current - Date.now());
-        if (isSequenceMode && sequencePhaseEndsAtRef.current > 0) {
-          sequencePhaseRemainingMsRef.current = Math.max(0, sequencePhaseEndsAtRef.current - Date.now());
-        }
-        setTimeLeft(Math.ceil(remainingMsRef.current / 1000));
-      } else {
-        roundEndsAtRef.current = Date.now() + remainingMsRef.current;
-        if (isSequenceMode && sequencePhaseRef.current !== 'input') {
-          sequencePhaseEndsAtRef.current = Date.now() + sequencePhaseRemainingMsRef.current;
+      if (reason === 'background' && activeMode === 'quickTap') {
+        const discarded = targetsRef.current.length;
+        if (discarded > 0) {
+          backgroundDiscardCountRef.current += discarded;
+          targetsRef.current = [];
+          setTargets([]);
         }
       }
 
-      return nextPaused;
-    });
-  }, [clearHoldTrackingState, clearHoldVisual, isSequenceMode]);
+      const trackedTargetId = holdTrackingRef.current.targetId;
+      if (trackedTargetId) {
+        clearHoldVisual(trackedTargetId);
+      }
+      clearHoldTrackingState();
+      remainingMsRef.current = Math.max(0, roundEndsAtRef.current - Date.now());
+      if (isSequenceMode && sequencePhaseEndsAtRef.current > 0) {
+        sequencePhaseRemainingMsRef.current = Math.max(0, sequencePhaseEndsAtRef.current - Date.now());
+      }
+      isPausedRef.current = true;
+      setIsPaused(true);
+      setPauseReason(reason);
+      setTimeLeft(Math.ceil(remainingMsRef.current / 1000));
+    },
+    [activeMode, clearHoldTrackingState, clearHoldVisual, isPrePlayActive, isSequenceMode],
+  );
+
+  const resumeRound = useCallback(() => {
+    if (!isPausedRef.current || gameOverFiredRef.current) return;
+    isPausedRef.current = false;
+    setIsPaused(false);
+    setPauseReason(null);
+    roundEndsAtRef.current = Date.now() + remainingMsRef.current;
+    if (isSequenceMode && sequencePhaseRef.current !== 'input') {
+      sequencePhaseEndsAtRef.current = Date.now() + sequencePhaseRemainingMsRef.current;
+    }
+  }, [isSequenceMode]);
+
+  const togglePause = useCallback(() => {
+    if (gameOverFiredRef.current) return;
+    if (isPausedRef.current) {
+      resumeRound();
+      return;
+    }
+    beginPause('manual');
+  }, [beginPause, resumeRound]);
+
+  useEffect(() => {
+    if (activeMode !== 'quickTap') return;
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') {
+        beginPause('background');
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, [activeMode, beginPause]);
 
   const handleQuit = useCallback(() => {
     if (window.confirm('Quit this round and return to main menu?')) {
@@ -1434,7 +1524,7 @@ export const Game = ({
         timeLeft={timeLeft}
         totalTime={ROUND_SECONDS}
         modeName={instinct.experienceName}
-        abilityLabel={instinct.ability}
+        abilityLabel={activeMode === 'quickTap' ? 'In-app tap drill' : instinct.ability}
         onPause={togglePause}
         onMainMenu={handleQuit}
         isPaused={isPaused}
@@ -1481,6 +1571,26 @@ export const Game = ({
               : sportPack.hudLabels.drillProtocol}
           </div>
         </div>
+        {activeMode === 'quickTap' && (
+          <div className="absolute inset-x-3 top-12 z-[14] pointer-events-none sm:top-14">
+            <div
+              data-testid="quick-tap-task"
+              className="mx-auto max-w-md rounded-xl px-3 py-2 text-center"
+              style={{
+                backgroundColor: 'rgba(4, 12, 12, 0.82)',
+                border: `1px solid ${theme.targetColor}88`,
+                color: theme.textColor,
+              }}
+            >
+              <p className="text-[11px] font-semibold leading-snug sm:text-xs">{QUICK_TAP_FIELD_INSTRUCTION}</p>
+              {excludedTapNote && (
+                <p className="mt-1 text-[11px] font-semibold" style={{ color: '#fde68a' }} role="status">
+                  {excludedTapNote}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
         <GameplayCueOverlay
           cueIntensity={cueIntensity}
           cueSet={cueSet}
@@ -1713,8 +1823,15 @@ export const Game = ({
               Paused
             </h2>
             <p className="text-sm text-center" style={{ color: `${theme.textColor}CC` }}>
-              Press <kbd className="px-1.5 py-0.5 rounded bg-black/30">P</kbd> to resume quickly.
+              {pauseReason === 'background'
+                ? 'This tab was in the background. The cue on screen was discarded and is not part of the time or accuracy.'
+                : 'Press P to resume quickly.'}
             </p>
+            {pauseReason === 'background' && (
+              <p data-testid="quick-tap-background-pause" className="text-xs text-center" style={{ color: `${theme.textColor}99` }}>
+                Resume on this device to keep the same-phone baseline.
+              </p>
+            )}
             <div className="flex flex-col gap-3 w-full">
               <JungleButton onClick={togglePause} className="w-full py-4 text-lg">
                 Resume

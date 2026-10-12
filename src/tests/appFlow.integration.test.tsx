@@ -315,6 +315,9 @@ describe('App integration flow', () => {
       await advance(900);
 
       const [target] = screen.getAllByRole('button', { name: 'Hit target' });
+      if (modeName === 'Cobra Strike') {
+        await advance(120);
+      }
       fireEvent.click(target);
       await advance(150);
 

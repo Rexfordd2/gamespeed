@@ -258,6 +258,7 @@ export const StatsScreen = ({ onClose, stats, playerName }: StatsScreenProps) =>
                   </p>
                   <p className="text-xs font-semibold tabular-nums" style={{ color: theme.targetColor }}>
                     {round.score} / {round.accuracy}%
+                    {round.medianReactionTimeMs !== undefined ? ` · ${round.medianReactionTimeMs} ms` : ''}
                   </p>
                 </div>
               ))
