@@ -91,6 +91,30 @@ export function buildGameSpeedRoundReport(input: {
   };
 }
 
+export const HOUZE_RECOVERY_MAX_ATTEMPTS = 5;
+
+export type DueDelivery = {
+  userId: string;
+  clientRoundId: string;
+  attemptCount: number;
+  status: string;
+  nextAttemptAt: string;
+};
+
+/** Unattended recovery may retry a saved round only inside this bound. */
+export function deliveryIsDue(row: DueDelivery, now: Date, maxAttempts = HOUZE_RECOVERY_MAX_ATTEMPTS): boolean {
+  const retryable = row.status === 'pending' || row.status === 'failed' || row.status === 'sending';
+  return retryable
+    && row.attemptCount < maxAttempts
+    && Number.isFinite(Date.parse(row.nextAttemptAt))
+    && Date.parse(row.nextAttemptAt) <= now.getTime();
+}
+
+export function nextRecoverySchedule(attemptCount: number, now: Date): string {
+  const minutes = Math.min(64, 2 ** Math.max(0, attemptCount - 1));
+  return new Date(now.getTime() + minutes * 60_000).toISOString();
+}
+
 /** A receiver acknowledgement is not attachment until Houze accepted the athlete link. */
 export function interpretHouzeDelivery(status: number | null, acknowledgement?: unknown): HouzeDeliveryRead {
   const receipt = acknowledgement as { athleteId?: unknown; status?: unknown; identityStatus?: unknown } | null;

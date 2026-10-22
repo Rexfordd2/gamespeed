@@ -1,9 +1,14 @@
 import { createHmac } from 'node:crypto';
 import {
   buildGameSpeedRoundReport,
+  deliveryIsDue,
+  HOUZE_RECOVERY_MAX_ATTEMPTS,
   interpretHouzeDelivery,
+  nextRecoverySchedule,
   sourceEnvironmentFromDeploy,
+  type DueDelivery,
   type GameSpeedRoundDelivery,
+  type HouzeDeliveryRead,
 } from '../lib/athleteHouzeReport';
 
 export type HandlerResult = { status: number; body: Record<string, unknown> };
@@ -47,7 +52,13 @@ export type HouzeDeps = {
     status: 'accepted' | 'unattached' | 'failed';
     receiverStatus: number | null;
     accessToken: string;
+    attemptCount?: number;
+    nextAttemptAt?: string;
   }) => Promise<void>;
+  listDueDeliveries?: (limit: number, now: Date) => Promise<DueDelivery[]>;
+  loadRoundForUser?: (userId: string, clientRoundId: string) => Promise<RoundRow | null>;
+  loadEnrollmentForUser?: (userId: string) => Promise<{ linkedAt: string; backfillConsented: boolean } | null>;
+  claimDelivery?: (row: DueDelivery, now: Date) => Promise<boolean>;
   recordEnrollment: (input: {
     userId: string;
     status: 'linked';
@@ -210,6 +221,7 @@ export async function handleGameSpeedReport(
     receiverStatus = null;
   }
   const read = interpretHouzeDelivery(receiverStatus, acknowledgement);
+  const now = deps.now?.() ?? new Date();
   try {
     await deps.recordDelivery({
     userId: user.id,
@@ -217,9 +229,150 @@ export async function handleGameSpeedReport(
     status: read.attachedToHouzeAthlete ? 'accepted' : read.reason === 'identity_unresolved' ? 'unattached' : 'failed',
     receiverStatus,
     accessToken: token,
+    ...(read.attachedToHouzeAthlete || read.reason === 'identity_unresolved'
+      ? {}
+      : { nextAttemptAt: nextRecoverySchedule(1, now) }),
     });
   } catch {
     return { status: 503, body: { ...read, deliveryRecorded: false, reason: 'delivery_receipt_unstored' } };
   }
   return { status: read.attachedToHouzeAthlete ? 200 : 502, body: read };
+}
+
+const PERMANENT_RECEIVER = new Set([400, 401, 403, 413]);
+
+function recoveryReceipt(read: HouzeDeliveryRead, attemptCount: number, now: Date) {
+  if (read.attachedToHouzeAthlete) {
+    return { status: 'accepted' as const, attemptCount, nextAttemptAt: undefined, receiverStatus: read.receiverStatus };
+  }
+  if (read.reason === 'identity_unresolved' || read.reason === 'historical_sharing_not_consented') {
+    return { status: 'unattached' as const, attemptCount, nextAttemptAt: undefined, receiverStatus: read.receiverStatus };
+  }
+  const permanent = read.receiverStatus != null && PERMANENT_RECEIVER.has(read.receiverStatus);
+  const exhausted = permanent || attemptCount >= HOUZE_RECOVERY_MAX_ATTEMPTS;
+  return {
+    status: 'failed' as const,
+    attemptCount: exhausted ? HOUZE_RECOVERY_MAX_ATTEMPTS : attemptCount,
+    nextAttemptAt: exhausted ? undefined : nextRecoverySchedule(attemptCount, now),
+    receiverStatus: read.receiverStatus,
+  };
+}
+
+/**
+ * Sends due saved rounds without a person sitting on the sharing panel.
+ * The source round stays. Attempts stop after the bound, including an expired
+ * in-flight lease. Historical rounds stay unattached unless backfill was consented.
+ */
+export async function recoverDueGameSpeedDeliveries(
+  deps: HouzeDeps,
+  options?: { limit?: number },
+): Promise<{ attempted: number; results: HouzeDeliveryRead[] }> {
+  const now = deps.now?.() ?? new Date();
+  const due = (await deps.listDueDeliveries?.(options?.limit ?? 10, now) ?? []).filter((row) => deliveryIsDue(row, now));
+  const results: HouzeDeliveryRead[] = [];
+  if (!deps.env.reportUrl || !deps.env.hmacSecret || deps.env.storageReady === false) {
+    return { attempted: 0, results };
+  }
+  for (const row of due) {
+    const claimed = await deps.claimDelivery?.(row, now);
+    if (!claimed) continue;
+    const attemptCount = row.attemptCount + 1;
+    const enrollment = await deps.loadEnrollmentForUser?.(row.userId) ?? null;
+    const round = await deps.loadRoundForUser?.(row.userId, row.clientRoundId) ?? null;
+    if (!enrollment || !round) {
+      const read: HouzeDeliveryRead = {
+        retained: true,
+        attachedToHouzeAthlete: false,
+        receiverStatus: null,
+        reason: 'not_linked',
+      };
+      await deps.recordDelivery({
+        userId: row.userId,
+        clientRoundId: row.clientRoundId,
+        status: 'unattached',
+        receiverStatus: null,
+        accessToken: '',
+        attemptCount,
+      });
+      results.push(read);
+      continue;
+    }
+    const occurredAt = Date.parse(round.round_ts);
+    const linkedAt = Date.parse(enrollment.linkedAt);
+    if (!enrollment.backfillConsented && (!Number.isFinite(occurredAt) || !Number.isFinite(linkedAt) || occurredAt < linkedAt)) {
+      const read: HouzeDeliveryRead = {
+        retained: true,
+        attachedToHouzeAthlete: false,
+        receiverStatus: null,
+        reason: 'historical_sharing_not_consented',
+      };
+      const receipt = recoveryReceipt(read, attemptCount, now);
+      await deps.recordDelivery({
+        userId: row.userId,
+        clientRoundId: row.clientRoundId,
+        status: receipt.status,
+        receiverStatus: null,
+        accessToken: '',
+        attemptCount: receipt.attemptCount,
+        nextAttemptAt: receipt.nextAttemptAt,
+      });
+      results.push(read);
+      continue;
+    }
+    const delivery: GameSpeedRoundDelivery = {
+      clientRoundId: round.client_round_id,
+      occurredAt: round.round_ts,
+      mode: round.mode,
+      sport: round.sport ?? 'unspecified',
+      score: round.score,
+      misses: round.misses,
+      accuracy: round.accuracy,
+      bestStreak: round.best_streak,
+      medianReactionTimeMs: round.median_reaction_time_ms,
+      protocolVersion: round.meta?.metricsVersion ?? 1,
+    };
+    const reportedAt = now.toISOString();
+    const report = buildGameSpeedRoundReport({
+      round: delivery,
+      externalAthleteId: row.userId,
+      environment: sourceEnvironmentFromDeploy(deps.env.vercelEnv, deps.env.nodeEnv),
+      reportedAt,
+    });
+    const rawBody = JSON.stringify(report);
+    const timestamp = Math.floor(now.getTime() / 1000);
+    let receiverStatus: number | null = null;
+    let acknowledgement: unknown = null;
+    try {
+      const response = await (deps.fetchImpl ?? fetch)(deps.env.reportUrl, {
+        method: 'POST',
+        headers: {
+          accept: 'application/json',
+          'content-type': 'application/json',
+          'x-ah-timestamp': String(timestamp),
+          'x-ah-signature': `sha256=${sign(rawBody, timestamp, deps.env.hmacSecret)}`,
+          'x-ah-source': 'gamespeed',
+        },
+        body: rawBody,
+        signal: AbortSignal.timeout(10_000),
+        redirect: 'error',
+      });
+      receiverStatus = response.status;
+      acknowledgement = await response.json().catch(() => null);
+    } catch {
+      receiverStatus = null;
+    }
+    const read = interpretHouzeDelivery(receiverStatus, acknowledgement);
+    const receipt = recoveryReceipt(read, attemptCount, now);
+    await deps.recordDelivery({
+      userId: row.userId,
+      clientRoundId: row.clientRoundId,
+      status: receipt.status,
+      receiverStatus: receipt.receiverStatus,
+      accessToken: '',
+      attemptCount: receipt.attemptCount,
+      nextAttemptAt: receipt.nextAttemptAt,
+    });
+    results.push(read);
+  }
+  return { attempted: results.length, results };
 }

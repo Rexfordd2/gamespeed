@@ -22,8 +22,10 @@ drop policy if exists "Users update own Houze enrollment" on public.athlete_houz
 create table if not exists public.athlete_houze_round_deliveries (
   user_id uuid not null references auth.users (id) on delete cascade,
   client_round_id text not null,
-  status text not null check (status in ('pending', 'accepted', 'unattached', 'failed')),
+  status text not null check (status in ('pending', 'sending', 'accepted', 'unattached', 'failed')),
   receiver_status integer,
+  attempt_count integer not null default 0 check (attempt_count >= 0 and attempt_count <= 8),
+  next_attempt_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   primary key (user_id, client_round_id)
 );
@@ -62,6 +64,21 @@ begin
   return new;
 end;
 $$;
+-- Columns added after the first draft stay present when this file is reapplied.
+alter table public.athlete_houze_round_deliveries
+  add column if not exists attempt_count integer not null default 0,
+  add column if not exists next_attempt_at timestamptz not null default now();
+alter table public.athlete_houze_round_deliveries
+  drop constraint if exists athlete_houze_round_deliveries_status_check;
+alter table public.athlete_houze_round_deliveries
+  add constraint athlete_houze_round_deliveries_status_check
+  check (status in ('pending', 'sending', 'accepted', 'unattached', 'failed'));
+alter table public.athlete_houze_round_deliveries
+  drop constraint if exists athlete_houze_round_deliveries_attempt_count_check;
+alter table public.athlete_houze_round_deliveries
+  add constraint athlete_houze_round_deliveries_attempt_count_check
+  check (attempt_count >= 0 and attempt_count <= 8);
+
 revoke all on function public.queue_houze_round() from public, anon, authenticated;
 drop trigger if exists queue_houze_round on public.user_rounds;
 create trigger queue_houze_round after insert on public.user_rounds

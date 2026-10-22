@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { deliveryIsDue, type DueDelivery } from '../lib/athleteHouzeReport';
 import type { HouzeDeps } from './athleteHouzeHandlers';
 
 // The caller JWT is used only for authentication and ownership-scoped reads.
@@ -57,13 +58,66 @@ export function houzeDependencies(): HouzeDeps {
       }, { onConflict: 'user_id' });
       return !error;
     },
-    recordDelivery: async ({ userId, clientRoundId, status, receiverStatus }) => {
+    recordDelivery: async ({ userId, clientRoundId, status, receiverStatus, attemptCount, nextAttemptAt }) => {
       if (!server) throw new Error('delivery_storage_unavailable');
-      const { error } = await server.from('athlete_houze_round_deliveries').upsert({
+      const row: Record<string, unknown> = {
         user_id: userId, client_round_id: clientRoundId, status,
         receiver_status: receiverStatus, updated_at: new Date().toISOString(),
-      }, { onConflict: 'user_id,client_round_id' });
+      };
+      if (attemptCount != null) row.attempt_count = attemptCount;
+      if (nextAttemptAt) row.next_attempt_at = nextAttemptAt;
+      const { error } = await server.from('athlete_houze_round_deliveries').upsert(
+        row, { onConflict: 'user_id,client_round_id' });
       if (error) throw new Error('delivery_storage_failed');
+    },
+    listDueDeliveries: async (limit, now) => {
+      if (!server) return [];
+      const { data, error } = await server.from('athlete_houze_round_deliveries')
+        .select('user_id, client_round_id, attempt_count, status, next_attempt_at')
+        .in('status', ['pending', 'failed', 'sending'])
+        .order('next_attempt_at', { ascending: true })
+        .limit(Math.max(limit * 3, limit));
+      if (error) throw new Error('delivery_queue_read_failed');
+      return (data ?? []).map((row): DueDelivery => ({
+        userId: row.user_id,
+        clientRoundId: row.client_round_id,
+        attemptCount: row.attempt_count ?? 0,
+        status: row.status,
+        nextAttemptAt: row.next_attempt_at,
+      })).filter((row) => deliveryIsDue(row, now)).slice(0, limit);
+    },
+    loadRoundForUser: async (userId, roundId) => {
+      if (!server) return null;
+      const { data, error } = await server.from('user_rounds')
+        .select('client_round_id, round_ts, mode, sport, score, misses, accuracy, best_streak, median_reaction_time_ms, meta')
+        .eq('user_id', userId).eq('client_round_id', roundId).maybeSingle();
+      if (error) throw new Error('round_read_failed');
+      return data;
+    },
+    loadEnrollmentForUser: async (userId) => {
+      if (!server) return null;
+      const { data, error } = await server.from('athlete_houze_enrollments')
+        .select('status, linked_at, backfill_consented').eq('user_id', userId).maybeSingle();
+      if (error) throw new Error('enrollment_read_failed');
+      return data?.status === 'linked'
+        ? { linkedAt: data.linked_at, backfillConsented: data.backfill_consented === true } : null;
+    },
+    claimDelivery: async (row, now) => {
+      if (!server) return false;
+      const lease = new Date(now.getTime() + 2 * 60_000).toISOString();
+      const { data, error } = await server.from('athlete_houze_round_deliveries')
+        .update({
+          status: 'sending',
+          attempt_count: row.attemptCount + 1,
+          next_attempt_at: lease,
+          updated_at: now.toISOString(),
+        })
+        .eq('user_id', row.userId)
+        .eq('client_round_id', row.clientRoundId)
+        .eq('attempt_count', row.attemptCount)
+        .in('status', ['pending', 'failed', 'sending'])
+        .select('client_round_id');
+      return !error && (data?.length ?? 0) === 1;
     },
   };
 }

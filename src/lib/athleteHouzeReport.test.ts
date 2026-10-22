@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { buildGameSpeedRoundReport, interpretHouzeDelivery, REACTION_LIMITATION } from './athleteHouzeReport';
-import { handleGameSpeedLink, handleGameSpeedReport, type HouzeDeps } from '../server/athleteHouzeHandlers';
+import { buildGameSpeedRoundReport, deliveryIsDue, interpretHouzeDelivery, REACTION_LIMITATION } from './athleteHouzeReport';
+import { handleGameSpeedLink, handleGameSpeedReport, recoverDueGameSpeedDeliveries, type HouzeDeps } from '../server/athleteHouzeHandlers';
 
 const USER = '33333333-3333-4333-8333-333333333333';
 const ROUND = '44444444-4444-4444-8444-444444444444';
@@ -157,6 +157,80 @@ describe('GameSpeed Houze delivery', () => {
       deps({ recordEnrollment: async () => false }),
     );
     expect(result.body).toMatchObject({ linked: false, houzeAccepted: true, enrollmentStored: false });
+  });
+
+  it('retries a saved round after the receiver recovers and then stops at the bound', async () => {
+    const fetchImpl = vi.fn()
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ status: 'accepted', athleteId: USER }), { status: 201 }));
+    const receipts: Array<Record<string, unknown>> = [];
+    const due = {
+      userId: USER,
+      clientRoundId: ROUND,
+      attemptCount: 0,
+      status: 'pending',
+      nextAttemptAt: '2026-10-22T18:00:00.000Z',
+    };
+    const recoveryDeps = deps({
+      fetchImpl,
+      listDueDeliveries: async () => [due],
+      loadRoundForUser: async () => ({
+        client_round_id: ROUND,
+        round_ts: round.occurredAt,
+        mode: round.mode,
+        sport: round.sport,
+        score: round.score,
+        misses: round.misses,
+        accuracy: round.accuracy,
+        best_streak: round.bestStreak,
+        median_reaction_time_ms: 240,
+        meta: { metricsVersion: 1 },
+      }),
+      loadEnrollmentForUser: async () => ({ linkedAt: '2026-10-22T17:00:00Z', backfillConsented: false }),
+      claimDelivery: async () => true,
+      recordDelivery: async (input) => { receipts.push(input); },
+    });
+    const first = await recoverDueGameSpeedDeliveries(recoveryDeps, { limit: 1 });
+    expect(first.results[0]).toMatchObject({ retained: true, attachedToHouzeAthlete: false });
+    expect(receipts[0]).toMatchObject({ status: 'failed', attemptCount: 1 });
+    due.attemptCount = 4;
+    const second = await recoverDueGameSpeedDeliveries(recoveryDeps, { limit: 1 });
+    expect(second.results[0]?.attachedToHouzeAthlete).toBe(true);
+    expect(receipts[1]).toMatchObject({ status: 'accepted' });
+    expect(deliveryIsDue({ ...due, attemptCount: 5, status: 'failed', nextAttemptAt: '2026-10-22T18:00:00.000Z' }, new Date('2026-10-22T18:00:02.000Z'))).toBe(false);
+  });
+
+  it('does not send a pre-consent round during unattended recovery', async () => {
+    const fetchImpl = vi.fn();
+    const recordDelivery = vi.fn();
+    const result = await recoverDueGameSpeedDeliveries(deps({
+      fetchImpl,
+      recordDelivery,
+      listDueDeliveries: async () => [{
+        userId: USER,
+        clientRoundId: ROUND,
+        attemptCount: 0,
+        status: 'pending',
+        nextAttemptAt: '2026-10-22T18:00:00.000Z',
+      }],
+      loadRoundForUser: async () => ({
+        client_round_id: ROUND,
+        round_ts: round.occurredAt,
+        mode: round.mode,
+        sport: round.sport,
+        score: round.score,
+        misses: round.misses,
+        accuracy: round.accuracy,
+        best_streak: round.bestStreak,
+        median_reaction_time_ms: 240,
+        meta: { metricsVersion: 1 },
+      }),
+      loadEnrollmentForUser: async () => ({ linkedAt: '2026-10-22T19:00:00Z', backfillConsented: false }),
+      claimDelivery: async () => true,
+    }), { limit: 1 });
+    expect(fetchImpl).not.toHaveBeenCalled();
+    expect(result.results[0]?.reason).toBe('historical_sharing_not_consented');
+    expect(recordDelivery).toHaveBeenCalledWith(expect.objectContaining({ status: 'unattached' }));
   });
 
   it('requires explicit consent before redeeming a code', async () => {

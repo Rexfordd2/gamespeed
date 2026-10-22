@@ -22,7 +22,7 @@ This is a candidate on PR #7, not a production certification.
 
 ## Remaining limitations
 
-- Retries are user initiated from the sharing panel. No unattended worker or scheduled recovery is deployed.
+- Unattended recovery is `GET /api/athlete-houze/recover`, authorized by `HOUZE_RECOVERY_SECRET` or `CRON_SECRET`, bounded to five attempts. The sharing panel remains a user-initiated retry. A saved round is not deleted when Houze is down.
 - Stopping sharing blocks subsequent sender attempts. An in-flight delivery may finish. Previously shared Houze records remain; the user can revoke the receiver link from Houze.
 - Houze pairing race is corrected in candidate `34b36affc4d0b2327c9225b58de557a7af01cbb7`: conditional code claim precedes identity linking. Thirteen unit tests and two isolated PostgreSQL concurrency tests passed. Hosted acceptance on that exact candidate is still required.
 - If Houze accepts a pairing but the local enrollment write fails, the user needs a new pairing code. This is reported, not shown as connected.
