@@ -24,7 +24,7 @@ This is a candidate on PR #7, not a production certification.
 
 - Retries are user initiated from the sharing panel. No unattended worker or scheduled recovery is deployed.
 - Stopping sharing blocks subsequent sender attempts. An in-flight delivery may finish. Previously shared Houze records remain; the user can revoke the receiver link from Houze.
-- Houze's inspected GameSpeed/Vanta pairing implementation reads an unused code, links an identity, then consumes the code in separate statements. Concurrent redemption requires an atomic claim/transaction test and correction before production certification.
+- Houze pairing race is corrected in candidate `34b36affc4d0b2327c9225b58de557a7af01cbb7`: conditional code claim precedes identity linking. Thirteen unit tests and two isolated PostgreSQL concurrency tests passed. Hosted acceptance on that exact candidate is still required.
 - If Houze accepts a pairing but the local enrollment write fails, the user needs a new pairing code. This is reported, not shown as connected.
 - Physical-device camera acceptance, Vanta arcade, all-sport intelligence behavior, and deployed three-source certification are separate release gates.
 
@@ -33,3 +33,7 @@ This is a candidate on PR #7, not a production certification.
 - Production Houze Neon project `spring-king-25884763`, branch `br-wispy-mud-adomcgko`, database `neondb`: 39 migration records, max ID 48. IDs are not a migration count. No production migration was applied in this review.
 - Secrets source is a Sites-managed repository for project `appgprj_6a91af84ef808191a28ec15d3792b328`, inspected at `e28ac496fe02e9cf9e487c3e5ccea802d05d0281`. It is accessible with Sites' source workflow; absence from GitHub is not absence of source.
 - Secrets has configured production coaching/auth entries and 40 local coaching/assessment/rate-limit checks passed. That is not live-model acceptance. The inspected Houze contract has no Secrets source/event registration and Secrets has no Houze enrollment/outbox tables.
+
+## Browser follow-up
+
+The deployed GameSpeed candidate at `8b3fa69` completed a Quick Tap round, recorded a hit, and held the round timer during pause. Targets still aged during pause; the follow-up shifts target and spawn timestamps on resume. A long-pause regression verifies the target remains hittable. Quick Tap also incorrectly checked off the baseline benchmark; checklist completion now derives from an actual Reaction Benchmark round. Results display timing spread and best streak instead of ambiguous Vision/Control percentages. These follow-up changes require their own Preview acceptance.

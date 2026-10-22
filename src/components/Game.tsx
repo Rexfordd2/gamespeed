@@ -165,6 +165,7 @@ export const Game = ({
   const streakRef = useRef(0);
   const bestStreakRef = useRef(0);
   const isPausedRef = useRef(false);
+  const pausedAtRef = useRef<number | null>(null);
   const gameOverFiredRef = useRef(false);
   const roundEndsAtRef = useRef(Date.now() + ROUND_MS);
   const remainingMsRef = useRef(ROUND_MS);
@@ -489,6 +490,7 @@ export const Game = ({
     streakRef.current = 0;
     bestStreakRef.current = 0;
     isPausedRef.current = false;
+    pausedAtRef.current = null;
     gameOverFiredRef.current = false;
     attemptsRef.current = 0;
     lateDecisionsRef.current = 0;
@@ -1174,6 +1176,7 @@ export const Game = ({
       isPausedRef.current = nextPaused;
 
       if (nextPaused) {
+        pausedAtRef.current = Date.now();
         const trackedTargetId = holdTrackingRef.current.targetId;
         if (trackedTargetId) {
           clearHoldVisual(trackedTargetId);
@@ -1185,6 +1188,19 @@ export const Game = ({
         }
         setTimeLeft(Math.ceil(remainingMsRef.current / 1000));
       } else {
+        const pausedMs = Math.max(0, Date.now() - (pausedAtRef.current ?? Date.now()));
+        pausedAtRef.current = null;
+        // Target lifetimes and reaction measurements use the same game clock
+        // as the round. Time spent in the pause overlay must not count.
+        targetsRef.current = targetsRef.current.map(target => ({
+          ...target,
+          createdAt: target.createdAt + pausedMs,
+        }));
+        setTargets(targetsRef.current);
+        nextSpawnAtRef.current += pausedMs;
+        for (const id of Object.keys(holdBreakUntilRef.current)) {
+          holdBreakUntilRef.current[id] += pausedMs;
+        }
         roundEndsAtRef.current = Date.now() + remainingMsRef.current;
         if (isSequenceMode && sequencePhaseRef.current !== 'input') {
           sequencePhaseEndsAtRef.current = Date.now() + sequencePhaseRemainingMsRef.current;
