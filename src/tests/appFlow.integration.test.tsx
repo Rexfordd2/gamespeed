@@ -525,6 +525,7 @@ describe('App integration flow', () => {
 
   it('supports replay and returning to main menu from results', async () => {
     localStorage.removeItem('gamespeed_stats_v1');
+    localStorage.removeItem('gamespeed_first_run_complete_v1');
     renderApp();
     await startMode('Cobra Strike');
 
