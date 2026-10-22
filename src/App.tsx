@@ -33,6 +33,7 @@ import {
   syncRoundToCloud,
   syncRoundsToCloud,
 } from './utils/roundSync';
+import { deliverSavedRound } from './lib/athleteHouzeClient';
 import { useAuth } from './context/AuthContext';
 import { RoundProgressDelta, getDailyStreak, getRoundProgressDelta } from './utils/progression';
 import { trackConversionEvent } from './lib/analytics';
@@ -302,6 +303,9 @@ export const App = () => {
           setCloudSyncStatus('failed');
         } else if (result === 'synced') {
           setCloudSyncStatus('synced');
+          if (storedRound.clientRoundId) {
+            void deliverSavedRound(storedRound.clientRoundId);
+          }
         }
       });
     } else {

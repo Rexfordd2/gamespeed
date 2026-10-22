@@ -1,6 +1,7 @@
 import { FormEvent, useMemo, useState } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
+import { HouzeSharePanel } from './HouzeSharePanel';
 
 const getSuggestedNameFromEmail = (email: string | null | undefined) => {
   if (!email) {
@@ -206,6 +207,8 @@ export const AuthPanel = () => {
           Loading your profile...
         </p>
       )}
+
+      {user && profile && <HouzeSharePanel />}
 
       {user && profile && (
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5">
