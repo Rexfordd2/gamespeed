@@ -39,15 +39,79 @@ function deps(overrides: Partial<HouzeDeps> = {}): HouzeDeps {
       median_reaction_time_ms: 240,
       meta: { metricsVersion: 1 },
     }),
-    loadEnrollment: async () => 'linked',
+    loadEnrollment: async () => ({ linkedAt: '2026-10-22T17:00:00Z', backfillConsented: false }),
     recordDelivery: async () => undefined,
     recordEnrollment: async () => true,
-    fetchImpl: vi.fn(async () => new Response('{"status":"accepted"}', { status: 201 })),
+    fetchImpl: vi.fn(async () => new Response(JSON.stringify({status: 'accepted', athleteId: USER}), { status: 201 })),
     ...overrides,
   };
 }
 
 describe('GameSpeed Houze delivery', () => {
+  it('refuses an unlinked account without contacting Houze', async () => {
+    const fetchImpl = vi.fn();
+    const result = await handleGameSpeedReport(
+      { authorization: 'Bearer token', body: { clientRoundId: ROUND } },
+      deps({ loadEnrollment: async () => null, fetchImpl }),
+    );
+    expect(result.status).toBe(409);
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it('does not backfill pre-consent activity by default', async () => {
+    const fetchImpl = vi.fn();
+    const result = await handleGameSpeedReport(
+      { authorization: 'Bearer token', body: { clientRoundId: ROUND } },
+      deps({ loadEnrollment: async () => ({ linkedAt: '2026-10-22T19:00:00Z', backfillConsented: false }), fetchImpl }),
+    );
+    expect(result.body.reason).toBe('historical_sharing_not_consented');
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it('permits historical delivery only when backfill was consented', async () => {
+    const result = await handleGameSpeedReport(
+      { authorization: 'Bearer token', body: { clientRoundId: ROUND } },
+      deps({ loadEnrollment: async () => ({ linkedAt: '2026-10-22T19:00:00Z', backfillConsented: true }) }),
+    );
+    expect(result.body.attachedToHouzeAthlete).toBe(true);
+  });
+
+  it('does not consume a pairing code when trusted storage is unavailable', async () => {
+    const fetchImpl = vi.fn();
+    const result = await handleGameSpeedLink(
+      { authorization: 'Bearer token', body: { connectCode: 'AHGS-ABCD-EFGH', athleteConsent: true } },
+      deps({ env: { reportUrl: 'https://houze.test/api/app-reports', hmacSecret: 'test', storageReady: false }, fetchImpl }),
+    );
+    expect(result.status).toBe(503);
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it('returns a recoverable link failure on receiver timeout', async () => {
+    const result = await handleGameSpeedLink(
+      { authorization: 'Bearer token', body: { connectCode: 'AHGS-ABCD-EFGH', athleteConsent: true } },
+      deps({ fetchImpl: vi.fn().mockRejectedValue(new Error('timeout')) }),
+    );
+    expect(result.body).toMatchObject({ linked: false, error: 'receiver_unavailable' });
+  });
+
+  it('retains a round and records receiver failure', async () => {
+    const recordDelivery = vi.fn();
+    const result = await handleGameSpeedReport(
+      { authorization: 'Bearer token', body: { clientRoundId: ROUND } },
+      deps({ recordDelivery, fetchImpl: vi.fn().mockRejectedValue(new Error('offline')) }),
+    );
+    expect(result.body).toMatchObject({ retained: true, attachedToHouzeAthlete: false });
+    expect(recordDelivery).toHaveBeenCalledWith(expect.objectContaining({ userId: USER, clientRoundId: ROUND, status: 'failed' }));
+  });
+
+  it('reports when Houze accepted delivery but the receipt was not stored', async () => {
+    const result = await handleGameSpeedReport(
+      { authorization: 'Bearer token', body: { clientRoundId: ROUND } },
+      deps({ recordDelivery: vi.fn().mockRejectedValue(new Error('database unavailable')) }),
+    );
+    expect(result.status).toBe(503);
+    expect(result.body).toMatchObject({ retained: true, attachedToHouzeAthlete: true, deliveryRecorded: false });
+  });
   it('describes reaction time as an in-app measurement and keys the event by the round', () => {
     const report = buildGameSpeedRoundReport({
       round,
@@ -69,7 +133,13 @@ describe('GameSpeed Houze delivery', () => {
       attachedToHouzeAthlete: false,
       reason: 'receiver_unavailable',
     });
-    expect(interpretHouzeDelivery(201).attachedToHouzeAthlete).toBe(true);
+    expect(interpretHouzeDelivery(201, { status: 'accepted', athleteId: USER }).attachedToHouzeAthlete).toBe(true);
+  });
+
+  it('does not mistake a duplicate held report or malformed receipt for attachment', () => {
+    expect(interpretHouzeDelivery(200, {status: 'duplicated', athleteId: null}).attachedToHouzeAthlete).toBe(false);
+    expect(interpretHouzeDelivery(201, {}).attachedToHouzeAthlete).toBe(false);
+    expect(interpretHouzeDelivery(200, {status: 'duplicated', athleteId: USER}).attachedToHouzeAthlete).toBe(true);
   });
 
   it('keeps the round when sharing is not configured', async () => {

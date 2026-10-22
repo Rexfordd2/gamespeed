@@ -92,8 +92,11 @@ export function buildGameSpeedRoundReport(input: {
 }
 
 /** A receiver acknowledgement is not attachment until Houze accepted the athlete link. */
-export function interpretHouzeDelivery(status: number | null): HouzeDeliveryRead {
-  if (status === 200 || status === 201) {
+export function interpretHouzeDelivery(status: number | null, acknowledgement?: unknown): HouzeDeliveryRead {
+  const receipt = acknowledgement as { athleteId?: unknown; status?: unknown; identityStatus?: unknown } | null;
+  const attached = receipt && typeof receipt.athleteId === 'string' && receipt.athleteId.length > 0
+    && (receipt.status === 'accepted' || receipt.status === 'duplicated');
+  if ((status === 200 || status === 201) && attached) {
     return {
       retained: true,
       attachedToHouzeAthlete: true,
@@ -101,11 +104,11 @@ export function interpretHouzeDelivery(status: number | null): HouzeDeliveryRead
       reason: status === 200 ? 'duplicate' : 'accepted',
     };
   }
-  if (status === 202) {
+  if (status === 202 || ((status === 200 || status === 201) && receipt?.athleteId === null)) {
     return {
       retained: true,
       attachedToHouzeAthlete: false,
-      receiverStatus: 202,
+      receiverStatus: status,
       reason: 'identity_unresolved',
     };
   }

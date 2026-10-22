@@ -208,7 +208,7 @@ export const AuthPanel = () => {
         </p>
       )}
 
-      {user && profile && <HouzeSharePanel />}
+      {user && profile && <HouzeSharePanel key={user.id} />}
 
       {user && profile && (
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5">

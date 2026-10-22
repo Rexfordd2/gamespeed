@@ -1,0 +1,35 @@
+import { PGlite } from '@electric-sql/pglite';
+import { readFile } from 'node:fs/promises';
+import assert from 'node:assert/strict';
+const db = new PGlite();
+await db.exec(`create role anon; create role authenticated; create role service_role bypassrls;
+create schema auth; create table auth.users(id uuid primary key);
+create table public.user_rounds(user_id uuid, client_round_id text, round_ts timestamptz);
+grant insert on public.user_rounds to service_role;
+create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
+grant usage on schema public, auth to anon, authenticated, service_role;
+grant execute on function auth.uid() to authenticated;
+insert into auth.users values ('11111111-1111-4111-8111-111111111111'), ('22222222-2222-4222-8222-222222222222');`);
+const migration = await readFile(new URL('../supabase/athlete_houze_enrollments.sql', import.meta.url),'utf8');
+await db.exec(migration);
+await db.exec(migration);
+await db.exec(`set role service_role;
+insert into public.athlete_houze_enrollments(user_id,status) values ('11111111-1111-4111-8111-111111111111','linked'),('22222222-2222-4222-8222-222222222222','linked');
+insert into public.athlete_houze_round_deliveries(user_id,client_round_id,status) values ('11111111-1111-4111-8111-111111111111','round-one','accepted'),('22222222-2222-4222-8222-222222222222','round-two','accepted');
+insert into public.user_rounds values ('11111111-1111-4111-8111-111111111111','queued-round',now() + interval '1 second');
+reset role;
+set role authenticated;
+select set_config('request.jwt.claim.sub','11111111-1111-4111-8111-111111111111',false);`);
+for (const table of ['athlete_houze_enrollments','athlete_houze_round_deliveries']) {
+ const {rows} = await db.query(`select user_id from public.${table}`);
+ assert.equal(rows.length,table === 'athlete_houze_round_deliveries' ? 2 : 1); assert.equal(rows[0].user_id,'11111111-1111-4111-8111-111111111111');
+ await assert.rejects(db.exec(`update public.${table} set updated_at = now()`), /permission denied/);
+ await assert.rejects(db.exec(`delete from public.${table}`), /permission denied/);
+}
+await assert.rejects(db.exec(`insert into public.athlete_houze_enrollments(user_id,status) values ('11111111-1111-4111-8111-111111111111','linked')`), /permission denied/);
+const queued = await db.query("select status from public.athlete_houze_round_deliveries where client_round_id='queued-round'");
+assert.equal(queued.rows[0].status,'pending');
+await db.exec('reset role; set role anon');
+await assert.rejects(db.exec('select * from public.athlete_houze_enrollments'), /permission denied/);
+await db.close();
+console.log('PASS: migration rerun; server writes; owner-only reads; client forgery/update/delete denied; anonymous reads denied.');

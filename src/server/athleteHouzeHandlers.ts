@@ -17,6 +17,7 @@ export type HouzeServerEnv = {
   nodeEnv?: string;
   supabaseUrl?: string;
   supabaseKey?: string;
+  storageReady?: boolean;
 };
 
 type AuthUser = { id: string };
@@ -39,7 +40,7 @@ export type HouzeDeps = {
   now?: () => Date;
   authenticate: (accessToken: string) => Promise<AuthUser | null>;
   loadRound: (userId: string, clientRoundId: string, accessToken: string) => Promise<RoundRow | null>;
-  loadEnrollment: (userId: string, accessToken: string) => Promise<'linked' | 'missing'>;
+  loadEnrollment: (userId: string, accessToken: string) => Promise<{ linkedAt: string; backfillConsented: boolean } | null>;
   recordDelivery: (input: {
     userId: string;
     clientRoundId: string;
@@ -51,6 +52,7 @@ export type HouzeDeps = {
     userId: string;
     status: 'linked';
     accessToken: string;
+    backfillConsented: boolean;
   }) => Promise<boolean>;
 };
 
@@ -83,7 +85,7 @@ export async function handleGameSpeedLink(
   }
   const user = await deps.authenticate(token);
   if (!user) return { status: 401, body: { linked: false, error: 'sign_in_required' } };
-  if (!deps.env.reportUrl || !deps.env.hmacSecret) {
+  if (!deps.env.reportUrl || !deps.env.hmacSecret || deps.env.storageReady === false) {
     return { status: 503, body: { linked: false, error: 'sharing_not_configured' } };
   }
 
@@ -94,7 +96,9 @@ export async function handleGameSpeedLink(
     backfillConsented: body.backfillConsented === true,
   });
   const timestamp = Math.floor((deps.now?.() ?? new Date()).getTime() / 1000);
-  const response = await (deps.fetchImpl ?? fetch)(linkEndpoint(deps.env.reportUrl), {
+  let response: Response;
+  try {
+    response = await (deps.fetchImpl ?? fetch)(linkEndpoint(deps.env.reportUrl), {
     method: 'POST',
     headers: {
       accept: 'application/json',
@@ -104,11 +108,16 @@ export async function handleGameSpeedLink(
       'x-ah-source': 'gamespeed',
     },
     body: rawBody,
-  });
+    signal: AbortSignal.timeout(10_000),
+    redirect: 'error',
+    });
+  } catch {
+    return { status: 502, body: { linked: false, error: 'receiver_unavailable' } };
+  }
   if (!response.ok) {
     return { status: response.status, body: { linked: false, error: 'link_refused' } };
   }
-  const stored = await deps.recordEnrollment({ userId: user.id, status: 'linked', accessToken: token });
+  const stored = await deps.recordEnrollment({ userId: user.id, status: 'linked', accessToken: token, backfillConsented: body.backfillConsented === true });
   if (!stored) {
     return {
       status: 502,
@@ -143,12 +152,19 @@ export async function handleGameSpeedReport(
   if (!round) {
     return { status: 404, body: { retained: true, attachedToHouzeAthlete: false, reason: 'round_not_saved' } };
   }
-  if (!deps.env.reportUrl || !deps.env.hmacSecret) {
+  if (!deps.env.reportUrl || !deps.env.hmacSecret || deps.env.storageReady === false) {
     return { status: 503, body: { retained: true, attachedToHouzeAthlete: false, reason: 'sharing_not_configured' } };
   }
   const enrollment = await deps.loadEnrollment(user.id, token);
-  if (enrollment !== 'linked') {
+  if (!enrollment) {
     return { status: 409, body: { retained: true, attachedToHouzeAthlete: false, reason: 'not_linked' } };
+  }
+  const occurredAt = Date.parse(round.round_ts);
+  const linkedAt = Date.parse(enrollment.linkedAt);
+  if (!Number.isFinite(occurredAt) || !Number.isFinite(linkedAt) ||
+      (!enrollment.backfillConsented && occurredAt < linkedAt)) {
+    await deps.recordDelivery({ userId: user.id, clientRoundId, status: 'unattached', receiverStatus: null, accessToken: token });
+    return { status: 409, body: { retained: true, attachedToHouzeAthlete: false, reason: 'historical_sharing_not_consented' } };
   }
 
   const delivery: GameSpeedRoundDelivery = {
@@ -173,6 +189,7 @@ export async function handleGameSpeedReport(
   const rawBody = JSON.stringify(report);
   const timestamp = Math.floor(Date.parse(reportedAt) / 1000);
   let receiverStatus: number | null = null;
+  let acknowledgement: unknown = null;
   try {
     const response = await (deps.fetchImpl ?? fetch)(deps.env.reportUrl, {
       method: 'POST',
@@ -184,18 +201,25 @@ export async function handleGameSpeedReport(
         'x-ah-source': 'gamespeed',
       },
       body: rawBody,
+      signal: AbortSignal.timeout(10_000),
+      redirect: 'error',
     });
     receiverStatus = response.status;
+    acknowledgement = await response.json().catch(() => null);
   } catch {
     receiverStatus = null;
   }
-  const read = interpretHouzeDelivery(receiverStatus);
-  await deps.recordDelivery({
+  const read = interpretHouzeDelivery(receiverStatus, acknowledgement);
+  try {
+    await deps.recordDelivery({
     userId: user.id,
     clientRoundId,
-    status: read.attachedToHouzeAthlete ? 'accepted' : receiverStatus === 202 ? 'unattached' : 'failed',
+    status: read.attachedToHouzeAthlete ? 'accepted' : read.reason === 'identity_unresolved' ? 'unattached' : 'failed',
     receiverStatus,
     accessToken: token,
-  });
+    });
+  } catch {
+    return { status: 503, body: { ...read, deliveryRecorded: false, reason: 'delivery_receipt_unstored' } };
+  }
   return { status: read.attachedToHouzeAthlete ? 200 : 502, body: read };
 }
