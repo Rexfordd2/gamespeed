@@ -39,7 +39,6 @@ interface EndScreenProps {
 }
 
 type ChecklistState = {
-  baselineComplete: boolean;
   recommendedModeComplete: boolean;
   threeSessionsComplete: boolean;
   accountComplete: boolean;
@@ -72,7 +71,6 @@ const getRecommendedMode = (selection: FirstRunSelection | null, accuracy: numbe
 };
 
 const getDefaultChecklist = (totalRoundsCompleted: number, isSignedIn: boolean): ChecklistState => ({
-  baselineComplete: true,
   recommendedModeComplete: false,
   threeSessionsComplete: totalRoundsCompleted >= 3,
   accountComplete: isSignedIn,
@@ -84,7 +82,6 @@ const loadChecklistState = (totalRoundsCompleted: number, isSignedIn: boolean): 
     if (!raw) return getDefaultChecklist(totalRoundsCompleted, isSignedIn);
     const parsed = JSON.parse(raw) as Partial<ChecklistState>;
     return {
-      baselineComplete: true,
       recommendedModeComplete: parsed.recommendedModeComplete ?? false,
       threeSessionsComplete: parsed.threeSessionsComplete ?? totalRoundsCompleted >= 3,
       accountComplete: parsed.accountComplete ?? isSignedIn,
@@ -141,6 +138,7 @@ export const EndScreen = ({
   const totalAttempts = result.totalAttempts ?? result.score + result.misses;
   const accuracy = totalAttempts > 0 ? Math.round((result.score / totalAttempts) * 100) : 0;
   const readiness = result.readinessMetrics;
+  const hasCompletedBaseline = result.mode === 'reactionBenchmark' || stats.rounds.some(round => round.mode === 'reactionBenchmark');
   const recommendedMode = getRecommendedMode(firstRunSelection, accuracy);
   const recommendedModeName = getExperienceName(recommendedMode);
   const performanceRead = useMemo(
@@ -164,7 +162,6 @@ export const EndScreen = ({
   useEffect(() => {
     setChecklist(prev => ({
       ...prev,
-      baselineComplete: true,
       threeSessionsComplete: prev.threeSessionsComplete || totalRoundsCompleted >= 3,
       accountComplete: prev.accountComplete || isSignedIn,
     }));
@@ -214,12 +211,12 @@ export const EndScreen = ({
 
   const checklistItems = useMemo(
     () => [
-      { label: 'Baseline test completed', checked: checklist.baselineComplete },
+      { label: 'Baseline test completed', checked: hasCompletedBaseline },
       { label: `Run ${recommendedModeName} next`, checked: checklist.recommendedModeComplete },
       { label: 'Complete 3 total sessions', checked: checklist.threeSessionsComplete },
       { label: 'Create account to sync progress', checked: checklist.accountComplete },
     ],
-    [checklist, recommendedModeName],
+    [checklist, hasCompletedBaseline, recommendedModeName],
   );
 
   const handleStartRecommended = () => {
@@ -286,7 +283,7 @@ export const EndScreen = ({
                 Accuracy {readiness?.decisionAccuracyPct ?? accuracy}%
               </p>
               <p className="text-xs mt-1" style={{ color: theme.textColor, opacity: 0.78 }}>
-                Late {readiness?.lateDecisionRatePct ?? 0}% | Streak {readiness?.streakQualityPct ?? result.bestStreak}
+                Late {readiness?.lateDecisionRatePct ?? 0}% | Best streak {result.bestStreak}
               </p>
             </div>
           </div>
@@ -301,14 +298,14 @@ export const EndScreen = ({
             </div>
             {subScores.vision && (
               <div className="rounded-xl border px-2 py-2 text-center" style={{ borderColor: `${theme.targetColor}33` }}>
-                <p className="text-[9px] uppercase tracking-[0.12em] opacity-60" style={{ color: theme.textColor }}>Vision</p>
-                <p className="text-sm font-bold tabular-nums" style={{ color: theme.textColor }}>{readiness?.visualFocusPct ?? '—'}%</p>
+                <p className="text-[9px] uppercase tracking-[0.12em] opacity-60" style={{ color: theme.textColor }}>Timing spread</p>
+                <p className="text-sm font-bold tabular-nums" style={{ color: theme.textColor }}>{result.score >= 2 && readiness?.reactionVariabilityMs != null ? `${readiness.reactionVariabilityMs}ms` : 'Not enough samples'}</p>
               </div>
             )}
             {subScores.control && (
               <div className="rounded-xl border px-2 py-2 text-center" style={{ borderColor: `${theme.targetColor}33` }}>
-                <p className="text-[9px] uppercase tracking-[0.12em] opacity-60" style={{ color: theme.textColor }}>Control</p>
-                <p className="text-sm font-bold tabular-nums" style={{ color: theme.textColor }}>{readiness?.consistencyPct ?? '—'}%</p>
+                <p className="text-[9px] uppercase tracking-[0.12em] opacity-60" style={{ color: theme.textColor }}>Best streak</p>
+                <p className="text-sm font-bold tabular-nums" style={{ color: theme.textColor }}>{result.bestStreak}</p>
               </div>
             )}
             {subScores.memory && (

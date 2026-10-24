@@ -18,7 +18,8 @@
     "verify": "npm run check && npm run test && npm run build",
     "preview:build": "npm run build && vite preview",
     "prepare-assets": "node scripts/prepare-assets.js",
-    "validate-assets": "node scripts/validate-assets.js"
+    "validate-assets": "node scripts/validate-assets.js",
+    "test:houze-rls": "node scripts/verify-houze-rls.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.103.3",
@@ -27,6 +28,7 @@
     "react-dom": "^18.2.0"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.5.11",
     "@swc/core": "^1.3.109",
     "@swc/helpers": "^0.5.3",
     "@testing-library/jest-dom": "^6.9.1",

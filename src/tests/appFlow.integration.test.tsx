@@ -509,12 +509,29 @@ describe('App integration flow', () => {
     expect(screen.getByText('57s')).toBeInTheDocument();
   });
 
+  it('preserves a live target and its reaction window across a long pause', async () => {
+    renderApp();
+    await startMode('Cobra Strike');
+    await advance(100);
+    expect(screen.getByRole('button', { name: 'Hit target' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /pause game/i }));
+    await advance(20_000);
+    fireEvent.click(screen.getByRole('button', { name: 'Resume' }));
+    await advance(50);
+    fireEvent.click(screen.getByRole('button', { name: 'Hit target' }));
+    await advance(150);
+    expect(screen.getByLabelText('Current streak 1')).toBeInTheDocument();
+  });
+
   it('supports replay and returning to main menu from results', async () => {
+    localStorage.removeItem('gamespeed_stats_v1');
+    localStorage.removeItem('gamespeed_first_run_complete_v1');
     renderApp();
     await startMode('Cobra Strike');
 
     await advance(62_000);
     expect(screen.getByText('Final Score')).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'Baseline test completed' })).not.toBeChecked();
 
     fireEvent.click(screen.getByRole('button', { name: 'Replay' }));
     await flushMicrotasks();
