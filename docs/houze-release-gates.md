@@ -13,7 +13,7 @@ This is a candidate on PR #7, not a production certification.
 
 ## Configuration and rollout
 
-1. Review `supabase/athlete_houze_enrollments.sql`, then run `npm run test:houze-rls`. The fixture uses an isolated PostgreSQL engine, synthetic IDs, two owners, client write denials, server writes and atomic queuing. It is not a live Supabase test.
+1. Review `supabase/athlete_houze_enrollments.sql`, then run `npm run test:houze-rls`. The fixture uses an isolated PostgreSQL engine, synthetic IDs, two owners, client write denials, server writes, atomic queuing, retry bounds, and the empty-table rollback. It is not a live Supabase test. `supabase/rollbacks/athlete_houze_enrollments_rollback.sql` refuses while any integration row exists and is not a forward migration.
 2. Apply the migration to an isolated test project first. The current live GameSpeed project was inspected and had neither integration table. Do not apply an older client-writable version.
 3. Set server-only `SUPABASE_SECRET_KEY` (or legacy `SUPABASE_SERVICE_ROLE_KEY`), `ATHLETE_HOUZE_REPORT_URL`, and the source-specific `ATHLETE_HOUZE_REPORT_HMAC_SECRET`. Use environment-specific databases and secrets. Never use a `VITE_` prefix for privileged keys.
 4. Deploy the matching Houze receiver before enabling sender delivery. Test with synthetic accounts through both deployed apps.

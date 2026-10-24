@@ -45,6 +45,9 @@ jobs:
       - name: Test
         run: npm run test
 
+      - name: Houze integration ownership and retry
+        run: npm run test:houze-rls
+
   deploy:
     name: Build & Deploy
     needs: quality
