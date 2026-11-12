@@ -37,5 +37,6 @@ end $$;
 
 drop trigger if exists queue_houze_round on public.user_rounds;
 drop function if exists public.queue_houze_round();
+drop function if exists private.queue_houze_round();
 drop table if exists public.athlete_houze_round_deliveries;
 drop table if exists public.athlete_houze_enrollments;
