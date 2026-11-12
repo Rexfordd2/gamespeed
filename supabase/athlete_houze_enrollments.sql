@@ -50,7 +50,11 @@ grant select, insert, update, delete on public.athlete_houze_enrollments, public
 
 -- Queue atomically with the source round. No browser callback is required to
 -- preserve the handoff, and unlinked or pre-consent history is not enqueued.
-create or replace function public.queue_houze_round()
+-- The definer function stays in an unexposed schema so PostgREST cannot call it.
+create schema if not exists private;
+revoke all on schema private from public, anon, authenticated;
+
+create or replace function private.queue_houze_round()
 returns trigger language plpgsql security definer set search_path = '' as $$
 begin
   if exists (
@@ -79,7 +83,8 @@ alter table public.athlete_houze_round_deliveries
   add constraint athlete_houze_round_deliveries_attempt_count_check
   check (attempt_count >= 0 and attempt_count <= 8);
 
-revoke all on function public.queue_houze_round() from public, anon, authenticated;
+revoke all on function private.queue_houze_round() from public, anon, authenticated;
+drop function if exists public.queue_houze_round();
 drop trigger if exists queue_houze_round on public.user_rounds;
 create trigger queue_houze_round after insert on public.user_rounds
-for each row execute function public.queue_houze_round();
+for each row execute function private.queue_houze_round();
