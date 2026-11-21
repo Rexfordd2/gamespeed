@@ -29,8 +29,13 @@ export type WeeklyChallenge = {
   completed: boolean;
 };
 
-export type PercentileBadge = {
-  percentile: number;
+/**
+ * Where a round sits among the athlete's own sessions in the same mode. There is
+ * no population comparison data, so nothing here ranks one player against others.
+ */
+export type PersonalStanding = {
+  rank: number;
+  total: number;
   label: string;
   tone: string;
 };
@@ -159,26 +164,24 @@ export const getModeUnlockStatuses = (stats: GameStats): ModeUnlockStatus[] => {
 export const isModeUnlocked = (stats: GameStats, mode: GameModeType): boolean =>
   getModeUnlockStatuses(stats).find(status => status.mode === mode)?.unlocked ?? false;
 
-export const estimatePercentileForRound = (round: StoredRound, stats: GameStats): number => {
-  const modeRounds = stats.rounds.filter(item => item.mode === round.mode);
-  if (modeRounds.length < 2) {
-    const fallback = Math.round(
-      Math.max(18, Math.min(97, round.accuracy * 0.55 + Math.min(round.score, 55) * 0.8)),
-    );
-    return fallback;
+export const getPersonalStanding = (round: StoredRound, stats: GameStats): PersonalStanding => {
+  const others = stats.rounds.filter(item => item.mode === round.mode && item !== round);
+  const total = others.length + 1;
+  if (total < 2) {
+    return { rank: 1, total, label: 'BASELINE', tone: performanceColors.bioluminescent };
   }
   const currentSignal = roundSignal(round);
-  const sorted = modeRounds.map(roundSignal).sort((a, b) => a - b);
-  const betterOrEqual = sorted.filter(value => value <= currentSignal).length;
-  return Math.max(5, Math.min(99, Math.round((betterOrEqual / sorted.length) * 100)));
+  const rank = 1 + others.filter(item => roundSignal(item) > currentSignal).length;
+  if (rank === 1) {
+    return { rank, total, label: 'BEST YET', tone: performanceColors.green };
+  }
+  return { rank, total, label: `#${rank} of ${total}`, tone: performanceColors.amber };
 };
 
-export const getPercentileBadge = (percentile: number): PercentileBadge => {
-  if (percentile >= 95) return { percentile, label: 'APEX', tone: performanceColors.green };
-  if (percentile >= 85) return { percentile, label: 'PREDATOR', tone: performanceColors.cognition };
-  if (percentile >= 70) return { percentile, label: 'HUNT', tone: performanceColors.bioluminescent };
-  if (percentile >= 50) return { percentile, label: 'CANOPY', tone: performanceColors.amber };
-  return { percentile, label: 'TRAIL', tone: '#fb923c' };
+export const describePersonalStanding = (standing: PersonalStanding, modeName: string): string => {
+  if (standing.total < 2) return `First ${modeName} session (baseline)`;
+  if (standing.rank === 1) return `Best of my ${standing.total} ${modeName} sessions`;
+  return `#${standing.rank} of my ${standing.total} ${modeName} sessions`;
 };
 
 const toShareDate = (ts: number) =>
@@ -186,12 +189,12 @@ const toShareDate = (ts: number) =>
 
 export const buildShareScoreCardText = ({
   round,
-  badge,
+  standing,
   dailyStreak,
   newPb,
 }: {
   round: StoredRound;
-  badge: PercentileBadge;
+  standing: PersonalStanding;
   dailyStreak: number;
   newPb: boolean;
 }) => {
@@ -199,7 +202,7 @@ export const buildShareScoreCardText = ({
   const lines = [
     `GameSpeed ${toShareDate(round.ts)}`,
     headline,
-    `Badge: ${badge.label} (${badge.percentile}th percentile)`,
+    `My history: ${describePersonalStanding(standing, round.modeName)}`,
     `Best streak: ${round.bestStreak}`,
     dailyStreak > 0 ? `Daily streak: ${dailyStreak} day${dailyStreak === 1 ? '' : 's'}` : 'Daily streak: started',
     newPb ? 'Result: new personal best' : 'Result: session complete',
