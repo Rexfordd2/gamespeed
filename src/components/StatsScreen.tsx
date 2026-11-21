@@ -8,7 +8,6 @@ import { getSportConfig } from '../config/sports';
 import { getStatsGroupSummary, getSportTrendSummaries } from '../utils/readinessMetrics';
 import {
   getDailyStreak,
-  getFriendLeaderboard,
   getModeUnlockStatuses,
   getRecentHistory,
   getTodayRounds,
@@ -18,7 +17,6 @@ import {
 interface StatsScreenProps {
   onClose: () => void;
   stats: GameStats;
-  playerName: string;
 }
 
 const formatRelativeTime = (ts: number): string => {
@@ -32,14 +30,13 @@ const formatRelativeTime = (ts: number): string => {
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 };
 
-export const StatsScreen = ({ onClose, stats, playerName }: StatsScreenProps) => {
+export const StatsScreen = ({ onClose, stats }: StatsScreenProps) => {
   const { theme } = useTheme();
   const todayRounds = getTodayRounds(stats);
   const streak = getDailyStreak(stats);
   const weeklyChallenge = getWeeklyChallenge(stats);
   const unlockStatuses = getModeUnlockStatuses(stats);
   const recentRounds = getRecentHistory(stats, 16);
-  const leaderboard = getFriendLeaderboard(stats, playerName).slice(0, 5);
   const groupedSummary = getStatsGroupSummary(stats);
   const sportTrends = getSportTrendSummaries(stats).slice(0, 4);
   const hasPbs = MODE_ORDER.some(mode => stats.pbs[mode] !== undefined);
@@ -208,23 +205,6 @@ export const StatsScreen = ({ onClose, stats, playerName }: StatsScreenProps) =>
               })}
             </div>
           )}
-        </section>
-
-        <section className="mb-7">
-          <p className="text-[11px] uppercase tracking-[0.18em] font-semibold mb-3" style={{ color: theme.targetColor }}>
-            Leaderboard Shell
-          </p>
-          <p className="text-[10px] uppercase tracking-[0.14em] mb-2" style={{ color: theme.textColor, opacity: 0.56 }}>
-            Placeholder rankings for launch shell
-          </p>
-          <div className="rounded-2xl p-4 space-y-2" style={cardStyle}>
-            {leaderboard.map((entry, idx) => (
-              <div key={entry.name} className="flex items-center justify-between">
-                <p className="text-sm" style={{ color: theme.textColor }}>{idx + 1}. {entry.name}</p>
-                <p className="text-sm font-bold tabular-nums" style={{ color: entry.isYou ? theme.targetColor : '#7dd3fc' }}>{entry.score}</p>
-              </div>
-            ))}
-          </div>
         </section>
 
         <section className="mb-7">

@@ -636,7 +636,6 @@ export const App = () => {
           <StatsScreen
             onClose={handleCloseStats}
             stats={statsSnapshot}
-            playerName={profile?.display_name || user?.email?.split('@')[0] || 'You'}
           />
         )}
         {gameState === 'coach' && <CoachMode onBack={handleMainMenu} />}

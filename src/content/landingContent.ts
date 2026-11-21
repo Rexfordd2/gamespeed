@@ -1,7 +1,8 @@
 import { GameModeType } from '../types/game';
 import {
-  socialProofStats,
-  socialProofTestimonials,
+  BenchmarkFact,
+  benchmarkProtocolFacts,
+  evidenceStatement,
 } from './credibilityContent';
 
 export type LandingPersona = 'athlete' | 'gamer';
@@ -15,12 +16,6 @@ interface HeroPersonaContent {
 interface WhyPoint {
   title: string;
   body: string;
-}
-
-interface Testimonial {
-  quote: string;
-  author: string;
-  role: string;
 }
 
 interface FaqItem {
@@ -75,8 +70,8 @@ export interface LandingContent {
   socialProof: {
     heading: string;
     benchmarkFraming: string;
-    proofStats: { label: string; value: string }[];
-    testimonials: Testimonial[];
+    protocolFacts: BenchmarkFact[];
+    evidenceStatement: string;
   };
   progression: {
     heading: string;
@@ -208,11 +203,11 @@ export const landingContent: LandingContent = {
     },
   },
   socialProof: {
-    heading: 'Proof and Benchmarks',
+    heading: 'How the Benchmark Works',
     benchmarkFraming:
       'Use Panther Readiness as a personal baseline, then compare week-over-week trend lines instead of chasing random one-off highs.',
-    proofStats: socialProofStats,
-    testimonials: socialProofTestimonials,
+    protocolFacts: benchmarkProtocolFacts,
+    evidenceStatement,
   },
   progression: {
     heading: 'Deeper Into the Rainforest',

@@ -35,12 +35,6 @@ export type PercentileBadge = {
   tone: string;
 };
 
-export type LeaderboardEntry = {
-  name: string;
-  score: number;
-  isYou?: boolean;
-};
-
 export type RoundProgressDelta = {
   scoreDelta: number;
   accuracyDelta: number;
@@ -185,25 +179,6 @@ export const getPercentileBadge = (percentile: number): PercentileBadge => {
   if (percentile >= 70) return { percentile, label: 'HUNT', tone: performanceColors.bioluminescent };
   if (percentile >= 50) return { percentile, label: 'CANOPY', tone: performanceColors.amber };
   return { percentile, label: 'TRAIL', tone: '#fb923c' };
-};
-
-export const getFriendLeaderboard = (
-  stats: GameStats,
-  playerName = 'You',
-  activeMode?: GameModeType,
-): LeaderboardEntry[] => {
-  // Placeholder leaderboard shell until live multiplayer rankings are available.
-  const preferredMode = activeMode ?? 'quickTap';
-  const yourScore = stats.pbs[preferredMode]?.score ?? 0;
-  const seed = Math.max(18, yourScore);
-  const entries: LeaderboardEntry[] = [
-    { name: 'Kai', score: seed + 8 },
-    { name: 'Rhea', score: seed + 4 },
-    { name: playerName, score: yourScore, isYou: true },
-    { name: 'Milo', score: Math.max(0, seed - 3) },
-    { name: 'Jules', score: Math.max(0, seed - 7) },
-  ];
-  return entries.sort((a, b) => b.score - a.score);
 };
 
 const toShareDate = (ts: number) =>
