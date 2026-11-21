@@ -6,13 +6,11 @@ import { FirstRunSelection, GameModeType, GameResult, GameStats } from '../types
 import { motion } from 'framer-motion';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  PercentileBadge,
   RoundProgressDelta,
   buildShareScoreCardText,
-  estimatePercentileForRound,
   getDailyStreak,
   getModeLabel,
-  getPercentileBadge,
+  getPersonalStanding,
   getRecentHistory,
   getWeeklyChallenge,
 } from '../utils/progression';
@@ -157,9 +155,8 @@ export const EndScreen = ({
   const dailyStreak = getDailyStreak(stats);
   const weeklyChallenge = getWeeklyChallenge(stats);
   const latestRound = getLastRoundForResult(stats, result);
-  const percentileBadge: PercentileBadge = latestRound
-    ? getPercentileBadge(estimatePercentileForRound(latestRound, stats))
-    : getPercentileBadge(Math.max(5, Math.min(99, Math.round(accuracy * 0.8))));
+  const standing = latestRound ? getPersonalStanding(latestRound, stats) : null;
+  const standingTone = standing?.tone ?? theme.targetColor;
 
   useEffect(() => {
     setChecklist(prev => ({
@@ -237,7 +234,7 @@ export const EndScreen = ({
     });
     const content = buildShareScoreCardText({
       round: latestRound,
-      badge: percentileBadge,
+      standing: getPersonalStanding(latestRound, stats),
       dailyStreak,
       newPb: roundProgressDelta?.newPb ?? false,
     });
@@ -279,9 +276,9 @@ export const EndScreen = ({
                 <span>Final Score</span>: {result.score}
               </p>
             </div>
-            <div className="rounded-2xl px-3.5 py-3 text-right" style={{ backgroundColor: `${percentileBadge.tone}18`, border: `1px solid ${percentileBadge.tone}66` }}>
-              <p className="text-[10px] uppercase tracking-[0.16em] opacity-75" style={{ color: theme.textColor }}>Instinct tier</p>
-              <p className="font-display text-2xl font-black" style={{ color: percentileBadge.tone }}>{percentileBadge.label}</p>
+            <div className="rounded-2xl px-3.5 py-3 text-right" style={{ backgroundColor: `${standingTone}18`, border: `1px solid ${standingTone}66` }}>
+              <p className="text-[10px] uppercase tracking-[0.16em] opacity-75" style={{ color: theme.textColor }}>Your history</p>
+              <p className="font-display text-2xl font-black" style={{ color: standingTone }} data-testid="personal-standing">{standing?.label ?? '—'}</p>
               <p className="text-xs font-semibold mt-0.5" style={{ color: theme.textColor }}>
                 Accuracy {readiness?.decisionAccuracyPct ?? accuracy}%
               </p>

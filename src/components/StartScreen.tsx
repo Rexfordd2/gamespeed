@@ -18,7 +18,6 @@ import { gameModes } from '../utils/gameModes';
 import { NightGuardrailSettings } from '../utils/nightGuardrail';
 import {
   getDailyStreak,
-  getFriendLeaderboard,
   getLatestBenchmarkRound,
   getLatestGameSpeedScore,
   getModeUnlockMap,
@@ -148,7 +147,6 @@ export const StartScreen = ({
   const streakDays = getDailyStreak(stats);
   const weeklyChallenge = getWeeklyChallenge(stats);
   const unlockMap = getModeUnlockMap(stats);
-  const leaderboard = getFriendLeaderboard(stats, playerName).slice(0, 5);
   const disciplineNote = getProgressDisciplineNote(stats);
   const isEmptyProfile = !isFirstRun && stats.rounds.length === 0;
   const isReturningAthlete = !isFirstRun && stats.rounds.length > 0;
@@ -931,45 +929,6 @@ export const StartScreen = ({
               Latest: {latestCheckInLabel}
             </p>
           )}
-        </section>
-
-        <section
-          className="rounded-3xl p-4 sm:p-6 backdrop-blur-md"
-          style={{
-            backgroundColor: 'rgba(6, 12, 18, 0.64)',
-            border: `1px solid ${theme.targetColor}2a`,
-          }}
-        >
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="text-lg sm:text-xl font-bold" style={{ color: theme.textColor }}>
-              Readiness leaderboard snapshot
-            </h2>
-            <span className="text-[11px] uppercase tracking-[0.18em]" style={{ color: theme.textColor, opacity: 0.62 }}>
-              top quick tap score
-            </span>
-          </div>
-          <p className="mt-2 text-xs uppercase tracking-[0.12em]" style={{ color: theme.textColor, opacity: 0.56 }}>
-            Local sample ranking seeded from your current profile data.
-          </p>
-          <div className="mt-3 space-y-2">
-            {leaderboard.map((entry, index) => (
-              <div
-                key={entry.name}
-                className="rounded-xl px-3.5 py-2.5 flex items-center justify-between"
-                style={{
-                  backgroundColor: entry.isYou ? `${theme.targetColor}1f` : 'rgba(2, 8, 12, 0.6)',
-                  border: `1px solid ${entry.isYou ? `${theme.targetColor}66` : `${theme.textColor}22`}`,
-                }}
-              >
-                <p className="text-sm font-semibold" style={{ color: theme.textColor }}>
-                  {index + 1}. {entry.name}
-                </p>
-                <p className="text-sm font-bold tabular-nums" style={{ color: entry.isYou ? theme.targetColor : '#a5f3fc' }}>
-                  {entry.score}
-                </p>
-              </div>
-            ))}
-          </div>
         </section>
 
         <LandingProgression

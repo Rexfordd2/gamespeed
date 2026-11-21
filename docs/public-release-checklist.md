@@ -26,7 +26,7 @@
   - [ ] secondary CTA `Watch Demo`
   - [ ] athlete/gamer toggle
 - [ ] First-run flow works end-to-end: persona -> goal -> test -> results.
-- [ ] Results screen shows score, percentile, recommended next mode, and signup prompt after value.
+- [ ] Results screen shows score, personal-history standing (no population percentile or ranking claim), recommended next mode, and signup prompt after value.
 - [ ] Analytics events fire for:
   - [ ] `hero_cta_click`
   - [ ] `persona_selected`

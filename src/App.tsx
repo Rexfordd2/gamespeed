@@ -10,6 +10,8 @@ import { AudioToggle } from './components/AudioToggle';
 import { BenchmarkPage } from './components/BenchmarkPage';
 import { PreGameRunway } from './components/PreGameRunway';
 import { CoachMode } from './components/CoachMode';
+import { AthleteHouzeReturnBar } from './components/AthleteHouzeReturnBar';
+import { NotFoundPage, PrivacyStatusPage } from './components/PublicNoticePage';
 import {
   FirstRunSelection,
   GameStats,
@@ -55,8 +57,10 @@ const CUE_INTENSITY_STORAGE_KEY = 'gamespeed_cue_intensity_v1';
 const HAPTICS_ENABLED_STORAGE_KEY = 'gamespeed_haptics_enabled_v1';
 const BENCHMARK_ROUTE_PATH = '/benchmark';
 const RUNWAY_ROUTE_PATH = '/runway';
+const PRIVACY_ROUTE_PATH = '/privacy';
+const HOME_ROUTE_PATHS = new Set(['/', '', '/index.html']);
 const ROUTE_QUERY_KEY = 'view';
-type PublicRoute = 'home' | 'benchmark' | 'runway';
+type PublicRoute = 'home' | 'benchmark' | 'runway' | 'privacy' | 'notFound';
 
 const RAW_BASE_PATH = import.meta.env.BASE_URL || '/';
 const APP_BASE_PATH =
@@ -90,10 +94,12 @@ const getPublicRouteFromLocation = (pathname: string, search: string): PublicRou
   if (queryRoute === 'benchmark' || queryRoute === 'runway' || queryRoute === 'home') {
     return queryRoute;
   }
-  const normalizedPath = stripAppBasePath(pathname).toLowerCase();
+  const normalizedPath = stripAppBasePath(pathname).toLowerCase().replace(/(.)\/+$/, '$1');
+  if (HOME_ROUTE_PATHS.has(normalizedPath)) return 'home';
   if (normalizedPath === BENCHMARK_ROUTE_PATH) return 'benchmark';
   if (normalizedPath === RUNWAY_ROUTE_PATH) return 'runway';
-  return 'home';
+  if (normalizedPath === PRIVACY_ROUTE_PATH) return 'privacy';
+  return 'notFound';
 };
 
 const loadFirstRunComplete = () => {
@@ -475,6 +481,14 @@ export const App = () => {
       document.title = 'GameSpeed Pre-Game Runway';
       return;
     }
+    if (publicRoute === 'privacy') {
+      document.title = 'GameSpeed Privacy';
+      return;
+    }
+    if (publicRoute === 'notFound') {
+      document.title = 'Page not found — GameSpeed';
+      return;
+    }
     document.title = 'GameSpeed';
   }, [gameState, publicRoute]);
 
@@ -567,7 +581,12 @@ export const App = () => {
         <div key={screenTransitionKey} className="screen-mist-sweep">
         {gameState === 'start' && (
           <>
-            {publicRoute === 'benchmark' ? (
+            <AthleteHouzeReturnBar />
+            {publicRoute === 'notFound' ? (
+              <NotFoundPage onBackToHome={handleReturnHome} />
+            ) : publicRoute === 'privacy' ? (
+              <PrivacyStatusPage onBackToHome={handleReturnHome} />
+            ) : publicRoute === 'benchmark' ? (
               <BenchmarkPage
                 onBackToHome={handleReturnHome}
                 onStartBenchmark={() => handleGameStart('reactionBenchmark')}
@@ -636,7 +655,6 @@ export const App = () => {
           <StatsScreen
             onClose={handleCloseStats}
             stats={statsSnapshot}
-            playerName={profile?.display_name || user?.email?.split('@')[0] || 'You'}
           />
         )}
         {gameState === 'coach' && <CoachMode onBack={handleMainMenu} />}

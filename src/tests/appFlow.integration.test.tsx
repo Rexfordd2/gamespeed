@@ -283,7 +283,9 @@ describe('App integration flow', () => {
     await advance(62_000);
 
     expect(screen.getByText('Results Dashboard')).toBeInTheDocument();
-    expect(screen.getByText('Instinct tier')).toBeInTheDocument();
+    expect(screen.getByText('Your history')).toBeInTheDocument();
+    expect(screen.getByTestId('personal-standing')).toHaveTextContent('BASELINE');
+    expect(screen.queryByText(/percentile/i)).not.toBeInTheDocument();
     expect(screen.getByText('Recommended Next Instinct')).toBeInTheDocument();
     expect(screen.getByText('Onboarding Checklist')).toBeInTheDocument();
     expect(screen.getByText('Save this progress')).toBeInTheDocument();

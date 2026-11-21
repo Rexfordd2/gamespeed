@@ -6,7 +6,7 @@ This audit captures the state found before the public-release hardening pass in 
 
 - Core game loop is playable with six live modes, including a dedicated 60-second benchmark mode.
 - First-run onboarding already supports persona + goal selection and immediate first test launch.
-- Results screen already includes score, percentile framing, recommended next mode, and deferred signup prompt.
+- Results screen includes score, standing within the athlete’s own session history (no population percentile), recommended next mode, and deferred signup prompt.
 - Retention foundations already exist: daily streak, personal best deltas, weekly challenge, leaderboard shell, session history shell, and score sharing.
 - Trust foundations are present in UI: benchmark explanation, score interpretation bands, latency disclaimer, and 3-step "how it works."
 
